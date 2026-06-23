@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Go
+bin/
+dist/
+*.exe
+*.test
+*.out
+vendor/
+
+# Generated code
+shared/gen/
+**/gen/
+*.pb.go
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
+
+# Build artifacts
+build/
+*.egg-info/
+.eggs/
+*.whl
+coverage/
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Docker volumes (local)
+.docker-data/
+
+# Secrets and keys (never commit)
+*.pem
+*.key
+secrets/
+
+# Dashboard
+dashboard/dist/
+dashboard/.next/
+
+# Benchmark results (local)
+benchmark-results/
+
+# Helm
+deploy/helm/charts/*.tgz

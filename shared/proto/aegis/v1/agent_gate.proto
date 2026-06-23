@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "aegis/v1/common.proto";
+
+// ---------------------------------------------------------------------------
+// Agent gate — tool/MCP call interception with taint tracking
+// ---------------------------------------------------------------------------
+
+enum ToolCallStatus {
+  TOOL_CALL_STATUS_UNSPECIFIED = 0;
+  TOOL_CALL_STATUS_PENDING = 1;
+  TOOL_CALL_STATUS_APPROVED = 2;
+  TOOL_CALL_STATUS_DENIED = 3;
+  TOOL_CALL_STATUS_AWAITING_HUMAN_APPROVAL = 4;
+  TOOL_CALL_STATUS_EXECUTED = 5;
+}
+
+enum ToolRiskLevel {
+  TOOL_RISK_LEVEL_UNSPECIFIED = 0;
+  TOOL_RISK_LEVEL_LOW = 1;
+  TOOL_RISK_LEVEL_MEDIUM = 2;
+  TOOL_RISK_LEVEL_HIGH = 3;
+  TOOL_RISK_LEVEL_IRREVERSIBLE = 4;
+}
+
+message ToolArgument {
+  string name = 1;
+  google.protobuf.Value value = 2;
+  TaintLevel taint_level = 3;
+  TaintSource taint_source = 4;
+  bool contains_credentials = 5;
+  string masked_value = 6;
+}
+
+message ToolCallRequest {
+  TraceContext trace = 1;
+  string tool_name = 2;
+  string tool_id = 3;
+  repeated ToolArgument arguments = 4;
+  ToolRiskLevel risk_level = 5;
+  repeated TaintLabel taint_labels = 6;
+  string agent_id = 7;
+  google.protobuf.Timestamp requested_at = 8;
+}
+
+message ToolCallDecision {
+  TraceContext trace = 1;
+  ToolCallStatus status = 2;
+  string denial_reason = 3;
+  repeated string violated_policies = 4;
+  repeated TaintLabel flagged_taint = 5;
+  string approval_request_id = 6;
+  google.protobuf.Timestamp decided_at = 7;
+  int64 evaluation_latency_ms = 8;
+}
+
+message AgentGateRequest {
+  ToolCallRequest tool_call = 1;
+  string tenant_id = 2;
+  string policy_pack_id = 3;
+}
+
+message AgentGateResponse {
+  ToolCallDecision decision = 1;
+}
+
+message ApprovalRequest {
+  string approval_id = 1;
+  ToolCallRequest tool_call = 2;
+  string tenant_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  ToolCallStatus status = 6;
+}
+
+message ApprovalAction {
+  string approval_id = 1;
+  bool approved = 2;
+  string reviewer_id = 3;
+  string comment = 4;
+}
+
+service AgentGateService {
+  rpc Evaluate(AgentGateRequest) returns (AgentGateResponse);
+  rpc SubmitApproval(ApprovalAction) returns (ToolCallDecision);
+  rpc Health(HealthCheckRequest) returns (HealthCheckResponse);
+}

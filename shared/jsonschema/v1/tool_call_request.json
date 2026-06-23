@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/tool_call_request.json",
+  "title": "ToolCallRequest",
+  "description": "Agent tool/MCP call intercepted by agent-gate",
+  "type": "object",
+  "required": ["tool_name", "arguments"],
+  "properties": {
+    "trace": { "$ref": "common.json#/$defs/TraceContext" },
+    "tool_name": { "type": "string" },
+    "tool_id": { "type": "string" },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "properties": {
+          "name": { "type": "string" },
+          "value": {},
+          "taint_level": {
+            "type": "string",
+            "enum": ["TRUSTED", "UNTRUSTED", "TAINTED"]
+          },
+          "taint_source": {
+            "type": "string",
+            "enum": ["USER_INPUT", "RAG_DOCUMENT", "TOOL_OUTPUT", "WEB_FETCH", "SYSTEM"]
+          },
+          "contains_credentials": { "type": "boolean" },
+          "masked_value": { "type": "string" }
+        }
+      }
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "IRREVERSIBLE"]
+    },
+    "agent_id": { "type": "string" },
+    "requested_at": { "type": "string", "format": "date-time" }
+  }
+}

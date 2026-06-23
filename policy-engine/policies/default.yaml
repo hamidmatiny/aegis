@@ -1,0 +1,44 @@
+# Default policy pack — Stage 0 scaffold
+# Full CEL rules implemented in Stage 3 (policy-engine)
+
+id: default
+version: "0.1.0"
+tenant_id: default
+description: Baseline policy pack for AEGIS development
+
+input_rules:
+  - id: block-high-fusion-score
+    name: Block high input fusion score
+    cel: "input_verdict.fused_score >= 0.85"
+    action: block
+    enabled: true
+
+  - id: escalate-ambiguous-input
+    name: Escalate ambiguous input
+    cel: "input_verdict.fused_score >= 0.55 && input_verdict.fused_score < 0.85"
+    action: escalate_to_judge
+    enabled: true
+
+output_rules:
+  - id: block-high-output-score
+    name: Block high output fusion score
+    cel: "output_verdict.fused_score >= 0.80"
+    action: block
+    enabled: true
+
+tool_rules:
+  - id: require-approval-irreversible
+    name: Require human approval for irreversible actions
+    cel: "tool_call.risk_level == 'IRREVERSIBLE'"
+    action: escalate_to_judge
+    enabled: true
+
+  - id: block-tainted-credentials
+    name: Block tainted data in credential fields
+    cel: "tool_call.arguments.exists(a, a.contains_credentials && a.taint_level == 'TAINTED')"
+    action: block
+    enabled: true
+
+settings:
+  shadow_mode: false
+  default_action: allow

@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "aegis/v1/common.proto";
+import "aegis/v1/input_defense.proto";
+import "aegis/v1/output_defense.proto";
+import "aegis/v1/agent_gate.proto";
+
+// ---------------------------------------------------------------------------
+// Policy engine — CEL-based rule evaluation over defense verdicts
+// ---------------------------------------------------------------------------
+
+enum PolicyDecisionAction {
+  POLICY_DECISION_ACTION_UNSPECIFIED = 0;
+  POLICY_DECISION_ACTION_ALLOW = 1;
+  POLICY_DECISION_ACTION_BLOCK = 2;
+  POLICY_DECISION_ACTION_TRANSFORM = 3;
+  POLICY_DECISION_ACTION_ESCALATE_TO_JUDGE = 4;
+}
+
+enum PolicyEvaluationMode {
+  POLICY_EVALUATION_MODE_UNSPECIFIED = 0;
+  POLICY_EVALUATION_MODE_ENFORCE = 1;
+  POLICY_EVALUATION_MODE_SHADOW = 2;
+  POLICY_EVALUATION_MODE_DRY_RUN = 3;
+}
+
+message PolicyRuleMatch {
+  string rule_id = 1;
+  string rule_name = 2;
+  string cel_expression = 3;
+  bool matched = 4;
+  string match_reason = 5;
+}
+
+message PolicyDecision {
+  TraceContext trace = 1;
+  PolicyDecisionAction action = 2;
+  string policy_pack_id = 3;
+  string policy_pack_version = 4;
+  repeated PolicyRuleMatch matched_rules = 5;
+  string block_reason = 6;
+  string transform_spec = 7;
+  PolicyEvaluationMode mode = 8;
+  PolicyDecisionAction shadow_action = 9;
+  google.protobuf.Timestamp evaluated_at = 10;
+  int64 evaluation_latency_ms = 11;
+}
+
+message PolicyEvaluateInputRequest {
+  InputVerdict input_verdict = 1;
+  Request original_request = 2;
+  string tenant_id = 3;
+  PolicyEvaluationMode mode = 4;
+}
+
+message PolicyEvaluateOutputRequest {
+  OutputVerdict output_verdict = 1;
+  Request original_request = 2;
+  string tenant_id = 3;
+  PolicyEvaluationMode mode = 4;
+}
+
+message PolicyEvaluateToolRequest {
+  ToolCallRequest tool_call = 1;
+  string tenant_id = 2;
+  PolicyEvaluationMode mode = 3;
+}
+
+message PolicyEvaluateResponse {
+  PolicyDecision decision = 1;
+}
+
+service PolicyEngineService {
+  rpc EvaluateInput(PolicyEvaluateInputRequest) returns (PolicyEvaluateResponse);
+  rpc EvaluateOutput(PolicyEvaluateOutputRequest) returns (PolicyEvaluateResponse);
+  rpc EvaluateTool(PolicyEvaluateToolRequest) returns (PolicyEvaluateResponse);
+  rpc Health(HealthCheckRequest) returns (HealthCheckResponse);
+}

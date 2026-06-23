@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/policy_decision.json",
+  "title": "PolicyDecision",
+  "description": "CEL policy engine evaluation result",
+  "type": "object",
+  "required": ["action", "policy_pack_id", "policy_pack_version"],
+  "properties": {
+    "trace": { "$ref": "common.json#/$defs/TraceContext" },
+    "action": {
+      "type": "string",
+      "enum": ["ALLOW", "BLOCK", "TRANSFORM", "ESCALATE_TO_JUDGE"]
+    },
+    "policy_pack_id": { "type": "string" },
+    "policy_pack_version": { "type": "string" },
+    "matched_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": { "type": "string" },
+          "rule_name": { "type": "string" },
+          "cel_expression": { "type": "string" },
+          "matched": { "type": "boolean" },
+          "match_reason": { "type": "string" }
+        }
+      }
+    },
+    "block_reason": { "type": "string" },
+    "transform_spec": { "type": "string" },
+    "mode": {
+      "type": "string",
+      "enum": ["ENFORCE", "SHADOW", "DRY_RUN"]
+    },
+    "shadow_action": {
+      "type": "string",
+      "enum": ["ALLOW", "BLOCK", "TRANSFORM", "ESCALATE_TO_JUDGE"]
+    },
+    "evaluated_at": { "type": "string", "format": "date-time" },
+    "evaluation_latency_ms": { "type": "integer", "minimum": 0 }
+  }
+}

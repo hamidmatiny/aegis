@@ -1,0 +1,10 @@
+go 1.22
+
+use (
+	./agent-gate
+	./audit
+	./gateway
+	./model-router
+	./policy-engine
+	./shared/gen/go
+)

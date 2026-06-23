@@ -1,0 +1,18 @@
+"""CLI entrypoint."""
+
+import uvicorn
+
+from aegis_input_defense.settings import settings
+
+
+def main() -> None:
+    uvicorn.run(
+        "aegis_input_defense.app:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.reload,
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "aegis/v1/common.proto";
+import "aegis/v1/input_defense.proto";
+
+// ---------------------------------------------------------------------------
+// Output defense verdict — fused output from all output detectors
+// ---------------------------------------------------------------------------
+
+message JudgeVote {
+  string judge_id = 1;
+  string prompt_framing = 2;
+  VerdictAction vote = 3;
+  string reasoning = 4;
+  int64 latency_ms = 5;
+}
+
+message OutputVerdict {
+  TraceContext trace = 1;
+  VerdictAction action = 2;
+  double fused_score = 3;
+  repeated DetectorScore detector_scores = 4;
+  string redacted_content = 5;
+  string escalation_reason = 6;
+  repeated JudgeVote judge_votes = 7;
+  google.protobuf.Timestamp evaluated_at = 8;
+  int64 total_latency_ms = 9;
+}
+
+message OutputDefenseRequest {
+  string content = 1;
+  Request original_request = 2;
+  repeated string enabled_detectors = 3;
+}
+
+message OutputDefenseResponse {
+  OutputVerdict verdict = 1;
+}
+
+service OutputDefenseService {
+  rpc Analyze(OutputDefenseRequest) returns (OutputDefenseResponse);
+  rpc Health(HealthCheckRequest) returns (HealthCheckResponse);
+}

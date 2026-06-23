@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/common.json",
+  "title": "AEGIS Common Types",
+  "type": "object",
+  "$defs": {
+    "TraceContext": {
+      "type": "object",
+      "properties": {
+        "trace_id": { "type": "string" },
+        "span_id": { "type": "string" },
+        "tenant_id": { "type": "string" },
+        "request_id": { "type": "string" },
+        "session_id": { "type": "string" }
+      }
+    },
+    "ContentBlock": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "taint_level": {
+          "type": "string",
+          "enum": ["TRUSTED", "UNTRUSTED", "TAINTED"]
+        },
+        "taint_source": {
+          "type": "string",
+          "enum": ["USER_INPUT", "RAG_DOCUMENT", "TOOL_OUTPUT", "WEB_FETCH", "SYSTEM"]
+        },
+        "role": { "type": "string" }
+      }
+    },
+    "Message": {
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"] },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" }
+        }
+      }
+    },
+    "ModelConfig": {
+      "type": "object",
+      "required": ["provider", "model"],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "max_tokens": { "type": "integer", "minimum": 1 },
+        "provider_options": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "DetectorScore": {
+      "type": "object",
+      "required": ["detector_id", "score"],
+      "properties": {
+        "detector_id": { "type": "string" },
+        "detector_version": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasoning": { "type": "string" },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "VerdictAction": {
+      "type": "string",
+      "enum": ["ALLOW", "BLOCK", "TRANSFORM", "ESCALATE"]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/input_verdict.json",
+  "title": "InputVerdict",
+  "description": "Fused output from all input defense detectors",
+  "type": "object",
+  "required": ["action", "fused_score", "detector_scores"],
+  "properties": {
+    "trace": { "$ref": "common.json#/$defs/TraceContext" },
+    "action": { "$ref": "common.json#/$defs/VerdictAction" },
+    "fused_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "detector_scores": {
+      "type": "array",
+      "items": { "$ref": "common.json#/$defs/DetectorScore" }
+    },
+    "transformed_content": { "type": "string" },
+    "transformed_messages": {
+      "type": "array",
+      "items": { "$ref": "common.json#/$defs/Message" }
+    },
+    "escalation_reason": { "type": "string" },
+    "evaluated_at": { "type": "string", "format": "date-time" },
+    "total_latency_ms": { "type": "integer", "minimum": 0 }
+  }
+}

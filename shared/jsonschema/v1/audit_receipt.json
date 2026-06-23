@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/audit_receipt.json",
+  "title": "AuditReceipt",
+  "description": "Tamper-evident, Ed25519-signed decision receipt",
+  "type": "object",
+  "required": ["receipt_id", "event_type", "tenant_id", "created_at", "signer_key_id", "signature", "payload_hash"],
+  "properties": {
+    "receipt_id": { "type": "string", "format": "uuid" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "INPUT_DEFENSE",
+        "POLICY_DECISION",
+        "OUTPUT_DEFENSE",
+        "TOOL_GATE",
+        "MODEL_ROUTER",
+        "REDTEAM"
+      ]
+    },
+    "trace": { "$ref": "common.json#/$defs/TraceContext" },
+    "tenant_id": { "type": "string" },
+    "input_verdict": { "$ref": "input_verdict.json" },
+    "policy_decision": { "$ref": "policy_decision.json" },
+    "output_verdict": { "$ref": "output_verdict.json" },
+    "tool_decision": { "type": "object" },
+    "policy_pack_id": { "type": "string" },
+    "policy_pack_version": { "type": "string" },
+    "metadata": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "signer_key_id": { "type": "string" },
+    "signature": { "type": "string", "contentEncoding": "base64" },
+    "payload_hash": { "type": "string", "contentEncoding": "base64" }
+  }
+}

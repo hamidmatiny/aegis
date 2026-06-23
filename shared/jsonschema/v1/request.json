@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.dev/schemas/v1/request.json",
+  "title": "AEGIS Request",
+  "description": "Unified gateway request for protected LLM traffic",
+  "type": "object",
+  "required": ["messages", "model"],
+  "properties": {
+    "trace": { "$ref": "common.json#/$defs/TraceContext" },
+    "messages": {
+      "type": "array",
+      "items": { "$ref": "common.json#/$defs/Message" },
+      "minItems": 1
+    },
+    "model": { "$ref": "common.json#/$defs/ModelConfig" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "policy_pack_id": { "type": "string" },
+    "policy_pack_version": { "type": "string" },
+    "stream": { "type": "boolean", "default": false },
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolDefinition" }
+    },
+    "received_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "ToolDefinition": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "parameters_json_schema": { "type": "string" }
+      }
+    }
+  }
+}

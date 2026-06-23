@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GO_VERSION: "1.22"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  proto:
+    name: Protobuf lint & codegen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Lint protobuf
+        run: cd shared && buf lint
+      - name: Generate code
+        run: cd shared && buf generate
+
+  jsonschema:
+    name: JSON Schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install -g ajv-cli
+      - name: Validate schemas
+        run: |
+          for f in shared/jsonschema/v1/*.json; do
+            ajv validate -s "$f" --spec=draft2020 2>/dev/null || \
+              ajv validate -s "$f" --spec=draft7 || exit 1
+          done
+
+  go:
+    name: Go lint & test
+    runs-on: ubuntu-latest
+    needs: [proto]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            gateway/go.sum
+            policy-engine/go.sum
+            model-router/go.sum
+            agent-gate/go.sum
+            audit/go.sum
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Generate protobuf
+        run: cd shared && buf generate
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Lint
+        run: make lint-go
+      - name: Test
+        run: make test-go
+
+  python:
+    name: Python lint & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          for dir in input-defense output-defense redteam; do
+            pip install -e "./$dir[dev]"
+          done
+      - name: Lint
+        run: make lint-python
+      - name: Test
+        run: make test-python
+
+  integration:
+    name: Integration smoke tests
+    runs-on: ubuntu-latest
+    needs: [go, python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start stack
+        run: docker compose up -d --build --wait
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/integration
+          ./scripts/integration
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  benchmark:
+    name: Benchmark harness
+    runs-on: ubuntu-latest
+    needs: [integration]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run benchmark scaffold
+        run: |
+          chmod +x scripts/benchmark.sh
+          mkdir -p benchmark-results
+          ./scripts/benchmark.sh
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results/

@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// ---------------------------------------------------------------------------
+// Common types shared across all AEGIS services
+// ---------------------------------------------------------------------------
+
+enum VerdictAction {
+  VERDICT_ACTION_UNSPECIFIED = 0;
+  VERDICT_ACTION_ALLOW = 1;
+  VERDICT_ACTION_BLOCK = 2;
+  VERDICT_ACTION_TRANSFORM = 3;
+  VERDICT_ACTION_ESCALATE = 4;
+}
+
+enum TaintLevel {
+  TAINT_LEVEL_UNSPECIFIED = 0;
+  TAINT_LEVEL_TRUSTED = 1;
+  TAINT_LEVEL_UNTRUSTED = 2;
+  TAINT_LEVEL_TAINTED = 3;
+}
+
+enum TaintSource {
+  TAINT_SOURCE_UNSPECIFIED = 0;
+  TAINT_SOURCE_USER_INPUT = 1;
+  TAINT_SOURCE_RAG_DOCUMENT = 2;
+  TAINT_SOURCE_TOOL_OUTPUT = 3;
+  TAINT_SOURCE_WEB_FETCH = 4;
+  TAINT_SOURCE_SYSTEM = 5;
+}
+
+message TaintLabel {
+  string field_path = 1;
+  TaintLevel level = 2;
+  TaintSource source = 3;
+  string source_id = 4;
+  google.protobuf.Timestamp tagged_at = 5;
+}
+
+message DetectorScore {
+  string detector_id = 1;
+  string detector_version = 2;
+  double score = 3;
+  string reasoning = 4;
+  int64 latency_ms = 5;
+  map<string, string> metadata = 6;
+}
+
+message TraceContext {
+  string trace_id = 1;
+  string span_id = 2;
+  string tenant_id = 3;
+  string request_id = 4;
+  string session_id = 5;
+}
+
+message ContentBlock {
+  string text = 1;
+  TaintLevel taint_level = 2;
+  TaintSource taint_source = 3;
+  string role = 4;
+}
+
+message Message {
+  string role = 1;
+  repeated ContentBlock content = 2;
+}
+
+message ModelConfig {
+  string provider = 1;
+  string model = 2;
+  double temperature = 3;
+  int32 max_tokens = 4;
+  map<string, string> provider_options = 5;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  map<string, string> component_status = 2;
+}

@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aegis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-aegis}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aegis}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "${GATEWAY_HTTP_PORT:-8080}:8080"
+    environment:
+      AEGIS_GATEWAY_HTTP_PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  policy-engine:
+    build:
+      context: .
+      dockerfile: policy-engine/Dockerfile
+    ports:
+      - "${POLICY_ENGINE_PORT:-8081}:8081"
+    environment:
+      AEGIS_POLICY_ENGINE_PORT: "8081"
+      AEGIS_POLICY_DIR: ${AEGIS_POLICY_DIR:-/etc/aegis/policies}
+    volumes:
+      - ./policy-engine/policies:/etc/aegis/policies:ro
+
+  model-router:
+    build:
+      context: .
+      dockerfile: model-router/Dockerfile
+    ports:
+      - "${MODEL_ROUTER_PORT:-8082}:8082"
+    environment:
+      AEGIS_MODEL_ROUTER_PORT: "8082"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
+  agent-gate:
+    build:
+      context: .
+      dockerfile: agent-gate/Dockerfile
+    ports:
+      - "${AGENT_GATE_PORT:-8083}:8083"
+    environment:
+      AEGIS_AGENT_GATE_PORT: "8083"
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  audit:
+    build:
+      context: .
+      dockerfile: audit/Dockerfile
+    ports:
+      - "${AUDIT_PORT:-8084}:8084"
+    environment:
+      AEGIS_AUDIT_PORT: "8084"
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      AEGIS_AUDIT_SIGNING_KEY: ${AEGIS_AUDIT_SIGNING_KEY:-}
+      AEGIS_AUDIT_SIGNING_KEY_ID: ${AEGIS_AUDIT_SIGNING_KEY_ID:-dev-key-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  input-defense:
+    build:
+      context: .
+      dockerfile: input-defense/Dockerfile
+    ports:
+      - "${INPUT_DEFENSE_PORT:-8090}:8090"
+
+  output-defense:
+    build:
+      context: .
+      dockerfile: output-defense/Dockerfile
+    ports:
+      - "${OUTPUT_DEFENSE_PORT:-8091}:8091"
+
+  redteam:
+    build:
+      context: .
+      dockerfile: redteam/Dockerfile
+    ports:
+      - "${REDTEAM_PORT:-8092}:8092"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

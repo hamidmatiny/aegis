@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "aegis/v1/common.proto";
+import "aegis/v1/input_defense.proto";
+import "aegis/v1/policy.proto";
+import "aegis/v1/output_defense.proto";
+import "aegis/v1/agent_gate.proto";
+
+// ---------------------------------------------------------------------------
+// Audit — tamper-evident, Ed25519-signed decision receipts
+// ---------------------------------------------------------------------------
+
+enum AuditEventType {
+  AUDIT_EVENT_TYPE_UNSPECIFIED = 0;
+  AUDIT_EVENT_TYPE_INPUT_DEFENSE = 1;
+  AUDIT_EVENT_TYPE_POLICY_DECISION = 2;
+  AUDIT_EVENT_TYPE_OUTPUT_DEFENSE = 3;
+  AUDIT_EVENT_TYPE_TOOL_GATE = 4;
+  AUDIT_EVENT_TYPE_MODEL_ROUTER = 5;
+  AUDIT_EVENT_TYPE_REDTEAM = 6;
+}
+
+message AuditReceipt {
+  string receipt_id = 1;
+  AuditEventType event_type = 2;
+  TraceContext trace = 3;
+  string tenant_id = 4;
+
+  oneof decision_payload {
+    InputVerdict input_verdict = 10;
+    PolicyDecision policy_decision = 11;
+    OutputVerdict output_verdict = 12;
+    ToolCallDecision tool_decision = 13;
+  }
+
+  string policy_pack_id = 20;
+  string policy_pack_version = 21;
+  google.protobuf.Struct metadata = 22;
+
+  google.protobuf.Timestamp created_at = 30;
+  string signer_key_id = 31;
+  bytes signature = 32;
+  bytes payload_hash = 33;
+}
+
+message AuditWriteRequest {
+  AuditReceipt receipt = 1;
+}
+
+message AuditWriteResponse {
+  string receipt_id = 1;
+  bool persisted = 2;
+}
+
+message AuditQueryRequest {
+  string tenant_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  AuditEventType event_type = 4;
+  int32 limit = 5;
+  string cursor = 6;
+}
+
+message AuditQueryResponse {
+  repeated AuditReceipt receipts = 1;
+  string next_cursor = 2;
+}
+
+message AuditExportRequest {
+  string tenant_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  string format = 4;
+}
+
+message AuditExportResponse {
+  bytes data = 1;
+  string content_type = 2;
+  string filename = 3;
+}
+
+service AuditService {
+  rpc Write(AuditWriteRequest) returns (AuditWriteResponse);
+  rpc Query(AuditQueryRequest) returns (AuditQueryResponse);
+  rpc Export(AuditExportRequest) returns (AuditExportResponse);
+  rpc Health(HealthCheckRequest) returns (HealthCheckResponse);
+}

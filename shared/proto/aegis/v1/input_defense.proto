@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package aegis.v1;
+
+option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
+
+import "google/protobuf/timestamp.proto";
+import "aegis/v1/common.proto";
+
+// ---------------------------------------------------------------------------
+// Gateway request — the unified entry point for protected LLM traffic
+// ---------------------------------------------------------------------------
+
+message Request {
+  TraceContext trace = 1;
+  repeated Message messages = 2;
+  ModelConfig model = 3;
+  map<string, string> metadata = 4;
+  string policy_pack_id = 5;
+  string policy_pack_version = 6;
+  bool stream = 7;
+  repeated ToolDefinition tools = 8;
+  google.protobuf.Timestamp received_at = 9;
+}
+
+message ToolDefinition {
+  string name = 1;
+  string description = 2;
+  string parameters_json_schema = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Input defense verdict — fused output from all input detectors
+// ---------------------------------------------------------------------------
+
+message InputVerdict {
+  TraceContext trace = 1;
+  VerdictAction action = 2;
+  double fused_score = 3;
+  repeated DetectorScore detector_scores = 4;
+  string transformed_content = 5;
+  repeated Message transformed_messages = 6;
+  string escalation_reason = 7;
+  google.protobuf.Timestamp evaluated_at = 8;
+  int64 total_latency_ms = 9;
+}
+
+message InputDefenseRequest {
+  Request request = 1;
+  repeated string enabled_detectors = 2;
+}
+
+message InputDefenseResponse {
+  InputVerdict verdict = 1;
+}
+
+service InputDefenseService {
+  rpc Analyze(InputDefenseRequest) returns (InputDefenseResponse);
+  rpc Health(HealthCheckRequest) returns (HealthCheckResponse);
+}
