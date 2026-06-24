@@ -27,7 +27,7 @@ lint-go:
 	done
 
 lint-python:
-	@for dir in input-defense output-defense redteam; do \
+	@for dir in input-defense output-defense redteam sdk/python; do \
 		if [ -f "$$dir/pyproject.toml" ]; then \
 			echo "==> ruff $$dir"; \
 			(cd "$$dir" && ruff check . && ruff format --check .) || exit 1; \
@@ -39,6 +39,9 @@ lint-python:
 lint-ts:
 	@if [ -f dashboard/package.json ]; then \
 		cd dashboard && npm run lint; \
+	fi
+	@if [ -f sdk/typescript/package.json ]; then \
+		cd sdk/typescript && npm run lint; \
 	fi
 
 # ---------------------------------------------------------------------------
@@ -55,7 +58,7 @@ test-go:
 	done
 
 test-python:
-	@for dir in input-defense output-defense redteam; do \
+	@for dir in input-defense output-defense redteam sdk/python; do \
 		if [ -f "$$dir/pyproject.toml" ]; then \
 			echo "==> pytest $$dir"; \
 			(cd "$$dir" && pytest) || exit 1; \

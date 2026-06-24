@@ -73,7 +73,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
         run: |
-          for dir in input-defense output-defense redteam; do
+          for dir in input-defense output-defense redteam sdk/python; do
             pip install -e "./$dir[dev]"
           done
       - name: Lint

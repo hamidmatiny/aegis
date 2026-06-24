@@ -69,6 +69,7 @@ Use `docker compose --env-file .env up -d` if your shell does not auto-load `.en
 | Output Defense | 8091 | `/health` | [output-defense/README.md](./output-defense/README.md) |
 | Red Team | 8092 | `/health` | [redteam/README.md](./redteam/README.md) |
 | Dashboard | 3000 | `/` (UI) | [dashboard/README.md](./dashboard/README.md) |
+| SDK Proxy (gateway) | 8080 | `/v1/chat/completions` | [sdk/README.md](./sdk/README.md) |
 
 ## Development
 
@@ -107,7 +108,7 @@ cd output-defense && pip install -e '.[dev]' && pytest
 | 7 | Red-team engine | Done |
 | 8 | Audit service | Done |
 | 9 | Dashboard | Done |
-| 10 | SDKs | Planned |
+| 10 | SDKs | Done |
 | 11 | Example apps | Planned |
 
 ## Environment variables
@@ -128,6 +129,9 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 | `AEGIS_REDTEAM_OUTPUT_DEFENSE_URL` | redteam | Output defense base URL for campaigns |
 | `AEGIS_AUDIT_SIGNING_KEY` | audit | Ed25519 signing key (PEM or base64 seed) |
 | `AEGIS_AUDIT_SIGNING_KEY_ID` | audit | Signer key identifier on receipts |
+| `AEGIS_INPUT_DEFENSE_URL` | sdk-proxy / gateway | Input defense URL for SDK pipeline |
+| `AEGIS_MODEL_ROUTER_URL` | sdk-proxy / gateway | Model router URL for SDK pipeline |
+| `OPENAI_BASE_URL` | your app | Set to `http://localhost:8080/v1` for reverse-proxy mode |
 | `DATABASE_URL` | redteam, audit | Postgres connection |
 
 ## License

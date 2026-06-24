@@ -126,6 +126,19 @@ Operations UI wired to audit, policy-engine, agent-gate, and red-team APIs.
 
 **Port:** 3000 — see [dashboard/README.md](./dashboard/README.md)
 
+### 9. SDK (Python + TypeScript) — Stage 10
+
+Drop-in OpenAI-compatible clients and reverse-proxy entry point (`gateway` service).
+
+| Capability | Description |
+|------------|-------------|
+| Embedded client | Orchestrates input → policy → model-router → output → policy |
+| Reverse proxy | `POST /v1/chat/completions` on port 8080 — set `OPENAI_BASE_URL` |
+| Error types | `AegisPolicyBlockedError`, `AegisProviderError`, `AegisApprovalRequiredError` |
+| Tool gating | `tools.evaluate()` / `POST /v1/tools/evaluate` via agent-gate |
+
+**Port:** 8080 (SDK proxy) — see [sdk/README.md](./sdk/README.md)
+
 ## Shared schemas
 
 All cross-service communication uses protobuf definitions in `shared/proto/aegis/v1/`:
@@ -141,7 +154,7 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Current wiring (Stages 0–9)
+## Current wiring (Stages 0–10)
 
 Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
 
@@ -151,8 +164,10 @@ Services run independently via `docker-compose.yml`. Cross-service orchestration
 - **Red team → defenses:** `POST /v1/campaigns/run` probes input-defense and output-defense
 - **Audit:** any layer can `POST /v1/receipts` to persist a signed decision receipt
 - **Audit wiring:** input-defense, output-defense, policy-engine, and agent-gate emit receipts automatically when `AEGIS_AUDIT_URL` is set
+- **SDK / gateway:** `gateway` container runs the Python SDK proxy (interim HTTP entry on 8080) — see [sdk/README.md](./sdk/README.md#gateway-vs-go-orchestrator). Go `gateway/` orchestration is still planned.
+- **Streaming:** model-router supports SSE; the **defended** pipeline does not stream to clients because output defense requires the complete assistant response before release (structural — not a TODO). See [sdk/python/README.md](./sdk/python/README.md#streaming-and-output-defense).
 
-See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, and `scripts/e2e-audit-pipeline.sh` for working examples.
+See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, `scripts/e2e-audit-pipeline.sh`, and `scripts/e2e-sdk.sh` for working examples.
 
 ## Data stores
 

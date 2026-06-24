@@ -29,20 +29,28 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: gateway/Dockerfile
+      dockerfile: sdk/python/Dockerfile
     ports:
       - "${GATEWAY_HTTP_PORT:-8080}:8080"
     environment:
-      AEGIS_GATEWAY_HTTP_PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AEGIS_SDK_PROXY_PORT: "8080"
+      AEGIS_INPUT_DEFENSE_URL: http://input-defense:8090
+      AEGIS_OUTPUT_DEFENSE_URL: http://output-defense:8091
+      AEGIS_POLICY_ENGINE_URL: http://policy-engine:8081
+      AEGIS_MODEL_ROUTER_URL: http://model-router:8082
+      AEGIS_AGENT_GATE_URL: http://agent-gate:8083
+      AEGIS_DEFAULT_MODEL: mock-model
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      input-defense:
+        condition: service_started
+      output-defense:
+        condition: service_started
+      policy-engine:
+        condition: service_started
+      model-router:
+        condition: service_started
+      agent-gate:
+        condition: service_started
 
   policy-engine:
     build:
