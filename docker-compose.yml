@@ -79,8 +79,12 @@ services:
       - "${AGENT_GATE_PORT:-8083}:8083"
     environment:
       AEGIS_AGENT_GATE_PORT: "8083"
+      AEGIS_POLICY_ENGINE_URL: http://policy-engine:8081
+      AEGIS_APPROVAL_TTL_HOURS: ${AEGIS_APPROVAL_TTL_HOURS:-24}
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
     depends_on:
+      policy-engine:
+        condition: service_started
       postgres:
         condition: service_healthy
 

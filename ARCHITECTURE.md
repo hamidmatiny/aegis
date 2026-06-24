@@ -72,9 +72,18 @@ Analyzes model responses before they reach the application.
 
 **Port:** 8091 — see [output-defense/README.md](./output-defense/README.md)
 
-### 5. Agent Gate (Go) — Stage 6 (planned)
+### 5. Agent Gate (Go) — Stage 6
 
 Deterministic, code-level permission system for tool/MCP calls.
+
+| Capability | Description |
+|------------|-------------|
+| Policy evaluation | Calls policy-engine `/v1/evaluate/tool` for CEL rules |
+| Taint tracking | Propagates `taint_level` / `taint_source` on arguments |
+| Credential masking | Regex-based detection + `[REDACTED-*]` in sanitized tool calls |
+| Human approval | Irreversible actions → `AWAITING_HUMAN_APPROVAL` + `/v1/approvals/{id}/decide` |
+
+**Port:** 8083 — see [agent-gate/README.md](./agent-gate/README.md)
 
 ### 6. Red Team Engine (Python) — Stage 7 (planned)
 
@@ -101,9 +110,10 @@ Services run independently via `docker-compose.yml`. Cross-service orchestration
 
 - **Input defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/input`
 - **Output defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/output`
+- **Agent gate → policy engine:** caller invokes `POST /v1/evaluate` (gate calls policy-engine internally)
 - **Model router:** standalone OpenAI-compatible API
 
-See `scripts/e2e-output-defense.sh` for a working output-defense → policy-engine example.
+See `scripts/e2e-output-defense.sh` and `scripts/e2e-agent-gate.sh` for working examples.
 
 ## Data stores
 

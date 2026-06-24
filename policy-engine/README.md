@@ -135,6 +135,40 @@ Default output rules (`policies/default.yaml`):
 | `block-high-output-score` | `fused_score >= 0.80` | `block` |
 | `escalate-ambiguous-output` | `fused_score >= 0.50 && fused_score < 0.80` | `escalate_to_judge` |
 
+### Tool evaluation
+
+- `tool_call.tool_name`
+- `tool_call.risk_level` (`LOW`, `MEDIUM`, `HIGH`, `IRREVERSIBLE`)
+- `tool_call.arguments` (list; use `.exists(a, ...)`)
+- `tool_call.arguments[].taint_level` (e.g. `"TAINTED"`)
+- `tool_call.arguments[].contains_credentials` (bool)
+
+Default tool rules (`policies/default.yaml`):
+
+| Rule | CEL | Action |
+|------|-----|--------|
+| `require-approval-irreversible` | `risk_level == 'IRREVERSIBLE'` | `escalate_to_judge` |
+| `block-tainted-credentials` | tainted arg with credentials | `block` |
+
+## End-to-end with agent-gate
+
+Agent-gate calls this service internally. To test directly:
+
+```bash
+curl -X POST localhost:8081/v1/evaluate/tool \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tenant_id": "default",
+    "tool_call": {
+      "tool_name": "delete_database",
+      "risk_level": "IRREVERSIBLE",
+      "arguments": [{"name": "db_id", "taint_level": "TRUSTED", "contains_credentials": false}]
+    }
+  }'
+```
+
+Or run `./scripts/e2e-agent-gate.sh` against running services.
+
 ## End-to-end with output-defense
 
 ```bash
