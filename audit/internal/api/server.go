@@ -138,6 +138,7 @@ func parseQuery(r *http.Request) (models.QueryRequest, error) {
 	req := models.QueryRequest{
 		TenantID:  q.Get("tenant_id"),
 		EventType: q.Get("event_type"),
+		TraceID:   q.Get("trace_id"),
 		Cursor:    q.Get("cursor"),
 	}
 	if limitStr := q.Get("limit"); limitStr != "" {

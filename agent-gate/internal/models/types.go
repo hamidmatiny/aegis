@@ -75,6 +75,13 @@ type EvaluateRequest struct {
 	TenantID     string          `json:"tenant_id"`
 	PolicyPackID string          `json:"policy_pack_id,omitempty"`
 	Mode         EvaluationMode  `json:"mode,omitempty"`
+	Trace        *TraceContext   `json:"trace,omitempty"`
+}
+
+// TraceContext correlates audit receipts across services.
+type TraceContext struct {
+	TraceID   string `json:"trace_id,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 // EvaluateResponse includes the decision and sanitized tool call for execution.

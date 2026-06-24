@@ -56,6 +56,37 @@ func TestWriteQueryVerify(t *testing.T) {
 	}
 }
 
+func TestWriteGetFromStoreVerifyUntouched(t *testing.T) {
+	svc := newTestService(t)
+	ctx := context.Background()
+
+	writeResp, err := svc.Write(ctx, models.WriteReceiptRequest{
+		EventType:    models.EventInputDefense,
+		TenantID:     "acme",
+		Trace:        &models.TraceContext{TraceID: "roundtrip"},
+		InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.88}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := svc.Get(ctx, writeResp.ReceiptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.ReceiptID != writeResp.ReceiptID {
+		t.Fatalf("expected receipt_id %q, got %q", writeResp.ReceiptID, loaded.ReceiptID)
+	}
+
+	verify, err := svc.Verify(ctx, writeResp.ReceiptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !verify.Valid {
+		t.Fatalf("expected untouched receipt loaded from store to verify: %s", verify.Reason)
+	}
+}
+
 func TestExportJSON(t *testing.T) {
 	svc := newTestService(t)
 	ctx := context.Background()

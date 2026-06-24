@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/aegis-platform/aegis/policy-engine/internal/audit"
 	"github.com/aegis-platform/aegis/policy-engine/internal/engine"
 	"github.com/aegis-platform/aegis/policy-engine/internal/loader"
 	"github.com/aegis-platform/aegis/policy-engine/internal/models"
@@ -14,10 +15,11 @@ import (
 type Server struct {
 	store  *loader.Store
 	engine *engine.Engine
+	audit  *audit.Client
 }
 
-func NewServer(store *loader.Store, eng *engine.Engine) *Server {
-	return &Server{store: store, engine: eng}
+func NewServer(store *loader.Store, eng *engine.Engine, auditClient *audit.Client) *Server {
+	return &Server{store: store, engine: eng, audit: auditClient}
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
@@ -85,6 +87,9 @@ func (s *Server) handleEvaluateInput(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	if s.audit != nil {
+		s.audit.EmitPolicyDecision(req.TenantID, req.Trace, decision)
+	}
 	writeJSON(w, http.StatusOK, models.EvaluateResponse{Decision: decision})
 }
 
@@ -108,6 +113,9 @@ func (s *Server) handleEvaluateOutput(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
+	}
+	if s.audit != nil {
+		s.audit.EmitPolicyDecision(req.TenantID, req.Trace, decision)
 	}
 	writeJSON(w, http.StatusOK, models.EvaluateResponse{Decision: decision})
 }

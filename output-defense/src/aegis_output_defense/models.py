@@ -15,6 +15,11 @@ class VerdictAction(StrEnum):
     ESCALATE = "ESCALATE"
 
 
+class TraceContext(BaseModel):
+    trace_id: str | None = None
+    request_id: str | None = None
+
+
 class DetectorResult(BaseModel):
     """Result from a single detector invocation."""
 
@@ -61,8 +66,12 @@ class OutputVerdict(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     content: str
+    tenant_id: str = "default"
+    trace: TraceContext | None = None
     original_prompt: str | None = None
     enabled_detectors: list[str] | None = None
+    policy_pack_id: str | None = None
+    policy_pack_version: str | None = None
 
 
 class AnalyzeResponse(BaseModel):

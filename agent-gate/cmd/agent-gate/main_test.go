@@ -8,6 +8,7 @@ import (
 
 	"github.com/aegis-platform/aegis/agent-gate/internal/api"
 	"github.com/aegis-platform/aegis/agent-gate/internal/approval"
+	"github.com/aegis-platform/aegis/agent-gate/internal/audit"
 	"github.com/aegis-platform/aegis/agent-gate/internal/gate"
 	"github.com/aegis-platform/aegis/agent-gate/internal/policy"
 )
@@ -20,7 +21,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 	mux := http.NewServeMux()
 	g := gate.New(policy.NewClient(policySrv.URL), approval.NewStore(0))
-	api.NewServer(g).Register(mux)
+	api.NewServer(g, audit.NewClient("")).Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()

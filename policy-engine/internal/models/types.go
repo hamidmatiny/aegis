@@ -134,12 +134,19 @@ type PolicyDecision struct {
 	EvaluationLatencyMS  int64             `json:"evaluation_latency_ms"`
 }
 
+// TraceContext correlates audit receipts across services.
+type TraceContext struct {
+	TraceID   string `json:"trace_id,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
+}
+
 // EvaluateInputRequest is the HTTP/RPC body for input policy evaluation.
 type EvaluateInputRequest struct {
-	InputVerdict  InputVerdict   `json:"input_verdict"`
-	TenantID      string         `json:"tenant_id"`
-	PolicyPackID  string         `json:"policy_pack_id,omitempty"`
-	Mode          EvaluationMode `json:"mode,omitempty"`
+	InputVerdict InputVerdict   `json:"input_verdict"`
+	TenantID     string         `json:"tenant_id"`
+	PolicyPackID string         `json:"policy_pack_id,omitempty"`
+	Mode         EvaluationMode `json:"mode,omitempty"`
+	Trace        *TraceContext  `json:"trace,omitempty"`
 }
 
 // EvaluateOutputRequest evaluates output-defense verdicts.
@@ -148,6 +155,7 @@ type EvaluateOutputRequest struct {
 	TenantID      string         `json:"tenant_id"`
 	PolicyPackID  string         `json:"policy_pack_id,omitempty"`
 	Mode          EvaluationMode `json:"mode,omitempty"`
+	Trace         *TraceContext  `json:"trace,omitempty"`
 }
 
 // EvaluateToolRequest evaluates tool-call gate requests.

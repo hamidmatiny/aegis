@@ -135,8 +135,9 @@ Services run independently via `docker-compose.yml`. Cross-service orchestration
 - **Agent gate → policy engine:** caller invokes `POST /v1/evaluate` (gate calls policy-engine internally)
 - **Red team → defenses:** `POST /v1/campaigns/run` probes input-defense and output-defense
 - **Audit:** any layer can `POST /v1/receipts` to persist a signed decision receipt
+- **Audit wiring:** input-defense, output-defense, policy-engine, and agent-gate emit receipts automatically when `AEGIS_AUDIT_URL` is set
 
-See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, and `scripts/e2e-audit.sh` for working examples.
+See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, and `scripts/e2e-audit-pipeline.sh` for working examples.
 
 ## Data stores
 

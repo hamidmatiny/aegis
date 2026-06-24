@@ -53,8 +53,12 @@ services:
     environment:
       AEGIS_POLICY_ENGINE_PORT: "8081"
       AEGIS_POLICY_DIR: ${AEGIS_POLICY_DIR:-/etc/aegis/policies}
+      AEGIS_AUDIT_URL: http://audit:8084
     volumes:
       - ./policy-engine/policies:/etc/aegis/policies:ro
+    depends_on:
+      audit:
+        condition: service_started
 
   model-router:
     build:
@@ -80,10 +84,13 @@ services:
     environment:
       AEGIS_AGENT_GATE_PORT: "8083"
       AEGIS_POLICY_ENGINE_URL: http://policy-engine:8081
+      AEGIS_AUDIT_URL: http://audit:8084
       AEGIS_APPROVAL_TTL_HOURS: ${AEGIS_APPROVAL_TTL_HOURS:-24}
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
     depends_on:
       policy-engine:
+        condition: service_started
+      audit:
         condition: service_started
       postgres:
         condition: service_healthy
@@ -97,7 +104,8 @@ services:
     environment:
       AEGIS_AUDIT_PORT: "8084"
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
-      AEGIS_AUDIT_SIGNING_KEY: ${AEGIS_AUDIT_SIGNING_KEY:-}
+      # Dev-only stable seed (32 bytes base64). Override in production.
+      AEGIS_AUDIT_SIGNING_KEY: ${AEGIS_AUDIT_SIGNING_KEY:-YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE=}
       AEGIS_AUDIT_SIGNING_KEY_ID: ${AEGIS_AUDIT_SIGNING_KEY_ID:-dev-key-1}
     depends_on:
       postgres:
@@ -109,6 +117,11 @@ services:
       dockerfile: input-defense/Dockerfile
     ports:
       - "${INPUT_DEFENSE_PORT:-8090}:8090"
+    environment:
+      AEGIS_AUDIT_URL: http://audit:8084
+    depends_on:
+      audit:
+        condition: service_started
 
   output-defense:
     build:
@@ -118,6 +131,10 @@ services:
       - "${OUTPUT_DEFENSE_PORT:-8091}:8091"
     environment:
       AEGIS_OUTPUT_DEFENSE_PORT: "8091"
+      AEGIS_AUDIT_URL: http://audit:8084
+    depends_on:
+      audit:
+        condition: service_started
 
   redteam:
     build:

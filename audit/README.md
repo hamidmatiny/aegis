@@ -26,7 +26,9 @@ AEGIS_AUDIT_SIGNING_KEY_ID=dev-key-1 \
 go run ./cmd/audit
 ```
 
-If `AEGIS_AUDIT_SIGNING_KEY` is unset, the service generates an ephemeral dev key at startup (not suitable for production).
+If `AEGIS_AUDIT_SIGNING_KEY` is unset when running locally, the service generates an **ephemeral** dev key at each startup. Receipts signed before a restart will fail verification with `invalid Ed25519 signature` even when untouched — the payload hash still matches, but the signature was produced with a different key.
+
+Docker Compose sets a **stable dev-only seed** by default so receipts survive container restarts. Override `AEGIS_AUDIT_SIGNING_KEY` in production with a real secret (PEM or base64 32-byte seed).
 
 ### Tests without local Go
 

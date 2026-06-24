@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aegis-platform/aegis/policy-engine/internal/api"
+	"github.com/aegis-platform/aegis/policy-engine/internal/audit"
 	"github.com/aegis-platform/aegis/policy-engine/internal/engine"
 	"github.com/aegis-platform/aegis/policy-engine/internal/loader"
 )
@@ -30,7 +31,8 @@ func main() {
 	}
 
 	eng := engine.New()
-	srv := api.NewServer(store, eng)
+	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""))
+	srv := api.NewServer(store, eng, auditClient)
 
 	mux := http.NewServeMux()
 	srv.Register(mux)
@@ -44,7 +46,7 @@ func main() {
 	go watchPolicyReload(logger, store, reloadSec)
 
 	go func() {
-		logger.Info("policy-engine starting", "port", port, "policy_dir", policyDir)
+		logger.Info("policy-engine starting", "port", port, "policy_dir", policyDir, "audit_enabled", auditClient.Enabled())
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)
 			os.Exit(1)

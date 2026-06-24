@@ -21,6 +21,11 @@ class TaintLevel(StrEnum):
     TAINTED = "TAINTED"
 
 
+class TraceContext(BaseModel):
+    trace_id: str | None = None
+    request_id: str | None = None
+
+
 class DetectorResult(BaseModel):
     """Result from a single detector invocation."""
 
@@ -58,8 +63,12 @@ class InputVerdict(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     text: str
+    tenant_id: str = "default"
+    trace: TraceContext | None = None
     trusted_instruction: str | None = None
     enabled_detectors: list[str] | None = None
+    policy_pack_id: str | None = None
+    policy_pack_version: str | None = None
 
 
 class AnalyzeResponse(BaseModel):

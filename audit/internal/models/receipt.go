@@ -69,6 +69,7 @@ type WriteReceiptResponse struct {
 type QueryRequest struct {
 	TenantID  string
 	EventType string
+	TraceID   string
 	StartTime *time.Time
 	EndTime   *time.Time
 	Limit     int

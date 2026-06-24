@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aegis-platform/aegis/audit/internal/models"
 )
@@ -87,7 +88,7 @@ func (s *Signer) VerifyReceipt(receipt *models.Receipt) (bool, string) {
 		return false, "payload hash mismatch (tampered)"
 	}
 	if !ed25519.Verify(s.publicKey, hash, receipt.Signature) {
-		return false, "invalid Ed25519 signature"
+		return false, "invalid Ed25519 signature (payload hash matches; signing key may have rotated since receipt was created)"
 	}
 	return true, ""
 }
@@ -112,19 +113,34 @@ func canonicalBody(receipt *models.Receipt) ([]byte, error) {
 		EventType:         receipt.EventType,
 		TenantID:          receipt.TenantID,
 		Trace:             receipt.Trace,
-		InputVerdict:      receipt.InputVerdict,
-		PolicyDecision:    receipt.PolicyDecision,
-		OutputVerdict:     receipt.OutputVerdict,
-		ToolDecision:      receipt.ToolDecision,
+		InputVerdict:      normalizeRawJSON(receipt.InputVerdict),
+		PolicyDecision:    normalizeRawJSON(receipt.PolicyDecision),
+		OutputVerdict:     normalizeRawJSON(receipt.OutputVerdict),
+		ToolDecision:      normalizeRawJSON(receipt.ToolDecision),
 		PolicyPackID:      receipt.PolicyPackID,
 		PolicyPackVersion: receipt.PolicyPackVersion,
-		Metadata:          receipt.Metadata,
-		CreatedAt:         receipt.CreatedAt.UTC().Format(timeRFC3339Nano),
+		Metadata:          normalizeRawJSON(receipt.Metadata),
+		CreatedAt:         receipt.CreatedAt.UTC().Truncate(time.Microsecond).Format(timeRFC3339Micro),
 	}
 	return json.Marshal(body)
 }
 
-const timeRFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+const timeRFC3339Micro = "2006-01-02T15:04:05.999999Z07:00"
+
+func normalizeRawJSON(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 {
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return raw
+	}
+	out, err := json.Marshal(value)
+	if err != nil {
+		return raw
+	}
+	return out
+}
 
 func parseKeyMaterial(material string) (ed25519.PrivateKey, ed25519.PublicKey, error) {
 	material = strings.TrimSpace(material)

@@ -93,6 +93,10 @@ func (s *PostgresStore) Query(ctx context.Context, req models.QueryRequest) (mod
 		args = append(args, req.EventType)
 		fmt.Fprintf(&b, " AND event_type = $%d", len(args))
 	}
+	if req.TraceID != "" {
+		args = append(args, req.TraceID)
+		fmt.Fprintf(&b, " AND trace_id = $%d", len(args))
+	}
 	if req.StartTime != nil {
 		args = append(args, *req.StartTime)
 		fmt.Fprintf(&b, " AND created_at >= $%d", len(args))
@@ -179,10 +183,10 @@ func scanReceipt(row rowScanner) (*models.Receipt, error) {
 	if p.Trace != nil {
 		receipt.Trace = p.Trace
 	}
-	receipt.InputVerdict = p.InputVerdict
-	receipt.PolicyDecision = p.PolicyDecision
-	receipt.OutputVerdict = p.OutputVerdict
-	receipt.ToolDecision = p.ToolDecision
+	receipt.InputVerdict = normalizeRawJSON(p.InputVerdict)
+	receipt.PolicyDecision = normalizeRawJSON(p.PolicyDecision)
+	receipt.OutputVerdict = normalizeRawJSON(p.OutputVerdict)
+	receipt.ToolDecision = normalizeRawJSON(p.ToolDecision)
 	if policyPackID.Valid {
 		receipt.PolicyPackID = policyPackID.String
 	} else {
@@ -193,7 +197,7 @@ func scanReceipt(row rowScanner) (*models.Receipt, error) {
 	} else {
 		receipt.PolicyPackVersion = p.PolicyPackVersion
 	}
-	receipt.Metadata = p.Metadata
+	receipt.Metadata = normalizeRawJSON(p.Metadata)
 	receipt.CreatedAt = receipt.CreatedAt.UTC().Truncate(time.Microsecond)
 	return &receipt, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/aegis-platform/aegis/agent-gate/internal/api"
 	"github.com/aegis-platform/aegis/agent-gate/internal/approval"
+	"github.com/aegis-platform/aegis/agent-gate/internal/audit"
 	"github.com/aegis-platform/aegis/agent-gate/internal/gate"
 	"github.com/aegis-platform/aegis/agent-gate/internal/policy"
 )
@@ -27,9 +28,10 @@ func main() {
 	policyClient := policy.NewClient(policyURL)
 	approvalStore := approval.NewStore(time.Duration(approvalTTLHours) * time.Hour)
 	g := gate.New(policyClient, approvalStore)
+	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""))
 
 	mux := http.NewServeMux()
-	api.NewServer(g).Register(mux)
+	api.NewServer(g, auditClient).Register(mux)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
@@ -41,6 +43,7 @@ func main() {
 		logger.Info("agent-gate starting",
 			"port", port,
 			"policy_engine_url", policyURL,
+			"audit_enabled", auditClient.Enabled(),
 		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)

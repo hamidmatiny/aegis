@@ -76,6 +76,15 @@ func (s *MemoryStore) Query(_ context.Context, req models.QueryRequest) (models.
 		if req.EventType != "" && receipt.EventType != req.EventType {
 			continue
 		}
+		if req.TraceID != "" {
+			traceID := ""
+			if receipt.Trace != nil {
+				traceID = receipt.Trace.TraceID
+			}
+			if traceID != req.TraceID {
+				continue
+			}
+		}
 		if req.StartTime != nil && receipt.CreatedAt.Before(*req.StartTime) {
 			continue
 		}

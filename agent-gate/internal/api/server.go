@@ -6,17 +6,19 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aegis-platform/aegis/agent-gate/internal/audit"
 	"github.com/aegis-platform/aegis/agent-gate/internal/gate"
 	"github.com/aegis-platform/aegis/agent-gate/internal/models"
 )
 
 // Server exposes the agent-gate HTTP API.
 type Server struct {
-	gate *gate.Gate
+	gate  *gate.Gate
+	audit *audit.Client
 }
 
-func NewServer(g *gate.Gate) *Server {
-	return &Server{gate: g}
+func NewServer(g *gate.Gate, auditClient *audit.Client) *Server {
+	return &Server{gate: g, audit: auditClient}
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
@@ -60,6 +62,9 @@ func (s *Server) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
+	}
+	if s.audit != nil {
+		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), resp.Decision, resp.PolicyAction)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
