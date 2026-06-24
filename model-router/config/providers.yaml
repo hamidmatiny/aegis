@@ -1,0 +1,50 @@
+# Model router provider configuration
+providers:
+  mock:
+    enabled: true
+    default_model: mock-model
+
+  openai:
+    enabled: true
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    default_model: gpt-4o-mini
+
+  anthropic:
+    enabled: true
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    default_model: claude-3-5-haiku-20241022
+
+  gemini:
+    enabled: true
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    api_key_env: GOOGLE_API_KEY
+    default_model: gemini-1.5-flash
+
+  ollama:
+    enabled: true
+    base_url: http://host.docker.internal:11434/v1
+    default_model: llama3
+
+  vllm:
+    enabled: false
+    base_url: http://localhost:8000/v1
+    default_model: meta-llama/Meta-Llama-3-8B-Instruct
+
+routing:
+  default_provider: mock
+  default_model: mock-model
+  fallback_chain:
+    - provider: openai
+      model: gpt-4o-mini
+    - provider: anthropic
+      model: claude-3-5-haiku-20241022
+    - provider: ollama
+      model: llama3
+    - provider: mock
+      model: mock-model
+
+retry:
+  max_attempts: 3
+  backoff_ms: 300
