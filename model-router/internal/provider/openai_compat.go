@@ -14,7 +14,7 @@ import (
 	"github.com/aegis-platform/aegis/model-router/internal/models"
 )
 
-// OpenAICompat implements OpenAI-compatible APIs (OpenAI, Ollama, vLLM).
+// OpenAICompat implements OpenAI-compatible APIs (OpenAI, Ollama, vLLM, Grok/xAI).
 type OpenAICompat struct {
 	cfg    ProviderConfig
 	client *http.Client
@@ -28,6 +28,8 @@ func NewOpenAICompat(cfg ProviderConfig) (Provider, error) {
 			base = "http://localhost:11434"
 		case "vllm":
 			base = "http://localhost:8000"
+		case "grok":
+			base = "https://api.x.ai/v1"
 		default:
 			base = "https://api.openai.com/v1"
 		}

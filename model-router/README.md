@@ -13,6 +13,7 @@ All vendor-specific HTTP logic lives in `internal/provider/` — nothing leaks o
 | `gemini` | Google Generative Language API | Native |
 | `ollama` | Local Ollama | OpenAI-compatible (`/v1/chat/completions`) |
 | `vllm` | Local vLLM | OpenAI-compatible |
+| `grok` | xAI Grok API | OpenAI-compatible (`https://api.x.ai/v1`) |
 | `mock` | Built-in stub | Dev/test without API keys |
 
 ## Configuration
@@ -20,7 +21,7 @@ All vendor-specific HTTP logic lives in `internal/provider/` — nothing leaks o
 `config/providers.yaml` defines providers, fallback chain, and retry settings. Override path via `AEGIS_MODEL_ROUTER_CONFIG`.
 
 Environment variables:
-- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `XAI_API_KEY` (Grok/xAI)
 - `OLLAMA_BASE_URL` (overrides ollama base URL)
 
 ## API

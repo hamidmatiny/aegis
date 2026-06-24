@@ -44,6 +44,7 @@ func NewRegistry() *Registry {
 	r.Register("openai", NewOpenAICompat)
 	r.Register("vllm", NewOpenAICompat)
 	r.Register("ollama", NewOpenAICompat)
+	r.Register("grok", NewOpenAICompat)
 	r.Register("anthropic", NewAnthropic)
 	r.Register("gemini", NewGemini)
 	r.Register("mock", NewMock)
