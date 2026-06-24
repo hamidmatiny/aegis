@@ -1,21 +1,26 @@
 [project]
 name = "aegis-output-defense"
-version = "0.1.0"
+version = "0.2.0"
 description = "AEGIS output defense detector service"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
-    "grpcio>=1.68.0",
-    "protobuf>=5.28.0",
-    "opentelemetry-api>=1.28.0",
-    "opentelemetry-sdk>=1.28.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3.0", "httpx>=0.27.0", "ruff>=0.8.0", "mypy>=1.13.0"]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-PyYAML>=6.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -28,10 +33,18 @@ packages = ["src/aegis_output_defense"]
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/aegis_output_defense/detectors/**" = ["E501"]
+"tests/**" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
 packages = ["aegis_output_defense"]
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 testpaths = ["tests"]

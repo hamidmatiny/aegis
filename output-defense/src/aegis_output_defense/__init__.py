@@ -1,3 +1,3 @@
-"""AEGIS output defense service."""
+"""AEGIS output defense detector service."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

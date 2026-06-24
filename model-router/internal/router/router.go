@@ -3,11 +3,19 @@ package router
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/aegis-platform/aegis/model-router/internal/config"
 	"github.com/aegis-platform/aegis/model-router/internal/models"
 	"github.com/aegis-platform/aegis/model-router/internal/provider"
+)
+
+const (
+	modelStatusOK           = "ok"
+	modelStatusInvalidModel = "invalid_model"
+	modelStatusUnreachable  = "unreachable"
+	modelStatusNotChecked   = "not_checked"
 )
 
 // Router selects providers, applies retry, and walks the fallback chain.
@@ -22,18 +30,66 @@ func New(cfg config.Config, providers map[string]provider.Provider) *Router {
 
 func (r *Router) ListProviders() []models.ProviderInfo {
 	out := make([]models.ProviderInfo, 0, len(r.cfg.Providers))
+	ctx := context.Background()
+
 	for id, entry := range r.cfg.Providers {
-		p, ok := r.providers[id]
-		healthy := false
-		if ok {
-			healthy = p.Ping(context.Background()) == nil
+		info := models.ProviderInfo{
+			ID:           id,
+			Enabled:      entry.Enabled,
+			BaseURL:      entry.BaseURL,
+			DefaultModel: entry.DefaultModel,
+			ModelStatus:  modelStatusNotChecked,
 		}
-		out = append(out, models.ProviderInfo{
-			ID:      id,
-			Enabled: entry.Enabled,
-			BaseURL: entry.BaseURL,
-			Healthy: healthy,
-		})
+
+		if !entry.Enabled {
+			info.Healthy = false
+			info.ModelStatus = modelStatusNotChecked
+			out = append(out, info)
+			continue
+		}
+
+		p, ok := r.providers[id]
+		if !ok {
+			info.Healthy = false
+			info.ModelStatus = modelStatusUnreachable
+			out = append(out, info)
+			continue
+		}
+
+		if id == "mock" {
+			info.Healthy = true
+			info.ModelStatus = modelStatusOK
+			out = append(out, info)
+			continue
+		}
+
+		pingErr := p.Ping(ctx)
+		info.Healthy = pingErr == nil
+		if pingErr != nil {
+			info.ModelStatus = modelStatusUnreachable
+			out = append(out, info)
+			continue
+		}
+
+		if entry.DefaultModel == "" {
+			info.ModelStatus = modelStatusNotChecked
+			out = append(out, info)
+			continue
+		}
+
+		if err := provider.CheckModel(ctx, p, entry.DefaultModel); err != nil {
+			if modelErr, ok := provider.AsModelRetiredError(err); ok {
+				info.ModelStatus = modelStatusInvalidModel
+				info.ModelError = modelErrorDetail(modelErr)
+				logModelRetired(modelErr)
+			} else {
+				info.ModelStatus = modelStatusUnreachable
+			}
+		} else {
+			info.ModelStatus = modelStatusOK
+		}
+
+		out = append(out, info)
 	}
 	return out
 }
@@ -63,6 +119,12 @@ func (r *Router) Chat(ctx context.Context, req models.ChatRequest) (*models.Chat
 			resp.AttemptedProviders = attemptedIDs(attempts, target.Provider)
 			return resp, nil
 		}
+
+		if modelErr, ok := provider.AsModelRetiredError(err); ok {
+			logModelRetired(modelErr)
+			return nil, modelErr
+		}
+
 		attempts = append(attempts, models.RouteAttempt{
 			Provider: target.Provider,
 			Model:    target.Model,
@@ -102,6 +164,12 @@ func (r *Router) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 			}
 			return ch, target.Provider, nil
 		}
+
+		if modelErr, ok := provider.AsModelRetiredError(err); ok {
+			logModelRetired(modelErr)
+			return nil, "", modelErr
+		}
+
 		attempts = append(attempts, models.RouteAttempt{
 			Provider: target.Provider,
 			Model:    target.Model,
@@ -119,6 +187,9 @@ func (r *Router) tryWithRetry(ctx context.Context, p provider.Provider, req mode
 			return resp, nil
 		}
 		lastErr = err
+		if provider.IsModelRetiredError(err) {
+			return nil, err
+		}
 		if up, ok := err.(*provider.UpstreamError); ok && !up.Retryable() {
 			return nil, err
 		}
@@ -152,4 +223,24 @@ func wrapFallbackNotice(ch <-chan models.StreamChunk, providerID string) <-chan 
 		}
 	}()
 	return out
+}
+
+func logModelRetired(err *provider.ModelRetiredError) {
+	slog.Error(
+		"configured model rejected by upstream — update providers.yaml with a current model ID",
+		"provider", err.Provider,
+		"rejected_model", err.RejectedModel,
+		"status_code", err.StatusCode,
+		"guidance", err.Guidance(),
+		"upstream_body", err.UpstreamBody,
+	)
+}
+
+func modelErrorDetail(err *provider.ModelRetiredError) *models.ModelErrorDetail {
+	return &models.ModelErrorDetail{
+		Provider:      err.Provider,
+		RejectedModel: err.RejectedModel,
+		ErrorType:     err.ErrorType(),
+		Message:       err.Guidance(),
+	}
 }

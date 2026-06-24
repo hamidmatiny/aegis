@@ -51,10 +51,21 @@ type StreamChunk struct {
 
 // ProviderInfo describes a registered upstream provider.
 type ProviderInfo struct {
-	ID      string `json:"id"`
-	Enabled bool   `json:"enabled"`
-	BaseURL string `json:"base_url,omitempty"`
-	Healthy bool   `json:"healthy"`
+	ID            string           `json:"id"`
+	Enabled       bool             `json:"enabled"`
+	BaseURL       string           `json:"base_url,omitempty"`
+	DefaultModel  string           `json:"default_model,omitempty"`
+	Healthy       bool             `json:"healthy"`
+	ModelStatus   string           `json:"model_status"`
+	ModelError    *ModelErrorDetail `json:"model_error,omitempty"`
+}
+
+// ModelErrorDetail is exposed when a configured model ID is rejected by upstream.
+type ModelErrorDetail struct {
+	Provider      string `json:"provider"`
+	RejectedModel string `json:"rejected_model"`
+	ErrorType     string `json:"error_type"`
+	Message       string `json:"message"`
 }
 
 // RouteAttempt records a provider invocation during fallback routing.

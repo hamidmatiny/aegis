@@ -79,7 +79,8 @@ func (p *OpenAICompat) Chat(ctx context.Context, req models.ChatRequest) (*model
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return nil, &UpstreamError{Provider: p.cfg.ID, Status: resp.StatusCode, Body: string(raw)}
+		model := modelFromRequest(req.Model, p.cfg.DefaultModel)
+		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
 	}
 
 	var parsed openAIResponse
@@ -127,7 +128,8 @@ func (p *OpenAICompat) ChatStream(ctx context.Context, req models.ChatRequest) (
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, &UpstreamError{Provider: p.cfg.ID, Status: resp.StatusCode, Body: string(raw)}
+		model := modelFromRequest(req.Model, p.cfg.DefaultModel)
+		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
 	}
 
 	out := make(chan models.StreamChunk, 16)
@@ -240,3 +242,17 @@ func retryableStatus(code int) bool {
 func (e *UpstreamError) Retryable() bool {
 	return retryableStatus(e.Status)
 }
+
+// CheckModel sends a minimal completion to verify the model ID is accepted.
+func (p *OpenAICompat) CheckModel(ctx context.Context, model string) error {
+	_, err := p.Chat(ctx, models.ChatRequest{
+		Model: model,
+		Messages: []models.ChatMessage{
+			{Role: "user", Content: "ping"},
+		},
+		MaxTokens: intPtr(1),
+	})
+	return err
+}
+
+func intPtr(v int) *int { return &v }

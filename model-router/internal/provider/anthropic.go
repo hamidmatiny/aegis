@@ -56,7 +56,7 @@ func (p *Anthropic) Chat(ctx context.Context, req models.ChatRequest) (*models.C
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return nil, &UpstreamError{Provider: p.cfg.ID, Status: resp.StatusCode, Body: string(raw)}
+		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), resp.StatusCode, string(raw))
 	}
 
 	var parsed anthropicResponse
@@ -108,7 +108,7 @@ func (p *Anthropic) ChatStream(ctx context.Context, req models.ChatRequest) (<-c
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, &UpstreamError{Provider: p.cfg.ID, Status: resp.StatusCode, Body: string(raw)}
+		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), resp.StatusCode, string(raw))
 	}
 
 	out := make(chan models.StreamChunk, 16)
@@ -205,4 +205,17 @@ type anthropicStreamEvent struct {
 	Delta struct {
 		Text string `json:"text"`
 	} `json:"delta"`
+}
+
+// CheckModel sends a minimal message to verify the model ID is accepted.
+func (p *Anthropic) CheckModel(ctx context.Context, model string) error {
+	max := 1
+	_, err := p.Chat(ctx, models.ChatRequest{
+		Model: model,
+		Messages: []models.ChatMessage{
+			{Role: "user", Content: "ping"},
+		},
+		MaxTokens: &max,
+	})
+	return err
 }

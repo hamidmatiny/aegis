@@ -1,0 +1,24 @@
+---
+description: Stage completion requirements — README must be updated before declaring any stage done
+alwaysApply: true
+---
+
+# Stage completion checklist
+
+A stage is **not complete** until all items below pass — README accuracy has the same weight as tests passing.
+
+## Before declaring a stage done
+
+1. **Update service README.md** with:
+   - Install / build / run commands (exact entrypoints, e.g. `python -m aegis_*_defense.main`, not undocumented uvicorn invocations)
+   - Test commands including Docker when Go/Python is not installed locally
+   - Every environment variable the service reads (exact names, e.g. `XAI_API_KEY` not `GROK_API_KEY`)
+   - Example `curl` for every HTTP endpoint
+   - Known limitations / tracked gaps section kept current
+   - Recommended secrets pattern: `cp .env.example .env` + `docker compose up` (or `--env-file .env`), not manual `export` + `-e VARNAME`
+
+2. **Update root README.md and ARCHITECTURE.md** when the change affects ports, build order, service wiring, or cross-service flows.
+
+3. **Run tests** and confirm they pass before marking complete.
+
+4. Do not tell the user a stage is done if README was not updated in the same change set.

@@ -18,77 +18,110 @@ Application → [SDK / Reverse Proxy] → Gateway (Go)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 
-## Monorepo Layout
+## Monorepo layout
 
-| Path | Language | Purpose |
-|------|----------|---------|
-| `shared/` | Protobuf + JSON Schema | Cross-service schemas and codegen |
-| `gateway/` | Go | gRPC + REST orchestration |
-| `input-defense/` | Python | Input-side detectors |
-| `policy-engine/` | Go | CEL policy evaluation |
-| `model-router/` | Go | Provider-agnostic LLM routing |
-| `output-defense/` | Python | Output-side detectors + LLM judge |
-| `agent-gate/` | Go | Tool/MCP permission + taint tracking |
-| `redteam/` | Python | Continuous adversarial testing |
-| `audit/` | Go | Ed25519-signed audit receipts |
-| `dashboard/` | React + TS | Operations UI |
-| `sdk/` | Python + TS | Drop-in SDK wrappers |
-| `examples/` | Mixed | Reference integrations |
-| `deploy/` | Helm + SQL | Production deployment |
+| Path | Language | Purpose | Stage |
+|------|----------|---------|-------|
+| `shared/` | Protobuf + JSON Schema | Cross-service schemas and codegen | 0 |
+| `gateway/` | Go | gRPC + REST orchestration (scaffold) | 0 |
+| `input-defense/` | Python | Input-side detectors + fusion | 2 |
+| `policy-engine/` | Go | CEL policy evaluation | 3 |
+| `model-router/` | Go | Provider-agnostic LLM routing | 4 |
+| `output-defense/` | Python | Output-side detectors + LLM judge | 5 |
+| `agent-gate/` | Go | Tool/MCP permission + taint tracking | 6 |
+| `redteam/` | Python | Continuous adversarial testing | 7 |
+| `audit/` | Go | Ed25519-signed audit receipts | 8 |
+| `dashboard/` | React + TS | Operations UI | 9 |
+| `sdk/` | Python + TS | Drop-in SDK wrappers | 10 |
+| `examples/` | Mixed | Reference integrations | 11 |
+| `deploy/` | Helm + SQL | Production deployment | 0 |
 
-## Quick Start (Stage 0)
+## Quick start
 
 ```bash
-# Copy environment template
+# 1. Copy environment template (recommended secrets pattern)
 cp .env.example .env
+# Edit .env — set API keys, ports, etc.
 
-# Install dev dependencies and generate protobuf code
+# 2. Install dev dependencies and generate protobuf code
 chmod +x scripts/*.sh
 ./scripts/dev-setup.sh
 
-# Start the full local stack
-make docker-up
+# 3. Start the full local stack
+docker compose up -d --build
 
-# Run smoke tests
+# 4. Run smoke tests
 make test-integration
 ```
 
-Health endpoints:
+Use `docker compose --env-file .env up -d` if your shell does not auto-load `.env`.
 
-| Service | URL |
-|---------|-----|
-| Gateway | http://localhost:8080/health |
-| Policy Engine | http://localhost:8081/health |
-| Model Router | http://localhost:8082/health |
-| Agent Gate | http://localhost:8083/health |
-| Audit | http://localhost:8084/health |
-| Input Defense | http://localhost:8090/health |
-| Output Defense | http://localhost:8091/health |
-| Red Team | http://localhost:8092/health |
+## Service endpoints
+
+| Service | Port | Health | Docs |
+|---------|------|--------|------|
+| Gateway | 8080 | `/health` | scaffold |
+| Policy Engine | 8081 | `/health` | [policy-engine/README.md](./policy-engine/README.md) |
+| Model Router | 8082 | `/health` | [model-router/README.md](./model-router/README.md) |
+| Agent Gate | 8083 | `/health` | scaffold |
+| Audit | 8084 | `/health` | scaffold |
+| Input Defense | 8090 | `/health` | [input-defense/README.md](./input-defense/README.md) |
+| Output Defense | 8091 | `/health` | [output-defense/README.md](./output-defense/README.md) |
+| Red Team | 8092 | `/health` | scaffold |
 
 ## Development
 
 ```bash
-make proto          # Lint + generate from shared/proto
-make lint           # Go + Python + TS linters
-make test           # Unit tests
-make test-integration  # Docker smoke tests
-make bench          # Benchmark harness (ASR + latency)
+make proto              # Lint + generate from shared/proto
+make lint               # Go + Python linters
+make test               # Unit tests (Go + Python)
+make test-integration   # Docker smoke tests
+make bench              # Benchmark harness placeholder
 ```
 
-## Build Order
+### Running tests without local Go
 
-1. **Stage 0** (current): Scaffold, shared schemas, CI, docker-compose
-2. **Stage 2**: Input defense detectors
-3. **Stage 3**: Policy engine
-4. **Stage 4**: Model router
-5. **Stage 5**: Output defense
-6. **Stage 6**: Agent gate
-7. **Stage 7**: Red-team engine
-8. **Stage 8**: Audit service
-9. **Stage 9**: Dashboard
-10. **Stage 10**: SDKs
-11. **Stage 11**: Example apps
+```bash
+docker run --rm -v "$(pwd)/model-router:/app" -w /app golang:1.22-alpine go test ./...
+docker run --rm -v "$(pwd)/policy-engine:/app" -w /app golang:1.22-alpine go test ./...
+```
+
+### Running Python service tests
+
+```bash
+cd input-defense && pip install -e '.[dev]' && pytest
+cd output-defense && pip install -e '.[dev]' && pytest
+```
+
+## Build order
+
+| Stage | Component | Status |
+|-------|-----------|--------|
+| 0 | Scaffold, shared schemas, CI, docker-compose | Done |
+| 2 | Input defense | Done |
+| 3 | Policy engine | Done |
+| 4 | Model router | Done |
+| 5 | Output defense | Done |
+| 6 | Agent gate | Planned |
+| 7 | Red-team engine | Planned |
+| 8 | Audit service | Planned |
+| 9 | Dashboard | Planned |
+| 10 | SDKs | Planned |
+| 11 | Example apps | Planned |
+
+## Environment variables
+
+See [.env.example](./.env.example) for the full list. Key variables by service:
+
+| Variable | Service | Purpose |
+|----------|---------|---------|
+| `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | model-router | Cloud LLM providers |
+| `AEGIS_MODEL_ROUTER_CONFIG` | model-router | Path to `providers.yaml` |
+| `AEGIS_POLICY_DIR` | policy-engine | YAML policy pack directory |
+| `AEGIS_INPUT_DEFENSE_PORT` | input-defense | HTTP port (default 8090) |
+| `AEGIS_OUTPUT_DEFENSE_PORT` | output-defense | HTTP port (default 8091) |
+| `DATABASE_URL` | gateway, audit, redteam | Postgres connection |
 
 ## License
 

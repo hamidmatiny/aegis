@@ -4,7 +4,7 @@
 
 AEGIS is a provider-agnostic security gateway that protects LLM applications through five defense layers. Every decision fuses multiple independent signals; no single detector is the sole gate.
 
-## Defense Layers
+## Defense layers
 
 ```mermaid
 flowchart LR
@@ -25,21 +25,23 @@ flowchart LR
     ID & PE & OD & AG --> Audit[Audit Service]
 ```
 
-### 1. Input Defense (Python)
+### 1. Input Defense (Python) — Stage 2
 
 Intercepts and analyzes all user and retrieved content before it reaches the model.
 
 | Detector | Signal Type | Purpose |
 |----------|-------------|---------|
 | Heuristic/regex | Deterministic | Known injection markers, encoding tricks |
-| Perplexity | Statistical | Anomaly scoring vs reference LM |
+| Perplexity | Statistical | Anomaly scoring vs reference LM (stub) |
 | Known-answer probe | Game-theoretic | Secret token reproduction test |
-| Transformer classifier | ML | Injection/jailbreak probability |
+| Transformer classifier | ML | Injection/jailbreak probability (stub) |
 | Spotlighting transform | Structural | Delimit untrusted content |
 
 **Output:** `InputVerdict` with fused score, per-detector breakdown, optional transformed content.
 
-### 2. Policy Engine (Go + CEL)
+**Port:** 8090 — see [input-defense/README.md](./input-defense/README.md)
+
+### 2. Policy Engine (Go + CEL) — Stage 3
 
 Evaluates versioned YAML policy packs with CEL expressions against defense verdicts.
 
@@ -47,36 +49,38 @@ Evaluates versioned YAML policy packs with CEL expressions against defense verdi
 
 **Modes:** enforce, shadow (log-only), dry-run
 
-### 3. Output Defense (Python)
+**Port:** 8081 — see [policy-engine/README.md](./policy-engine/README.md)
+
+### 3. Model Router (Go) — Stage 4
+
+Provider-agnostic LLM routing with fallback, retry, and model-retired error surfacing.
+
+**Port:** 8082 — see [model-router/README.md](./model-router/README.md)
+
+### 4. Output Defense (Python) — Stage 5
 
 Analyzes model responses before they reach the application.
 
 | Detector | Purpose |
 |----------|---------|
-| Toxicity/safety classifier | Harmful content |
-| PII/secret detector | Credential leakage |
-| Backtranslation consistency | Intent divergence detection |
-| LLM-judge ensemble | Ambiguous case resolution (majority vote) |
+| Toxicity/safety classifier | Harmful content (stub backend) |
+| PII/secret detector + redactor | Credential leakage detection and redaction |
+| Backtranslation consistency | Intent divergence / incoherence (stub) |
+| LLM-judge ensemble | Ambiguous case resolution — invoked only when fused score is in the ambiguous band |
 
-### 4. Agent Gate (Go)
+**Output:** `OutputVerdict` with fused score, per-detector breakdown, optional `redacted_content`, optional `judge_votes`.
 
-Deterministic, code-level permission system for tool/MCP calls — the LLM is never the security boundary.
+**Port:** 8091 — see [output-defense/README.md](./output-defense/README.md)
 
-- Per-tool, per-tenant permission matrix (least privilege)
-- Information-flow taint tracking (RAG, web, tool outputs → untrusted)
-- Human approval workflow for irreversible actions
-- Credential masking in tool arguments
+### 5. Agent Gate (Go) — Stage 6 (planned)
 
-### 5. Red Team Engine (Python)
+Deterministic, code-level permission system for tool/MCP calls.
+
+### 6. Red Team Engine (Python) — Stage 7 (planned)
 
 Continuous adversarial testing in sandboxed staging.
 
-- Benchmark corpus loaders (HarmBench/AdvBench-style, locally provided)
-- Mutation strategies (paraphrase, role-play, encoding, multi-turn)
-- Nightly replay with ASR tracking per defense layer
-- Rapid-response loop: successful attacks → proposed detector/policy patches
-
-## Shared Schemas
+## Shared schemas
 
 All cross-service communication uses protobuf definitions in `shared/proto/aegis/v1/`:
 
@@ -91,7 +95,17 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Data Stores
+## Current wiring (Stages 0–5)
+
+Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
+
+- **Input defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/input`
+- **Output defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/output`
+- **Model router:** standalone OpenAI-compatible API
+
+See `scripts/e2e-output-defense.sh` for a working output-defense → policy-engine example.
+
+## Data stores
 
 | Store | Usage |
 |-------|-------|
@@ -101,15 +115,15 @@ JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 ## Observability
 
 - Structured JSON logging from all services
-- OpenTelemetry tracing on the gateway hot path
+- OpenTelemetry tracing on the gateway hot path (planned)
 - Audit receipts provide compliance-grade decision evidence
 
 ## Deployment
 
 - **Local:** `docker-compose.yml` (all services + Postgres + Redis)
-- **Production:** Helm chart in `deploy/helm/` (Stage 0: placeholder)
+- **Production:** Helm chart in `deploy/helm/` (placeholder)
 
-## Security Principles
+## Security principles
 
 1. **Defense-in-depth:** Fuse heuristic + statistical + ML + policy signals
 2. **Deterministic action gating:** Tool permissions enforced in code, not by the model
@@ -117,7 +131,8 @@ JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 4. **Provider-agnostic:** No vendor logic outside `model-router`
 5. **Tamper-evident audit:** Every decision signed with Ed25519
 6. **Adaptive defense:** Red-team loop feeds new attacks back into detectors
+7. **Loud model errors:** Retired/invalid LLM model IDs surface as explicit errors, not silent fallback
 
-## Residual Risk
+## Residual risk
 
-See `THREAT_MODEL.md` (Stage 2+) for explicit limitations per layer.
+Each service README documents known limitations and tracked gaps for its detectors. A formal threat model document is planned for a future stage.

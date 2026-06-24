@@ -112,6 +112,8 @@ services:
       dockerfile: output-defense/Dockerfile
     ports:
       - "${OUTPUT_DEFENSE_PORT:-8091}:8091"
+    environment:
+      AEGIS_OUTPUT_DEFENSE_PORT: "8091"
 
   redteam:
     build:

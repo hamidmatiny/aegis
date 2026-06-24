@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aegis-platform/aegis/model-router/internal/models"
+	"github.com/aegis-platform/aegis/model-router/internal/provider"
 	"github.com/aegis-platform/aegis/model-router/internal/router"
 )
 
@@ -69,20 +70,14 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := s.router.Chat(r.Context(), req)
 	if err != nil {
-		status := http.StatusBadGateway
-		var routerErr *models.RouterError
-		if errors.As(err, &routerErr) {
-			status = http.StatusBadGateway
-		}
-		writeError(w, status, err)
+		writeRouterError(w, err)
 		return
 	}
 
-	// OpenAI-compatible response envelope for drop-in SDK use.
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id":      resp.ID,
-		"object":  "chat.completion",
-		"model":   resp.Model,
+		"id":       resp.ID,
+		"object":   "chat.completion",
+		"model":    resp.Model,
 		"provider": resp.Provider,
 		"choices": []map[string]any{{
 			"index": 0,
@@ -98,8 +93,8 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 			"total_tokens":      resp.Usage.TotalTokens,
 		},
 		"aegis": map[string]any{
-			"fallback_used":         resp.FallbackUsed,
-			"attempted_providers":   resp.AttemptedProviders,
+			"fallback_used":       resp.FallbackUsed,
+			"attempted_providers": resp.AttemptedProviders,
 		},
 	})
 }
@@ -113,7 +108,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 
 	ch, providerID, err := s.router.ChatStream(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, err)
+		writeRouterError(w, err)
 		return
 	}
 
@@ -133,8 +128,8 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 			"model":    chunk.Model,
 			"provider": providerID,
 			"choices": []map[string]any{{
-				"index": 0,
-				"delta": map[string]string{"content": chunk.Delta},
+				"index":         0,
+				"delta":         map[string]string{"content": chunk.Delta},
 				"finish_reason": chunk.FinishReason,
 			}},
 		}
@@ -142,6 +137,30 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 		fmt.Fprintf(w, "data: %s\n\n", data)
 		flusher.Flush()
 	}
+}
+
+func writeRouterError(w http.ResponseWriter, err error) {
+	if modelErr, ok := provider.AsModelRetiredError(err); ok {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error": modelErr.Error(),
+			"aegis": map[string]any{
+				"model_error": map[string]any{
+					"provider":       modelErr.Provider,
+					"rejected_model": modelErr.RejectedModel,
+					"error_type":     modelErr.ErrorType(),
+					"message":        modelErr.Guidance(),
+				},
+			},
+		})
+		return
+	}
+
+	status := http.StatusBadGateway
+	var routerErr *models.RouterError
+	if errors.As(err, &routerErr) {
+		status = http.StatusBadGateway
+	}
+	writeError(w, status, err)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
