@@ -126,8 +126,15 @@ services:
     ports:
       - "${REDTEAM_PORT:-8092}:8092"
     environment:
+      AEGIS_REDTEAM_PORT: "8092"
+      AEGIS_REDTEAM_INPUT_DEFENSE_URL: http://input-defense:8090
+      AEGIS_REDTEAM_OUTPUT_DEFENSE_URL: http://output-defense:8091
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
     depends_on:
+      input-defense:
+        condition: service_started
+      output-defense:
+        condition: service_started
       postgres:
         condition: service_healthy
 

@@ -85,9 +85,31 @@ Deterministic, code-level permission system for tool/MCP calls.
 
 **Port:** 8083 — see [agent-gate/README.md](./agent-gate/README.md)
 
-### 6. Red Team Engine (Python) — Stage 7 (planned)
+### 6. Red Team Engine (Python) — Stage 7
 
 Continuous adversarial testing in sandboxed staging.
+
+| Capability | Description |
+|------------|-------------|
+| Attack corpus | Local YAML fixtures targeting input/output defenses |
+| Mutation strategies | 8 transforms (paraphrase, roleplay, encoding, multi-turn, etc.) |
+| Campaign runner | Probes defenses via HTTP; reports bypass rate by target/category |
+| Pattern store | In-memory + optional Postgres `attack_patterns` for bypasses |
+
+**Port:** 8092 — see [redteam/README.md](./redteam/README.md)
+
+### 7. Audit Service (Go) — Stage 8
+
+Tamper-evident, Ed25519-signed decision receipts persisted to Postgres.
+
+| Capability | Description |
+|------------|-------------|
+| Receipt signing | SHA-256 canonical payload hash + Ed25519 signature |
+| Persistence | Append-only `audit_receipts` table |
+| Query / export | Filter by tenant, event type, time range; JSON/NDJSON export |
+| Verification | `GET /v1/receipts/{id}/verify` recomputes hash and checks signature |
+
+**Port:** 8084 — see [audit/README.md](./audit/README.md)
 
 ## Shared schemas
 
@@ -104,16 +126,17 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Current wiring (Stages 0–5)
+## Current wiring (Stages 0–8)
 
 Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
 
 - **Input defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/input`
 - **Output defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/output`
 - **Agent gate → policy engine:** caller invokes `POST /v1/evaluate` (gate calls policy-engine internally)
-- **Model router:** standalone OpenAI-compatible API
+- **Red team → defenses:** `POST /v1/campaigns/run` probes input-defense and output-defense
+- **Audit:** any layer can `POST /v1/receipts` to persist a signed decision receipt
 
-See `scripts/e2e-output-defense.sh` and `scripts/e2e-agent-gate.sh` for working examples.
+See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, and `scripts/e2e-audit.sh` for working examples.
 
 ## Data stores
 

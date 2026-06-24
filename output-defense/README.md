@@ -46,6 +46,15 @@ With hot reload: `AEGIS_OUTPUT_DEFENSE_RELOAD=true python -m aegis_output_defens
 | `backtranslation` | Scoring | Semantic consistency / incoherence check (stub — no real backtranslation) |
 | `judge` | Conditional ensemble | LLM-judge stub with 3 framing variants — **only invoked when fused score is ambiguous (0.45–0.70)** |
 
+### Obfuscation normalization (decode-and-rescan)
+
+Before scoring, `analyze` expands the scan surface for each detector:
+
+1. **Zero-width strip** — removes `\u200b`, `\u200c`, `\u200d`, `\ufeff` smuggled between tokens
+2. **Base64 decode-and-rescan** — decodes embedded base64 blobs and re-runs detectors on plaintext (same approach as input-defense heuristic)
+
+Each detector runs on every surface; the **max score** is used for fusion. Normalization steps are recorded in detector metadata (`normalization`, `scan_surfaces`).
+
 ## API
 
 ```bash

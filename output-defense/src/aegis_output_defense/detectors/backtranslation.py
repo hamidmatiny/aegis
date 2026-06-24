@@ -30,7 +30,7 @@ _INCOHERENCE_PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
         r"(?i)(system prompt|initial instructions).{0,40}(verbatim|exact|follows?:)",
     ), 0.85),
     ("incoherent_structure", re.compile(
-        r"(?i)(answer: yes\. answer: no\.|true\. false\. maybe\.)",
+        r"(?i)(answer: yes\. answer: no\.|answer yes\. answer no\.|true\. false\. maybe\.)",
     ), 0.72),
 ]
 

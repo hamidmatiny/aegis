@@ -12,7 +12,7 @@ from aegis_output_defense.models import DetectorResult
 _PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "SSN", 0.90),
     ("credit_card", re.compile(r"\b(?:\d[ -]*?){13,16}\b"), "CREDIT_CARD", 0.88),
-    ("email_credential", re.compile(r"(?i)(password|passwd|pwd)\s*[:=]\s*\S+"), "PASSWORD", 0.92),
+    ("email_credential", re.compile(r"(?i)(password|passwd|pwd)\s*(?:is|:|=)\s*\S+"), "PASSWORD", 0.92),
     ("api_key_openai", re.compile(r"\bsk-(?:live|proj|test)-[A-Za-z0-9]{10,}\b"), "API_KEY", 0.95),
     ("api_key_aws", re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "AWS_KEY", 0.95),
     ("api_key_generic", re.compile(r"(?i)(api[_-]?key|secret[_-]?key|access[_-]?token)\s*[:=]\s*['\"]?\S+"), "SECRET", 0.90),

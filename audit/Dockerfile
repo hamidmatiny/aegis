@@ -1,6 +1,6 @@
 FROM golang:1.22-alpine AS builder
 WORKDIR /src
-COPY audit/go.mod ./
+COPY audit/go.mod audit/go.sum ./
 COPY audit/ ./
 RUN CGO_ENABLED=0 go build -o /audit ./cmd/audit
 
