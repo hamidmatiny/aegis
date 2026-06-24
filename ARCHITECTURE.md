@@ -139,6 +139,18 @@ Drop-in OpenAI-compatible clients and reverse-proxy entry point (`gateway` servi
 
 **Port:** 8080 (SDK proxy) — see [sdk/README.md](./sdk/README.md)
 
+### 10. Example applications — Stage 11
+
+Reference integrations in [examples/](examples/):
+
+| App | Demonstrates |
+|-----|--------------|
+| [chatbot](examples/chatbot/) | Direct prompt injection vs benign chat via SDK proxy |
+| [rag-taint](examples/rag-taint/) | Indirect injection in RAG chunks; tainted tool exfil |
+| [tool-agent](examples/tool-agent/) | Human approval for irreversible tools; credential taint deny |
+
+Run `./scripts/e2e-examples.sh` with the stack up.
+
 ## Shared schemas
 
 All cross-service communication uses protobuf definitions in `shared/proto/aegis/v1/`:
@@ -154,7 +166,7 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Current wiring (Stages 0–10)
+## Current wiring (Stages 0–11)
 
 Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
 
@@ -167,7 +179,7 @@ Services run independently via `docker-compose.yml`. Cross-service orchestration
 - **SDK / gateway:** `gateway` container runs the Python SDK proxy (interim HTTP entry on 8080) — see [sdk/README.md](./sdk/README.md#gateway-vs-go-orchestrator). Go `gateway/` orchestration is still planned.
 - **Streaming:** model-router supports SSE; the **defended** pipeline does not stream to clients because output defense requires the complete assistant response before release (structural — not a TODO). See [sdk/python/README.md](./sdk/python/README.md#streaming-and-output-defense).
 
-See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, `scripts/e2e-audit-pipeline.sh`, and `scripts/e2e-sdk.sh` for working examples.
+See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, `scripts/e2e-audit-pipeline.sh`, `scripts/e2e-sdk.sh`, and `scripts/e2e-examples.sh` for working examples.
 
 ## Data stores
 

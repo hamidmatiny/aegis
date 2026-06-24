@@ -109,7 +109,7 @@ cd output-defense && pip install -e '.[dev]' && pytest
 | 8 | Audit service | Done |
 | 9 | Dashboard | Done |
 | 10 | SDKs | Done |
-| 11 | Example apps | Planned |
+| 11 | Example apps | Done |
 
 ## Environment variables
 
