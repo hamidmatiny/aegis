@@ -18,6 +18,7 @@ services=(
   "http://localhost:8090/health:input-defense"
   "http://localhost:8091/health:output-defense"
   "http://localhost:8092/health:redteam"
+  "http://localhost:3000/:dashboard"
 )
 
 for entry in "${services[@]}"; do

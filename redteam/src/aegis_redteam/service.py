@@ -11,6 +11,7 @@ from aegis_redteam.models import (
     AttackFixture,
     BypassPattern,
     CampaignReport,
+    CampaignSummary,
     DefenseTarget,
     ProbeRequest,
     ProbeResponse,
@@ -54,6 +55,23 @@ class RedTeamService:
         if campaign_id not in self._campaigns:
             raise KeyError(f"Campaign {campaign_id!r} not found")
         return self._campaigns[campaign_id]
+
+    def list_campaigns(self) -> list[CampaignSummary]:
+        summaries: list[CampaignSummary] = []
+        for report in self._campaigns.values():
+            summaries.append(
+                CampaignSummary(
+                    campaign_id=report.campaign_id,
+                    started_at=report.started_at,
+                    completed_at=report.completed_at,
+                    total_probes=report.total_probes,
+                    bypass_count=report.bypass_count,
+                    bypass_rate=report.bypass_rate,
+                    by_target=report.by_target,
+                )
+            )
+        summaries.sort(key=lambda s: s.started_at, reverse=True)
+        return summaries
 
     async def probe(self, req: ProbeRequest) -> ProbeResponse:
         result = await self._run_probe(

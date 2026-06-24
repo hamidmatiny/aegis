@@ -82,6 +82,11 @@ async def run_campaign(body: RunCampaignRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.get("/v1/campaigns")
+async def list_campaigns() -> dict:
+    return {"campaigns": [c.model_dump() for c in get_service().list_campaigns()]}
+
+
 @app.get("/v1/campaigns/{campaign_id}")
 async def get_campaign(campaign_id: str) -> dict:
     try:

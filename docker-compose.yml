@@ -155,5 +155,21 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      audit:
+        condition: service_started
+      policy-engine:
+        condition: service_started
+      agent-gate:
+        condition: service_started
+      redteam:
+        condition: service_started
+
 volumes:
   postgres_data:

@@ -51,3 +51,43 @@ func TestEvaluateInputHTTPEndpoint(t *testing.T) {
 		t.Fatalf("expected block, got %s", resp.Decision.Action)
 	}
 }
+
+func TestPolicyPackDetailAndDryRun(t *testing.T) {
+	dir := filepath.Join("..", "..", "policies")
+	store, err := loader.NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	srv := api.NewServer(store, engine.New(), audit.NewClient(""))
+	mux := http.NewServeMux()
+	srv.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/policy-packs/default", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("pack detail status %d body %s", rec.Code, rec.Body.String())
+	}
+
+	yamlText, err := store.ReadPackYAML("default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(models.DryRunRequest{
+		YAML:    yamlText,
+		RuleSet: "input",
+	})
+	req = httptest.NewRequest(http.MethodPost, "/v1/dry-run", bytes.NewReader(body))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("dry-run status %d body %s", rec.Code, rec.Body.String())
+	}
+	var dry models.DryRunResponse
+	if err := json.NewDecoder(rec.Body).Decode(&dry); err != nil {
+		t.Fatal(err)
+	}
+	if !dry.Valid || dry.Decision == nil {
+		t.Fatalf("expected valid dry-run, got %+v", dry)
+	}
+}

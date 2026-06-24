@@ -1,0 +1,267 @@
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #e8edf5;
+  background: #0b0f17;
+  --bg-panel: #121826;
+  --bg-elevated: #1a2233;
+  --border: #2a3548;
+  --accent: #3b82f6;
+  --accent-muted: #2563eb33;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --ok: #22c55e;
+  --text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.brand span {
+  color: var(--accent);
+}
+
+.nav-link {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.nav-link.active,
+.nav-link:hover {
+  background: var(--accent-muted);
+  color: #fff;
+}
+
+.main {
+  padding: 1.5rem 2rem 2rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.panel + .panel {
+  margin-top: 1rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-danger {
+  background: #7f1d1d;
+  border-color: var(--danger);
+}
+
+.btn-ok {
+  background: #14532d;
+  border-color: var(--ok);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-block {
+  background: #7f1d1d55;
+  color: #fca5a5;
+}
+
+.badge-escalate {
+  background: #78350f55;
+  color: #fcd34d;
+}
+
+.badge-ok {
+  background: #14532d55;
+  color: #86efac;
+}
+
+.badge-pending {
+  background: #1e3a5f55;
+  color: #93c5fd;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #fff;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+textarea {
+  min-height: 280px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.error {
+  color: #fca5a5;
+  margin-top: 0.5rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.stat-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  flex: 1;
+  min-width: 140px;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.receipt-detail pre {
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 0.75rem;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
+.filters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.filters > * {
+  min-width: 160px;
+  flex: 1;
+}

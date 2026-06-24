@@ -86,6 +86,9 @@ curl -X POST localhost:8092/v1/campaigns/run \
 # Fetch campaign report
 curl localhost:8092/v1/campaigns/camp-1234567890
 
+# List campaign summaries (session ASR trends for dashboard)
+curl localhost:8092/v1/campaigns
+
 # List stored bypass patterns
 curl localhost:8092/v1/patterns
 ```

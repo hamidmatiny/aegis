@@ -25,6 +25,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.HandleFunc("/ready", s.handleReady)
 	mux.HandleFunc("/v1/evaluate", s.handleEvaluate)
+	mux.HandleFunc("/v1/approvals", s.handleApprovalsList)
 	mux.HandleFunc("/v1/approvals/", s.handleApprovals)
 }
 
@@ -67,6 +68,21 @@ func (s *Server) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), resp.Decision, resp.PolicyAction)
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleApprovalsList(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/v1/approvals" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	pendingOnly := r.URL.Query().Get("status") != "all"
+	writeJSON(w, http.StatusOK, map[string]any{
+		"approvals": s.gate.ListApprovals(pendingOnly),
+	})
 }
 
 func (s *Server) handleApprovals(w http.ResponseWriter, r *http.Request) {

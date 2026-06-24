@@ -29,3 +29,10 @@ def test_list_strategies() -> None:
         strategies = resp.json()["strategies"]
         assert len(strategies) >= 5
         assert any(s["strategy_id"] == "identity" for s in strategies)
+
+
+def test_list_campaigns_empty() -> None:
+    with TestClient(app) as client:
+        resp = client.get("/v1/campaigns")
+        assert resp.status_code == 200
+        assert resp.json()["campaigns"] == []

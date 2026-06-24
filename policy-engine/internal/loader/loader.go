@@ -246,3 +246,34 @@ func mergeRules(base []models.PolicyRule, extra []models.PolicyRule) []models.Po
 	}
 	return out
 }
+
+// ReadPackYAML returns the on-disk YAML source for a base policy pack.
+func (s *Store) ReadPackYAML(packID string) (string, error) {
+	if packID == "" {
+		packID = "default"
+	}
+	for _, ext := range []string{".yaml", ".yml"} {
+		path := filepath.Join(s.baseDir, packID+ext)
+		data, err := os.ReadFile(path)
+		if err == nil {
+			return string(data), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", fmt.Errorf("read %s: %w", path, err)
+		}
+	}
+	return "", fmt.Errorf("policy pack %q not found", packID)
+}
+
+// ParsePackYAML parses and normalizes a policy pack from YAML text (dry-run / editor).
+func ParsePackYAML(data string) (models.PolicyPack, error) {
+	var pack models.PolicyPack
+	if err := yaml.Unmarshal([]byte(data), &pack); err != nil {
+		return models.PolicyPack{}, fmt.Errorf("parse policy yaml: %w", err)
+	}
+	if pack.ID == "" {
+		return models.PolicyPack{}, fmt.Errorf("policy pack id is required")
+	}
+	normalizePack(&pack)
+	return pack, nil
+}

@@ -56,6 +56,25 @@ func (s *Store) Get(id string) (*models.ApprovalRequest, error) {
 	return req, nil
 }
 
+// List returns approval requests, optionally filtered to pending only.
+func (s *Store) List(pendingOnly bool) []*models.ApprovalRequest {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	now := time.Now().UTC()
+	out := make([]*models.ApprovalRequest, 0, len(s.approvals))
+	for _, req := range s.approvals {
+		if now.After(req.ExpiresAt) {
+			continue
+		}
+		if pendingOnly && req.Status != models.StatusAwaitingHumanApproval {
+			continue
+		}
+		out = append(out, req)
+	}
+	return out
+}
+
 func (s *Store) Decide(id string, action models.ApprovalAction) (*models.ApprovalRequest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

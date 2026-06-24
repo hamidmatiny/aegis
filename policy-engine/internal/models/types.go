@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // EvaluationMode controls whether policy decisions are enforced.
 type EvaluationMode string
@@ -132,6 +135,21 @@ type PolicyDecision struct {
 	TenantID             string            `json:"tenant_id,omitempty"`
 	EvaluatedAt          time.Time         `json:"evaluated_at"`
 	EvaluationLatencyMS  int64             `json:"evaluation_latency_ms"`
+}
+
+// DryRunRequest evaluates draft policy YAML against a sample verdict without persisting.
+type DryRunRequest struct {
+	YAML     string          `json:"yaml"`
+	RuleSet  string          `json:"rule_set"`
+	TenantID string          `json:"tenant_id,omitempty"`
+	Sample   json.RawMessage `json:"sample"`
+}
+
+// DryRunResponse returns validation or evaluation outcome for draft policy YAML.
+type DryRunResponse struct {
+	Valid    bool            `json:"valid"`
+	Error    string          `json:"error,omitempty"`
+	Decision *PolicyDecision `json:"decision,omitempty"`
 }
 
 // TraceContext correlates audit receipts across services.

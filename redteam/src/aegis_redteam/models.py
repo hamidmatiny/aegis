@@ -44,6 +44,16 @@ class ProbeResult(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
+class CampaignSummary(BaseModel):
+    campaign_id: str
+    started_at: datetime
+    completed_at: datetime
+    total_probes: int
+    bypass_count: int
+    bypass_rate: float
+    by_target: dict[str, TargetMetrics]
+
+
 class CampaignReport(BaseModel):
     campaign_id: str
     started_at: datetime

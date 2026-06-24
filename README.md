@@ -68,6 +68,7 @@ Use `docker compose --env-file .env up -d` if your shell does not auto-load `.en
 | Input Defense | 8090 | `/health` | [input-defense/README.md](./input-defense/README.md) |
 | Output Defense | 8091 | `/health` | [output-defense/README.md](./output-defense/README.md) |
 | Red Team | 8092 | `/health` | [redteam/README.md](./redteam/README.md) |
+| Dashboard | 3000 | `/` (UI) | [dashboard/README.md](./dashboard/README.md) |
 
 ## Development
 
@@ -105,7 +106,7 @@ cd output-defense && pip install -e '.[dev]' && pytest
 | 6 | Agent gate | Done |
 | 7 | Red-team engine | Done |
 | 8 | Audit service | Done |
-| 9 | Dashboard | Planned |
+| 9 | Dashboard | Done |
 | 10 | SDKs | Planned |
 | 11 | Example apps | Planned |
 

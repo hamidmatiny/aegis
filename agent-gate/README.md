@@ -71,6 +71,12 @@ curl -X POST localhost:8083/v1/evaluate \
     }
   }'
 
+# List pending approvals (dashboard inbox)
+curl localhost:8083/v1/approvals
+
+# List all non-expired approvals including decided
+curl 'localhost:8083/v1/approvals?status=all'
+
 # Get pending approval
 curl localhost:8083/v1/approvals/appr-123456789
 
@@ -151,7 +157,7 @@ make test-go   # from repo root
 | **Approval store** | In-memory only | Persist to Postgres (`DATABASE_URL` already in compose) |
 | **gRPC `AgentGateService`** | Proto defined; HTTP only today | Implement gRPC alongside REST |
 | **Audit receipts** | Not emitted yet | Wire to audit service (Stage 8) |
-| **Dashboard approval inbox** | API only | UI in Stage 9 |
+| **Dashboard approval inbox** | `GET /v1/approvals` + dashboard UI | Done (Stage 9) |
 | **Tool permission matrix** | Policy CEL only | Per-tool/per-tenant YAML matrix (future) |
 | **Credential detection** | Regex patterns | NER / secret scanners for contextual PII |
 

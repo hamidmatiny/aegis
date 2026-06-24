@@ -111,6 +111,21 @@ Tamper-evident, Ed25519-signed decision receipts persisted to Postgres.
 
 **Port:** 8084 — see [audit/README.md](./audit/README.md)
 
+### 8. Dashboard (React + TS) — Stage 9
+
+Operations UI wired to audit, policy-engine, agent-gate, and red-team APIs.
+
+| View | Description |
+|------|-------------|
+| Attack feed | Recent blocked/escalated audit receipts |
+| ASR trends | Red-team campaign bypass rates (session) |
+| Policy editor | YAML + CEL dry-run preview |
+| Tool matrix | Agent-gate tool rules from policy pack |
+| Approval inbox | Pending irreversible-action approvals |
+| Audit log | Search/export signed receipts |
+
+**Port:** 3000 — see [dashboard/README.md](./dashboard/README.md)
+
 ## Shared schemas
 
 All cross-service communication uses protobuf definitions in `shared/proto/aegis/v1/`:
@@ -126,7 +141,7 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Current wiring (Stages 0–8)
+## Current wiring (Stages 0–9)
 
 Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
 

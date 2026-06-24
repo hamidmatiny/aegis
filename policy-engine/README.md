@@ -96,6 +96,14 @@ curl -X POST localhost:8081/v1/evaluate/tool \
 # List loaded policy packs
 curl localhost:8081/v1/policy-packs
 
+# Fetch pack metadata + source YAML (dashboard editor)
+curl localhost:8081/v1/policy-packs/default
+
+# Dry-run draft YAML against a sample verdict (no persist)
+curl -X POST localhost:8081/v1/dry-run \
+  -H 'Content-Type: application/json' \
+  -d '{"yaml":"id: default\nversion: \"0.2.0\"\n...","rule_set":"input","sample":{"action":"BLOCK","fused_score":0.92}}'
+
 # Hot-reload policies from disk
 curl -X POST localhost:8081/v1/reload
 ```

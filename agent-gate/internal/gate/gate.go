@@ -115,3 +115,8 @@ func (g *Gate) SubmitApproval(_ context.Context, action models.ApprovalAction) (
 func (g *Gate) GetApproval(_ context.Context, approvalID string) (*models.ApprovalRequest, error) {
 	return g.approvals.Get(approvalID)
 }
+
+// ListApprovals returns in-memory approval requests for the dashboard inbox.
+func (g *Gate) ListApprovals(pendingOnly bool) []*models.ApprovalRequest {
+	return g.approvals.List(pendingOnly)
+}
