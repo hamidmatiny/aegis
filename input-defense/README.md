@@ -40,6 +40,17 @@ python3 -m pytest tests/ -q
 
 Fixtures live in `tests/fixtures/prompts.yaml` (30 attacks + 15 benign).
 
+## Known limitations (tracked gaps)
+
+These are explicit TODOs — not silent shortcomings:
+
+| Component | Status | Follow-up |
+|-----------|--------|-----------|
+| **Perplexity detector** | Lightweight character trigram stub (~0% effective catch rate on fixtures) | Wire to a real reference language model for windowed PPL scoring |
+| **Classifier detector** | Lexical-feature stub (`stub-lexical-v1`) | Swap `ClassifierBackend` for a real model (e.g. Llama-Prompt-Guard-2) — no fusion changes required |
+
+Run `pytest tests/test_fixture_metrics.py -s` to see aggregate and **category-level** ASR breakdowns that highlight where each detector is weak.
+
 ## Swapping the classifier model
 
 Implement `ClassifierBackend` and inject at service construction — fusion logic unchanged:

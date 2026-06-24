@@ -27,4 +27,10 @@ for entry in "${services[@]}"; do
   curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
 done
 
+echo "==> Policy engine input evaluation smoke test..."
+curl -sf -X POST http://localhost:8081/v1/evaluate/input \
+  -H 'Content-Type: application/json' \
+  -d '{"tenant_id":"default","input_verdict":{"action":"BLOCK","fused_score":0.92,"detector_scores":[{"detector_id":"heuristic","score":0.92,"reasoning":"test"}]}}' \
+  | grep -q '"action":"block"' || { echo "FAIL: policy-engine evaluate/input"; exit 1; }
+
 echo "==> All integration smoke tests passed"

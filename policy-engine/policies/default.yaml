@@ -1,10 +1,8 @@
-# Default policy pack — Stage 0 scaffold
-# Full CEL rules implemented in Stage 3 (policy-engine)
-
+# Default policy pack for AEGIS
 id: default
-version: "0.1.0"
+version: "0.2.0"
 tenant_id: default
-description: Baseline policy pack for AEGIS development
+description: Baseline CEL policy pack — input, output, and tool rules
 
 input_rules:
   - id: block-high-fusion-score
@@ -19,11 +17,30 @@ input_rules:
     action: escalate_to_judge
     enabled: true
 
+  - id: transform-spotlighting-applied
+    name: Transform when input defense produced rewritten content
+    cel: "input_verdict.transformed_content != ''"
+    action: transform
+    enabled: true
+    transform_spec: "use_input_verdict.transformed_content"
+
+  - id: block-heuristic-critical
+    name: Block when heuristic detector is highly confident
+    cel: "input_verdict.detector_scores.exists(d, d.detector_id == 'heuristic' && d.score >= 0.85)"
+    action: block
+    enabled: true
+
 output_rules:
   - id: block-high-output-score
     name: Block high output fusion score
     cel: "output_verdict.fused_score >= 0.80"
     action: block
+    enabled: true
+
+  - id: escalate-ambiguous-output
+    name: Escalate ambiguous output
+    cel: "output_verdict.fused_score >= 0.50 && output_verdict.fused_score < 0.80"
+    action: escalate_to_judge
     enabled: true
 
 tool_rules:

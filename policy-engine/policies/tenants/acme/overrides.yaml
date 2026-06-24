@@ -1,0 +1,20 @@
+# Per-tenant override example — stricter heuristic blocking for tenant acme
+extends: default
+id: default
+version: "0.2.0-acme"
+tenant_id: acme
+description: ACME Corp stricter input policy
+
+overrides:
+  - id: escalate-ambiguous-input
+    enabled: false
+
+input_rules:
+  - id: acme-block-moderate-fusion
+    name: ACME blocks at lower fusion threshold
+    cel: "input_verdict.fused_score >= 0.45"
+    action: block
+    enabled: true
+
+settings:
+  default_action: allow

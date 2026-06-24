@@ -110,3 +110,14 @@ class MetricsReport(BaseModel):
             "FPR": f"{self.false_positive_rate:.1%}",
             "threshold": self.threshold,
         }
+
+
+class CategoryMetricsReport(BaseModel):
+    """Attack catch rate for a single detector within one attack category."""
+
+    category: str
+    detector_id: str
+    attack_total: int
+    attack_caught: int
+    attack_success_rate: float
+    threshold: float
