@@ -13,6 +13,10 @@ env:
   # Fast CI: never download ~1GB ML weights on every PR.
   AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: stub
   AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: stub
+  AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND: stub
+  AEGIS_OUTPUT_DEFENSE_PII_BACKEND: regex
+  AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND: stub
+  AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND: stub
 
 jobs:
   proto:
@@ -86,7 +90,7 @@ jobs:
         run: make test-python
 
   ml-smoke:
-    name: Input-defense ML smoke (manual)
+    name: ML smoke (manual)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
@@ -94,10 +98,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install ML extras
+      - name: Install input-defense ML extras
         run: pip install -e "./input-defense[ml,dev]"
-      - name: Run real-model smoke tests
+      - name: Run input-defense real-model smoke tests
         run: cd input-defense && pytest tests/test_ml_backends.py -s
+      - name: Install output-defense ML extras
+        run: |
+          pip install -e "./output-defense[ml,dev]"
+          python -m spacy download en_core_web_sm
+      - name: Run output-defense real-model smoke tests
+        run: cd output-defense && pytest tests/test_ml_backends.py -s
 
   integration:
     name: Integration smoke tests

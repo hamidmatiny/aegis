@@ -1,14 +1,15 @@
-"""Backtranslation consistency check for semantic smoothing."""
+"""Pattern-based backtranslation stub (Phase 1 reference)."""
 
 from __future__ import annotations
 
 import re
-import time
 
-from aegis_output_defense.detectors.base import Detector, DetectorContext
-from aegis_output_defense.models import DetectorResult
+from aegis_output_defense.detectors.backtranslation.backend import (
+    BacktranslationBackend,
+    BacktranslationResult,
+)
+from aegis_output_defense.provenance import EXECUTION_BACKEND, REQUESTED_BACKEND
 
-# Signals of incoherence, contradiction, or jailbreak-completion drift
 _INCOHERENCE_PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
     (
         "refusal_then_comply",
@@ -63,24 +64,17 @@ _INCOHERENCE_PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
 ]
 
 
-class BacktranslationDetector(Detector):
-    """
-    Lightweight backtranslation consistency stub.
-
-    Detects semantic drift, contradictions, and jailbreak-success completions
-    without calling an external translation model (tracked gap).
-    """
-
+class StubBacktranslationBackend(BacktranslationBackend):
     @property
-    def detector_id(self) -> str:
-        return "backtranslation"
+    def model_id(self) -> str:
+        return "stub-backtranslation-v1"
 
-    @property
-    def detector_version(self) -> str:
-        return "1.0.0"
-
-    async def analyze(self, content: str, context: DetectorContext | None = None) -> DetectorResult:
-        start = time.perf_counter()
+    async def evaluate(
+        self,
+        content: str,
+        *,
+        original_prompt: str | None = None,
+    ) -> BacktranslationResult:
         matches: list[str] = []
         max_score = 0.05
 
@@ -89,28 +83,30 @@ class BacktranslationDetector(Detector):
                 matches.append(name)
                 max_score = max(max_score, weight)
 
-        # Compare against original prompt if provided
-        if context and context.original_prompt:
-            prompt = context.original_prompt.lower()
+        if original_prompt:
+            prompt = original_prompt.lower()
             if "do not reveal" in prompt and re.search(r"(?i)(api key|password|secret)", content):
                 matches.append("prompt_drift_secret")
                 max_score = max(max_score, 0.82)
 
-        latency = int((time.perf_counter() - start) * 1000)
         if not matches:
-            return DetectorResult(
-                detector_id=self.detector_id,
-                detector_version=self.detector_version,
+            return BacktranslationResult(
                 score=0.05,
                 reasoning="No backtranslation consistency anomalies detected",
-                latency_ms=latency,
+                model_id=self.model_id,
+                metadata={
+                    REQUESTED_BACKEND: "stub",
+                    EXECUTION_BACKEND: "stub-patterns",
+                },
             )
 
-        return DetectorResult(
-            detector_id=self.detector_id,
-            detector_version=self.detector_version,
+        return BacktranslationResult(
             score=min(max_score, 1.0),
             reasoning=f"Consistency anomalies: {', '.join(matches[:5])}",
-            latency_ms=latency,
-            metadata={"matches": ",".join(matches)},
+            model_id=self.model_id,
+            metadata={
+                REQUESTED_BACKEND: "stub",
+                EXECUTION_BACKEND: "stub-patterns",
+                "matches": ",".join(matches),
+            },
         )

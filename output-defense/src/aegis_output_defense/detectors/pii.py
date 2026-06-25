@@ -1,50 +1,29 @@
-"""PII and secret detector with inline redaction."""
+"""PII and secret detector with regex first-pass and optional NER second-pass."""
 
 from __future__ import annotations
 
-import re
 import time
+from typing import Literal
 
 from aegis_output_defense.detectors.base import Detector, DetectorContext
+from aegis_output_defense.detectors.pii_scan import scan_ner, scan_regex
+from aegis_output_defense.fusion import detection_threshold
 from aegis_output_defense.models import DetectorResult
-
-# (name, pattern, replacement label, score weight)
-_PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
-    ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "SSN", 0.90),
-    ("credit_card", re.compile(r"\b(?:\d[ -]*?){13,16}\b"), "CREDIT_CARD", 0.88),
-    (
-        "email_credential",
-        re.compile(r"(?i)(password|passwd|pwd)\s*(?:is|:|=)\s*\S+"),
-        "PASSWORD",
-        0.92,
-    ),
-    ("api_key_openai", re.compile(r"\bsk-(?:live|proj|test)-[A-Za-z0-9]{10,}\b"), "API_KEY", 0.95),
-    ("api_key_aws", re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "AWS_KEY", 0.95),
-    (
-        "api_key_generic",
-        re.compile(r"(?i)(api[_-]?key|secret[_-]?key|access[_-]?token)\s*[:=]\s*['\"]?\S+"),
-        "SECRET",
-        0.90,
-    ),
-    ("private_key", re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "PRIVATE_KEY", 0.98),
-    (
-        "jwt",
-        re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
-        "JWT",
-        0.85,
-    ),
-    ("phone", re.compile(r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "PHONE", 0.70),
-    (
-        "email_leak",
-        re.compile(r"(?i)(here is (my|the|your)|leaked|dump).{0,40}@[a-z0-9.-]+\.[a-z]{2,}"),
-        "EMAIL",
-        0.80,
-    ),
-]
+from aegis_output_defense.provenance import (
+    EXECUTION_BACKEND,
+    NER_CHANGED_SCORE,
+    NER_MATCHES,
+    REGEX_MATCHES,
+    REQUESTED_BACKEND,
+)
+from aegis_output_defense.settings import settings
 
 
 class PIIDetector(Detector):
     """Detect and redact PII, secrets, and credentials in model output."""
+
+    def __init__(self, *, backend: Literal["regex", "ner"] | None = None) -> None:
+        self._backend = backend or settings.pii_backend
 
     @property
     def detector_id(self) -> str:
@@ -52,7 +31,7 @@ class PIIDetector(Detector):
 
     @property
     def detector_version(self) -> str:
-        return "1.0.0"
+        return "2.0.0-ner" if self._backend == "ner" else "1.0.0-regex"
 
     @property
     def is_redactor(self) -> bool:
@@ -60,17 +39,48 @@ class PIIDetector(Detector):
 
     async def analyze(self, content: str, context: DetectorContext | None = None) -> DetectorResult:
         start = time.perf_counter()
-        matches: list[str] = []
-        max_score = 0.05
-        redacted = content
+        thresh = detection_threshold()
+        regex_result = scan_regex(content)
+        matches = list(regex_result.matches)
+        max_score = regex_result.score
+        redacted = regex_result.redacted_text
+        ner_matches: list[str] = []
+        execution = "regex-only" if self._backend == "regex" else "regex-no-hits"
+        ner_changed = "false"
 
-        for name, pattern, label, weight in _PII_PATTERNS:
-            if pattern.search(redacted):
-                matches.append(name)
-                max_score = max(max_score, weight)
-                redacted = pattern.sub(f"[REDACTED-{label}]", redacted)
+        if self._backend == "ner":
+            ner_result = scan_ner(content, spacy_model=settings.spacy_model)
+            ner_matches = list(ner_result.matches)
+            regex_only_score = max_score
+            regex_only_fires = regex_only_score >= thresh
+            combined_score = max(max_score, ner_result.score)
+            ner_fires = ner_result.score >= thresh
+            if ner_fires and not regex_only_fires:
+                ner_changed = "true"
+            if ner_matches and not regex_result.matches:
+                execution = "ner-only"
+            elif ner_matches and regex_result.matches:
+                execution = "regex+ner"
+            elif regex_result.matches:
+                execution = "regex-only"
+            else:
+                execution = "no-hits"
+            matches.extend(ner_matches)
+            max_score = combined_score
+            if ner_result.score > regex_result.score:
+                redacted = ner_result.redacted_text
+            elif regex_result.matches:
+                redacted = regex_result.redacted_text
 
         latency = int((time.perf_counter() - start) * 1000)
+        base_meta = {
+            REQUESTED_BACKEND: self._backend,
+            EXECUTION_BACKEND: execution,
+            REGEX_MATCHES: ",".join(regex_result.matches) or "none",
+            NER_MATCHES: ",".join(ner_matches) or "none",
+            NER_CHANGED_SCORE: ner_changed,
+        }
+
         if not matches:
             return DetectorResult(
                 detector_id=self.detector_id,
@@ -78,12 +88,12 @@ class PIIDetector(Detector):
                 score=0.05,
                 reasoning="No PII or secret patterns detected",
                 latency_ms=latency,
-                metadata={"match_count": "0"},
+                metadata={**base_meta, "match_count": "0"},
             )
 
-        reasoning = f"PII/secret patterns matched: {', '.join(matches[:5])}"
-        if len(matches) > 5:
-            reasoning += f" (+{len(matches) - 5} more)"
+        reasoning = f"PII scan ({self._backend}/{execution}): matched {', '.join(matches[:6])}"
+        if len(matches) > 6:
+            reasoning += f" (+{len(matches) - 6} more)"
 
         return DetectorResult(
             detector_id=self.detector_id,
@@ -91,6 +101,10 @@ class PIIDetector(Detector):
             score=min(max_score, 1.0),
             reasoning=reasoning,
             latency_ms=latency,
-            metadata={"matches": ",".join(matches), "match_count": str(len(matches))},
+            metadata={
+                **base_meta,
+                "matches": ",".join(matches),
+                "match_count": str(len(matches)),
+            },
             redacted_text=redacted if redacted != content else None,
         )

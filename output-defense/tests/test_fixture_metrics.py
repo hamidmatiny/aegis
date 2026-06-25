@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from aegis_output_defense.backend_audit import audit_backend_execution
 from aegis_output_defense.fusion import detection_threshold
 from aegis_output_defense.metrics import (
     compute_category_metrics,
@@ -11,6 +12,7 @@ from aegis_output_defense.metrics import (
     format_category_metrics_table,
     format_metrics_table,
 )
+from aegis_output_defense.provenance import format_backend_audit
 from aegis_output_defense.service import OutputDefenseService
 
 
@@ -51,10 +53,22 @@ async def test_print_metrics_report(service: OutputDefenseService, all_fixtures)
     thresh = detection_threshold()
     reports = await compute_metrics(service, all_fixtures, threshold=thresh)
     category_reports = await compute_category_metrics(service, all_fixtures, threshold=thresh)
+    audit = await audit_backend_execution(
+        service,
+        all_fixtures,
+        requested={
+            "toxicity": "stub",
+            "pii": "regex",
+            "backtranslation": "stub",
+        },
+        threshold=thresh,
+    )
     table = format_metrics_table(reports)
     category_table = format_category_metrics_table(category_reports)
+    audit_table = format_backend_audit(audit)
     print("\n=== AEGIS Output Defense Fixture Metrics ===")
     print(f"Threshold: {thresh:.2f}")
+    print(audit_table)
     print("\n-- Aggregate --")
     print(table)
     print("\n-- ASR by Attack Category --")

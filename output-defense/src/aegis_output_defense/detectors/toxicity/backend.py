@@ -12,6 +12,7 @@ class ToxicityPrediction:
     probability: float
     reasoning: str
     model_id: str
+    metadata: dict[str, str] | None = None
 
 
 class ToxicityBackend(ABC):

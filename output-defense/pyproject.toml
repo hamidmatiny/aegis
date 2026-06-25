@@ -1,6 +1,6 @@
 [project]
 name = "aegis-output-defense"
-version = "0.2.0"
+version = "0.3.0"
 description = "AEGIS output defense detector service"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ml = [
+    "transformers>=4.46.0",
+    "torch>=2.2.0",
+    "accelerate>=0.34.0",
+    "spacy>=3.8.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
@@ -45,6 +51,15 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.11"
 strict = true
 packages = ["aegis_output_defense"]
+exclude = ["src/aegis_output_defense/ml/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "aegis_output_defense.detectors.toxicity.toxic_bert_backend",
+    "aegis_output_defense.detectors.pii_scan",
+]
+ignore_missing_imports = true
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -63,10 +63,10 @@ Analyzes model responses before they reach the application.
 
 | Detector | Purpose |
 |----------|---------|
-| Toxicity/safety classifier | Harmful content (stub backend) |
-| PII/secret detector + redactor | Credential leakage detection and redaction |
-| Backtranslation consistency | Intent divergence / incoherence (stub) |
-| LLM-judge ensemble | Ambiguous case resolution — invoked only when fused score is in the ambiguous band |
+| Toxicity/safety classifier | Harmful content (Toxic-BERT + lexicon; stub optional) |
+| PII/secret detector + redactor | Regex credentials + context-gated spaCy NER |
+| Backtranslation consistency | model-router restatement divergence (stub optional) |
+| LLM-judge ensemble | 3× model-router judges on ambiguous band (stub optional) |
 
 **Output:** `OutputVerdict` with fused score, per-detector breakdown, optional `redacted_content`, optional `judge_votes`.
 

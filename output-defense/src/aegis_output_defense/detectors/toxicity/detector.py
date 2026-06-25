@@ -22,7 +22,12 @@ class ToxicityDetector(Detector):
 
     @property
     def detector_version(self) -> str:
-        return "1.0.0"
+        model_id = self._backend.model_id
+        return (
+            "2.0.0-toxic-bert"
+            if "toxic-bert" in model_id or "unitary" in model_id
+            else "1.0.0-stub"
+        )
 
     async def analyze(self, content: str, context: DetectorContext | None = None) -> DetectorResult:
         start = time.perf_counter()
@@ -34,5 +39,9 @@ class ToxicityDetector(Detector):
             score=prediction.probability,
             reasoning=prediction.reasoning,
             latency_ms=latency,
-            metadata={"model_id": prediction.model_id, "label": prediction.label},
+            metadata={
+                "model_id": prediction.model_id,
+                "label": prediction.label,
+                **(prediction.metadata or {}),
+            },
         )

@@ -6,6 +6,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 
 from aegis_output_defense import __version__
 from aegis_output_defense.audit_client import AuditClient
+from aegis_output_defense.ml.loader import warmup_models
 from aegis_output_defense.models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -48,7 +49,22 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready")
 async def ready() -> dict[str, str]:
-    return {"status": "ready"}
+    try:
+        warmup_models(
+            toxicity=settings.toxicity_backend == "toxic-bert",
+            pii_ner=settings.pii_backend == "ner",
+            toxic_bert_model_id=settings.toxic_bert_model_id,
+            spacy_model=settings.spacy_model,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"model warmup failed: {exc}") from exc
+    return {
+        "status": "ready",
+        "toxicity_backend": settings.toxicity_backend,
+        "pii_backend": settings.pii_backend,
+        "backtranslation_backend": settings.backtranslation_backend,
+        "judge_backend": settings.judge_backend,
+    }
 
 
 @app.get("/detectors", response_model=list[DetectorInfo])

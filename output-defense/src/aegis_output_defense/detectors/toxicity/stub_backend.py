@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from aegis_output_defense.detectors.toxicity.backend import ToxicityBackend, ToxicityPrediction
+from aegis_output_defense.provenance import EXECUTION_BACKEND, REQUESTED_BACKEND
 
 _TOXIC_PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
     (
@@ -70,5 +71,12 @@ class StubToxicityBackend(ToxicityBackend):
             label = "safe"
             reasoning = f"Toxicity stub: safe ({1 - score:.2f} confidence)"
         return ToxicityPrediction(
-            label=label, probability=score, reasoning=reasoning, model_id=self.model_id
+            label=label,
+            probability=score,
+            reasoning=reasoning,
+            model_id=self.model_id,
+            metadata={
+                REQUESTED_BACKEND: "stub",
+                EXECUTION_BACKEND: "stub-lexical",
+            },
         )

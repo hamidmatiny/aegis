@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import os
+
+# Fast stub backends for unit/regression tests (no model downloads or router calls).
+os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND", "stub")
+os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_PII_BACKEND", "regex")
+os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND", "stub")
+os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND", "stub")
+
 import pytest
 
 from aegis_output_defense.metrics import load_fixtures
