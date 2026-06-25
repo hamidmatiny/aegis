@@ -10,20 +10,20 @@ $COMPOSE ps
 echo "==> Running integration smoke tests..."
 # Stage 0: verify health endpoints respond
 services=(
-  "http://localhost:8080/health:gateway"
-  "http://localhost:8081/health:policy-engine"
-  "http://localhost:8082/health:model-router"
-  "http://localhost:8083/health:agent-gate"
-  "http://localhost:8084/health:audit"
-  "http://localhost:8090/health:input-defense"
-  "http://localhost:8091/health:output-defense"
-  "http://localhost:8092/health:redteam"
-  "http://localhost:3000/:dashboard"
+  "http://localhost:8080/health|gateway"
+  "http://localhost:8081/health|policy-engine"
+  "http://localhost:8082/health|model-router"
+  "http://localhost:8083/health|agent-gate"
+  "http://localhost:8084/health|audit"
+  "http://localhost:8090/health|input-defense"
+  "http://localhost:8091/health|output-defense"
+  "http://localhost:8092/health|redteam"
+  "http://localhost:3000/|dashboard"
 )
 
 for entry in "${services[@]}"; do
-  url="${entry%%:*}"
-  name="${entry##*:}"
+  url="${entry%%|*}"
+  name="${entry##*|}"
   echo "  Checking $name at $url"
   curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
 done

@@ -123,10 +123,14 @@ services:
     build:
       context: .
       dockerfile: input-defense/Dockerfile
+      args:
+        INSTALL_ML: ${AEGIS_INPUT_DEFENSE_INSTALL_ML:-false}
     ports:
       - "${INPUT_DEFENSE_PORT:-8090}:8090"
     environment:
       AEGIS_AUDIT_URL: http://audit:8084
+      AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: ${AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND:-stub}
+      AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: ${AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND:-stub}
     depends_on:
       audit:
         condition: service_started

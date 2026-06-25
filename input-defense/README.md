@@ -14,10 +14,23 @@ cp .env.example .env
 docker compose up -d --build input-defense
 
 curl localhost:8090/health
-curl localhost:8090/ready   # warms ML models on first call (~4s cold load)
+curl localhost:8090/ready   # warms ML models when real backends are enabled
 ```
 
-Docker installs the `[ml]` optional dependencies and downloads models on first `/ready` or `/analyze` request.
+`docker compose` defaults to **stub** backends (`AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND=stub`, `AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND=stub`) so CI and local stacks start without downloading weights. For real models in Docker:
+
+```bash
+AEGIS_INPUT_DEFENSE_INSTALL_ML=true \
+AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND=prompt-guard \
+AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND=lm \
+docker compose up -d --build input-defense
+```
+
+| Variable | Docker default | Purpose |
+|----------|----------------|---------|
+| `AEGIS_INPUT_DEFENSE_INSTALL_ML` | `false` | When `true`, image installs `.[ml]` (torch/transformers) |
+| `AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND` | `stub` | `prompt-guard` for real DeBERTa classifier |
+| `AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND` | `stub` | `lm` for DistilGPT2 perplexity |
 
 ### Local Python
 
