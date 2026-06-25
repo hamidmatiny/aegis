@@ -6,9 +6,9 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 
 from aegis_input_defense import __version__
 from aegis_input_defense.audit_client import AuditClient
+from aegis_input_defense.ml.loader import warmup_models
 from aegis_input_defense.models import AnalyzeRequest, AnalyzeResponse, DetectorInfo, DetectorResult
 from aegis_input_defense.service import InputDefenseService
-from aegis_input_defense.ml.loader import warmup_models
 from aegis_input_defense.settings import settings
 
 app = FastAPI(

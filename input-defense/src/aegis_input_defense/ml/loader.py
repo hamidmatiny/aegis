@@ -45,7 +45,10 @@ def get_prompt_guard_model(*, model_id: str = PROMPT_GUARD_MODEL_ID) -> _PromptG
         if cached is not None:
             return cached
 
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        from transformers import (
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+        )
 
         logger.info("Loading prompt guard model %s", model_id)
         tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
@@ -71,7 +74,10 @@ def get_perplexity_model(*, model_id: str = PERPLEXITY_MODEL_ID) -> _PerplexityB
         if cached is not None:
             return cached
 
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import (
+            AutoModelForCausalLM,
+            AutoTokenizer,
+        )
 
         logger.info("Loading perplexity LM %s", model_id)
         tokenizer = AutoTokenizer.from_pretrained(model_id)

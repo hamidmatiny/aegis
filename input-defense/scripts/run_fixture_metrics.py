@@ -63,9 +63,7 @@ async def main() -> int:
     benign = sum(1 for f in fixtures if f.is_benign)
 
     print("AEGIS Input Defense — Fixture Metrics Report")
-    print(
-        f"Backends: classifier={args.classifier_backend}, perplexity={args.perplexity_backend}"
-    )
+    print(f"Backends: classifier={args.classifier_backend}, perplexity={args.perplexity_backend}")
     print(f"Fixtures: {len(fixtures)} total ({attacks} attacks, {benign} benign)")
     print(f"Detection threshold: {threshold:.2f}")
     print(f"Scoring time: {elapsed:.1f}s")

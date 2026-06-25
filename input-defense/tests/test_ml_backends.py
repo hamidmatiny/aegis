@@ -13,7 +13,10 @@ pytestmark = pytest.mark.skipif(
 
 
 def _ml_service():
-    from aegis_input_defense.detectors.registry import build_classifier_backend, build_detector_registry
+    from aegis_input_defense.detectors.registry import (
+        build_classifier_backend,
+        build_detector_registry,
+    )
     from aegis_input_defense.service import InputDefenseService
 
     return InputDefenseService(

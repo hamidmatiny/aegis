@@ -7,7 +7,7 @@ import time
 from aegis_output_defense.detectors.base import Detector, DetectorContext
 from aegis_output_defense.detectors.judge.backend import JudgeBackend
 from aegis_output_defense.detectors.judge.stub_backend import StubJudgeBackend
-from aegis_output_defense.models import DetectorResult
+from aegis_output_defense.models import DetectorResult, JudgeVote
 
 
 class JudgeDetector(Detector):
@@ -38,11 +38,13 @@ class JudgeDetector(Detector):
         *,
         fused_score: float,
         context: DetectorContext | None = None,
-    ) -> tuple[DetectorResult, list]:
+    ) -> tuple[DetectorResult, list[JudgeVote]]:
         from aegis_output_defense.detectors.judge.backend import JudgeEnsembleResult
 
         start = time.perf_counter()
-        ensemble: JudgeEnsembleResult = await self._backend.evaluate(content, fused_score=fused_score)
+        ensemble: JudgeEnsembleResult = await self._backend.evaluate(
+            content, fused_score=fused_score
+        )
         latency = int((time.perf_counter() - start) * 1000)
         result = DetectorResult(
             detector_id=self.detector_id,

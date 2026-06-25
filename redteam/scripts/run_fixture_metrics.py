@@ -6,7 +6,12 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from aegis_redteam.metrics import compute_metrics, format_category_table, format_metrics_table, load_fixtures
+from aegis_redteam.metrics import (
+    compute_metrics,
+    format_category_table,
+    format_metrics_table,
+    load_fixtures,
+)
 from aegis_redteam.models import RunCampaignRequest
 from aegis_redteam.probe.client import DefenseClient
 from aegis_redteam.service import RedTeamService
@@ -31,10 +36,14 @@ async def main() -> int:
     report = result.report
     metrics = compute_metrics(report.results, threshold=report.threshold)
 
+    strategy_count = len({r.strategy for r in report.results})
     print("AEGIS Red Team — Fixture Bypass Report")
-    print(f"Fixtures: {len(attacks)} attacks × {len({r.strategy for r in report.results})} strategies")
+    print(f"Fixtures: {len(attacks)} attacks × {strategy_count} strategies")
     print(f"Detection threshold: {report.threshold:.2f}")
-    print(f"Overall bypass rate: {report.bypass_rate:.1%} ({report.bypass_count}/{report.total_probes})")
+    print(
+        f"Overall bypass rate: {report.bypass_rate:.1%} "
+        f"({report.bypass_count}/{report.total_probes})"
+    )
     print(f"Patterns stored: {result.patterns_stored}")
     print()
     print("-- By Target & Strategy --")

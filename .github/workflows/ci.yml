@@ -5,10 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   GO_VERSION: "1.22"
   PYTHON_VERSION: "3.12"
+  # Fast CI: never download ~1GB ML weights on every PR.
+  AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: stub
+  AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: stub
 
 jobs:
   proto:
@@ -30,13 +34,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install -g ajv-cli
       - name: Validate schemas
         run: |
-          for f in shared/jsonschema/v1/*.json; do
-            ajv validate -s "$f" --spec=draft2020 2>/dev/null || \
-              ajv validate -s "$f" --spec=draft7 || exit 1
-          done
+          npm install --no-save ajv@8 ajv-formats
+          node scripts/validate-jsonschemas.mjs
 
   go:
     name: Go lint & test
@@ -80,6 +81,20 @@ jobs:
         run: make lint-python
       - name: Test
         run: make test-python
+
+  ml-smoke:
+    name: Input-defense ML smoke (manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ML extras
+        run: pip install -e "./input-defense[ml,dev]"
+      - name: Run real-model smoke tests
+        run: cd input-defense && pytest tests/test_ml_backends.py -s
 
   integration:
     name: Integration smoke tests

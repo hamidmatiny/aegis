@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 
 from aegis_redteam import __version__
-from aegis_redteam.models import ProbeRequest, RunCampaignRequest
+from aegis_redteam.models import BypassPattern, ProbeRequest, RunCampaignRequest, StrategyInfo
 from aegis_redteam.probe.client import DefenseClient
 from aegis_redteam.service import RedTeamService
 from aegis_redteam.settings import settings
@@ -57,17 +58,17 @@ async def ready() -> dict[str, str]:
 
 
 @app.get("/v1/strategies")
-async def list_strategies() -> dict[str, list]:
+async def list_strategies() -> dict[str, list[StrategyInfo]]:
     return {"strategies": get_service().list_strategies()}
 
 
 @app.get("/v1/patterns")
-async def list_patterns() -> dict[str, list]:
+async def list_patterns() -> dict[str, list[BypassPattern]]:
     return {"patterns": get_service().list_patterns()}
 
 
 @app.post("/v1/probe")
-async def probe(body: ProbeRequest) -> dict:
+async def probe(body: ProbeRequest) -> dict[str, Any]:
     try:
         return (await get_service().probe(body)).model_dump()
     except KeyError as exc:
@@ -75,7 +76,7 @@ async def probe(body: ProbeRequest) -> dict:
 
 
 @app.post("/v1/campaigns/run")
-async def run_campaign(body: RunCampaignRequest) -> dict:
+async def run_campaign(body: RunCampaignRequest) -> dict[str, Any]:
     try:
         return (await get_service().run_campaign(body)).model_dump()
     except KeyError as exc:
@@ -83,12 +84,12 @@ async def run_campaign(body: RunCampaignRequest) -> dict:
 
 
 @app.get("/v1/campaigns")
-async def list_campaigns() -> dict:
+async def list_campaigns() -> dict[str, Any]:
     return {"campaigns": [c.model_dump() for c in get_service().list_campaigns()]}
 
 
 @app.get("/v1/campaigns/{campaign_id}")
-async def get_campaign(campaign_id: str) -> dict:
+async def get_campaign(campaign_id: str) -> dict[str, Any]:
     try:
         return get_service().get_campaign(campaign_id).model_dump()
     except KeyError as exc:

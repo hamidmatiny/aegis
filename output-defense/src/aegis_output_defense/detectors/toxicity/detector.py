@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import time
 
 from aegis_output_defense.detectors.base import Detector, DetectorContext

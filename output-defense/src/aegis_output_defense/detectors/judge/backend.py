@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from aegis_output_defense.models import JudgeVote, VerdictAction
+from aegis_output_defense.models import JudgeVote
 
 
 @dataclass
@@ -19,9 +19,7 @@ class JudgeEnsembleResult:
 class JudgeBackend(ABC):
     @property
     @abstractmethod
-    def model_id(self) -> str:
-        ...
+    def model_id(self) -> str: ...
 
     @abstractmethod
-    async def evaluate(self, content: str, *, fused_score: float) -> JudgeEnsembleResult:
-        ...
+    async def evaluate(self, content: str, *, fused_score: float) -> JudgeEnsembleResult: ...

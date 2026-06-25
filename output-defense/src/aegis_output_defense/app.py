@@ -6,7 +6,12 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 
 from aegis_output_defense import __version__
 from aegis_output_defense.audit_client import AuditClient
-from aegis_output_defense.models import AnalyzeRequest, AnalyzeResponse, DetectorInfo, DetectorResult
+from aegis_output_defense.models import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    DetectorInfo,
+    DetectorResult,
+)
 from aegis_output_defense.service import OutputDefenseService
 from aegis_output_defense.settings import settings
 

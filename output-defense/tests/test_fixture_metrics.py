@@ -33,9 +33,7 @@ async def test_fused_fpr_below_ceiling(service: OutputDefenseService, all_fixtur
 
 
 @pytest.mark.asyncio
-async def test_pii_asr_on_leaked_pii_category(
-    service: OutputDefenseService, all_fixtures
-) -> None:
+async def test_pii_asr_on_leaked_pii_category(service: OutputDefenseService, all_fixtures) -> None:
     """PII detector ASR measured on leaked_pii fixtures only (not all attack types)."""
     pii_attacks = [f for f in all_fixtures if f.is_attack and f.category == "leaked_pii"]
     caught = 0

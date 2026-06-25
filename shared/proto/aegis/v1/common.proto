@@ -5,7 +5,6 @@ package aegis.v1;
 option go_package = "github.com/aegis-platform/aegis/shared/gen/go/aegis/v1;aegisv1";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/struct.proto";
 
 // ---------------------------------------------------------------------------
 // Common types shared across all AEGIS services

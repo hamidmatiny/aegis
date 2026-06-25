@@ -20,8 +20,8 @@ def token_sequence_perplexity(text: str, *, model_id: str = PERPLEXITY_MODEL_ID)
     if len(normalized) < 4:
         return 1.0
 
-    import torch
-    import torch.nn.functional as F
+    import torch  # type: ignore[import-not-found]
+    import torch.nn.functional as F  # type: ignore[import-not-found]
 
     bundle = get_perplexity_model(model_id=model_id)
     inputs = bundle.tokenizer(

@@ -19,19 +19,61 @@ _PROBE_TEMPLATE = (
 
 # Patterns indicating the probe would fail (model hijacked by injection)
 _PROBE_FAILURE_SIGNALS: list[tuple[str, re.Pattern[str], float]] = [
-    ("override_near_secret", re.compile(r"ignore.{0,40}(instruction|rule|prompt)", re.I | re.S), 0.90),
+    (
+        "override_near_secret",
+        re.compile(r"ignore.{0,40}(instruction|rule|prompt)", re.I | re.S),
+        0.90,
+    ),
     ("disregard_safety", re.compile(r"disregard.{0,30}(safety|guideline|rule|polic)", re.I), 0.85),
-    ("secret_exfil", re.compile(r"(reveal|show|print|dump|export).{0,30}(secret|token|key|prompt|configuration|tool defin)", re.I), 0.85),
-    ("instruction_after_secret", re.compile(r"repeat.{0,20}(token|secret).{0,40}(instead|but|now|actually)", re.I), 0.80),
-    ("new_directive", re.compile(r"new (instruction|directive|priority).{0,40}(ignore|override|comply|answer)", re.I), 0.85),
-    ("admin_command", re.compile(r"(admin command|platform admin).{0,40}(disable|export|ignore)", re.I), 0.85),
+    (
+        "secret_exfil",
+        re.compile(
+            r"(reveal|show|print|dump|export).{0,30}(secret|token|key|prompt|configuration|tool defin)",
+            re.I,
+        ),
+        0.85,
+    ),
+    (
+        "instruction_after_secret",
+        re.compile(r"repeat.{0,20}(token|secret).{0,40}(instead|but|now|actually)", re.I),
+        0.80,
+    ),
+    (
+        "new_directive",
+        re.compile(
+            r"new (instruction|directive|priority).{0,40}(ignore|override|comply|answer)", re.I
+        ),
+        0.85,
+    ),
+    (
+        "admin_command",
+        re.compile(r"(admin command|platform admin).{0,40}(disable|export|ignore)", re.I),
+        0.85,
+    ),
     ("encoded_override", re.compile(r"(decode|execute).{0,30}(base64|hex|rot13)", re.I), 0.75),
-    ("roleplay_hijack", re.compile(r"(you are now|act as|pretend|you are DAN).{0,40}(DAN|unrestricted|admin|developer|evil)", re.I), 0.80),
+    (
+        "roleplay_hijack",
+        re.compile(
+            r"(you are now|act as|pretend|you are DAN).{0,40}(DAN|unrestricted|admin|developer|evil)",
+            re.I,
+        ),
+        0.80,
+    ),
     ("combine_payload", re.compile(r"combine the phrases.{0,30}execute", re.I), 0.80),
-    ("indirect_override", re.compile(r"(ai_directive|instruction_for_assistant|admin note to ai|system override)", re.I), 0.85),
+    (
+        "indirect_override",
+        re.compile(
+            r"(ai_directive|instruction_for_assistant|admin note to ai|system override)", re.I
+        ),
+        0.85,
+    ),
     ("delimiter_escape", re.compile(r"```\s*(end\s+)?system\s*```", re.I), 0.80),
     ("developer_mode", re.compile(r"developer mode", re.I), 0.75),
-    ("hypothetical_bypass", re.compile(r"hypothetically.{0,50}(no restrictions|extract tokens)", re.I), 0.75),
+    (
+        "hypothetical_bypass",
+        re.compile(r"hypothetically.{0,50}(no restrictions|extract tokens)", re.I),
+        0.75,
+    ),
 ]
 
 
@@ -52,7 +94,9 @@ def _simulate_probe_response(user_text: str) -> tuple[bool, list[str]]:
 
     # High density of imperative verbs near start suggests hijack
     first_200 = user_text[:200]
-    imperatives = len(re.findall(r"\b(ignore|disregard|override|execute|dump|reveal|disable)\b", first_200, re.I))
+    imperatives = len(
+        re.findall(r"\b(ignore|disregard|override|execute|dump|reveal|disable)\b", first_200, re.I)
+    )
     if imperatives >= 2:
         failures.append("imperative_cluster")
         max_weight = max(max_weight, 0.70)

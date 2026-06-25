@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 
 import pytest
+from aegis_redteam.mutation.strategies import apply_strategy
 
 from aegis_output_defense.models import VerdictAction
 from aegis_output_defense.normalize import (
@@ -13,7 +14,6 @@ from aegis_output_defense.normalize import (
     strip_zero_width,
 )
 from aegis_output_defense.service import OutputDefenseService
-from aegis_redteam.mutation.strategies import apply_strategy
 
 
 @pytest.mark.parametrize(

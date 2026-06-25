@@ -6,7 +6,7 @@ from aegis_output_defense.detectors.base import Detector, DetectorContext
 from aegis_output_defense.detectors.judge.detector import JudgeDetector
 from aegis_output_defense.detectors.registry import ALWAYS_RUN_IDS, build_detector_registry
 from aegis_output_defense.fusion import build_verdict, fuse_scores, is_ambiguous_score
-from aegis_output_defense.models import DetectorInfo, DetectorResult, OutputVerdict
+from aegis_output_defense.models import DetectorInfo, DetectorResult, JudgeVote, OutputVerdict
 from aegis_output_defense.normalize import expand_scan_surfaces
 
 
@@ -44,7 +44,9 @@ class OutputDefenseService:
         detector = self._get_detector(detector_id)
         ctx = DetectorContext(original_prompt=original_prompt, request_id=request_id)
         if isinstance(detector, JudgeDetector):
-            result, _ = await detector.analyze_with_votes(content, fused_score=fused_score, context=ctx)
+            result, _ = await detector.analyze_with_votes(
+                content, fused_score=fused_score, context=ctx
+            )
             return result
         return await self._analyze_on_surfaces(detector, content, ctx)
 
@@ -96,7 +98,7 @@ class OutputDefenseService:
                 results.append(best)
 
         pre_fused = fuse_scores(results)
-        judge_votes = []
+        judge_votes: list[JudgeVote] = []
         judge_boosted: float | None = None
 
         run_judge = invoke_judge if invoke_judge is not None else is_ambiguous_score(pre_fused)

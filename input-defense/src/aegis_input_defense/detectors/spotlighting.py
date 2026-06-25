@@ -44,7 +44,9 @@ def _detect_untrusted_segments(text: str) -> list[tuple[str, str]]:
             segments.append((source, segment))
 
     # If no explicit markers but text looks like injected doc block, flag whole body
-    if not segments and re.search(r"(admin note to ai|ai_directive|instruction_for_assistant)", text, re.I):
+    if not segments and re.search(
+        r"(admin note to ai|ai_directive|instruction_for_assistant)", text, re.I
+    ):
         segments.append(("embedded_directive", text))
 
     return segments

@@ -11,20 +11,60 @@ _FEATURE_WEIGHTS: list[tuple[str, re.Pattern[str], float]] = [
     ("inj_override", re.compile(r"ignore.{0,40}instruction", re.I), 0.48),
     ("inj_disregard", re.compile(r"disregard.{0,30}(safety|guideline|rule|polic)", re.I), 0.45),
     ("inj_jailbreak", re.compile(r"\b(DAN|jailbreak|do anything now)\b", re.I), 0.45),
-    ("inj_exfil", re.compile(r"(reveal|dump|print|export|show).{0,30}(secret|key|prompt|password|configuration|tool defin)", re.I), 0.42),
-    ("inj_roleplay", re.compile(r"(pretend|act as|you are now|respond as).{0,40}(unrestricted|evil|admin|developer|DAN|no content policy)", re.I), 0.40),
-    ("inj_indirect", re.compile(r"(ai_directive|instruction_for_assistant|admin note to ai|system override)", re.I), 0.42),
-    ("inj_encoding", re.compile(r"(base64|rot13|hex.{0,10}decode|zero-width|homoglyph|unicode)", re.I), 0.35),
-    ("inj_multiturn", re.compile(r"\[turn \d+\].{0,60}(ignore|admin|combine|hypothetical|disable|export)", re.I | re.S), 0.38),
+    (
+        "inj_exfil",
+        re.compile(
+            r"(reveal|dump|print|export|show).{0,30}(secret|key|prompt|password|configuration|tool defin)",
+            re.I,
+        ),
+        0.42,
+    ),
+    (
+        "inj_roleplay",
+        re.compile(
+            r"(pretend|act as|you are now|respond as).{0,40}(unrestricted|evil|admin|developer|DAN|no content policy)",
+            re.I,
+        ),
+        0.40,
+    ),
+    (
+        "inj_indirect",
+        re.compile(
+            r"(ai_directive|instruction_for_assistant|admin note to ai|system override)", re.I
+        ),
+        0.42,
+    ),
+    (
+        "inj_encoding",
+        re.compile(r"(base64|rot13|hex.{0,10}decode|zero-width|homoglyph|unicode)", re.I),
+        0.35,
+    ),
+    (
+        "inj_multiturn",
+        re.compile(
+            r"\[turn \d+\].{0,60}(ignore|admin|combine|hypothetical|disable|export)", re.I | re.S
+        ),
+        0.38,
+    ),
     ("inj_simulate", re.compile(r"simulate.{0,25}(shell|environment)", re.I), 0.38),
-    ("inj_new_instruction", re.compile(r"new instruction.{0,30}(ignore|override|always answer|pwned)", re.I), 0.40),
+    (
+        "inj_new_instruction",
+        re.compile(r"new instruction.{0,30}(ignore|override|always answer|pwned)", re.I),
+        0.40,
+    ),
     ("inj_delimiter", re.compile(r"```\s*(end\s+)?system\s*```", re.I), 0.38),
     ("inj_developer_mode", re.compile(r"developer mode", re.I), 0.35),
 ]
 
 # Benign signals that reduce score (legitimate security discussion, etc.)
 _BENIGN_WEIGHTS: list[tuple[str, re.Pattern[str], float]] = [
-    ("ben_security_study", re.compile(r"(studying|university course|explain how).{0,40}(defense|guardrail|sanitization)", re.I), -0.25),
+    (
+        "ben_security_study",
+        re.compile(
+            r"(studying|university course|explain how).{0,40}(defense|guardrail|sanitization)", re.I
+        ),
+        -0.25,
+    ),
     ("ben_owasp", re.compile(r"OWASP.{0,30}(LLM|top 10)", re.I), -0.20),
     ("ben_coding", re.compile(r"(python|javascript|react|function|code example)", re.I), -0.15),
     ("ben_creative", re.compile(r"(poem|itinerary|weather|email draft)", re.I), -0.15),

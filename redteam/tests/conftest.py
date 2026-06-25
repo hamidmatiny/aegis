@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import httpx
 import pytest
 
@@ -11,6 +9,7 @@ from aegis_redteam.metrics import load_fixtures
 from aegis_redteam.models import AttackFixture
 from aegis_redteam.probe.client import DefenseClient
 from aegis_redteam.service import RedTeamService
+
 
 @pytest.fixture(scope="session")
 def all_fixtures() -> list[AttackFixture]:

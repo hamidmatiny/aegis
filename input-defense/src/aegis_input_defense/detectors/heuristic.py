@@ -14,7 +14,9 @@ from aegis_input_defense.models import DetectorResult
 _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     (
         "ignore_instructions",
-        re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)", re.I),
+        re.compile(
+            r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)", re.I
+        ),
         0.85,
         "Direct instruction override detected",
     ),
@@ -69,7 +71,10 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     ),
     (
         "admin_impersonation",
-        re.compile(r"(platform admin|admin command|i am (the )?admin).{0,50}(disable|export|override)", re.I),
+        re.compile(
+            r"(platform admin|admin command|i am (the )?admin).{0,50}(disable|export|override)",
+            re.I,
+        ),
         0.80,
         "Authority impersonation with override",
     ),
@@ -91,7 +96,9 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     ),
     (
         "tool_injection",
-        re.compile(r"\[tool result[^\]]*\].{0,100}(instruction|override|secret|email)", re.I | re.S),
+        re.compile(
+            r"\[tool result[^\]]*\].{0,100}(instruction|override|secret|email)", re.I | re.S
+        ),
         0.80,
         "Injection smuggled via tool output framing",
     ),
@@ -146,7 +153,9 @@ class HeuristicDetector(Detector):
         # Base64 decode-and-rescan
         for blob in _B64_BLOB.findall(text):
             try:
-                decoded = base64.b64decode(blob + "==", validate=False).decode("utf-8", errors="ignore")
+                decoded = base64.b64decode(blob + "==", validate=False).decode(
+                    "utf-8", errors="ignore"
+                )
                 if decoded and decoded != blob:
                     for name, pattern, weight, _reason in _INJECTION_PATTERNS:
                         if pattern.search(decoded):

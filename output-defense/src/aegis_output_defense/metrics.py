@@ -165,7 +165,8 @@ def format_category_metrics_table(reports: list[CategoryMetricsReport]) -> str:
             if report is None:
                 row.append("—")
             else:
-                row.append(f"{report.attack_caught}/{report.attack_total} ({report.attack_success_rate:.0%})")
+                rate = report.attack_success_rate
+                row.append(f"{report.attack_caught}/{report.attack_total} ({rate:.0%})")
         rows.append(row)
     return _render_table(headers, rows)
 

@@ -16,7 +16,11 @@ _JUDGE_FRAMINGS = (
 _UNSAFE_HINTS: list[tuple[str, re.Pattern[str], float]] = [
     ("pii", re.compile(r"(?i)(api[_-]?key|sk-live|password\s*[:=]|AKIA[0-9A-Z]{16})"), 0.9),
     ("toxic", re.compile(r"(?i)(kill yourself|weapon recipe|malware|hate speech)"), 0.85),
-    ("jailbreak", re.compile(r"(?i)(unrestricted ai|jailbreak successful|developer mode enabled)"), 0.88),
+    (
+        "jailbreak",
+        re.compile(r"(?i)(unrestricted ai|jailbreak successful|developer mode enabled)"),
+        0.88,
+    ),
     ("incoherent", re.compile(r"(?i)(answer: yes\. answer: no|capital of france is berlin)"), 0.75),
 ]
 
@@ -39,8 +43,10 @@ class StubJudgeBackend(JudgeBackend):
                 if pattern.search(content):
                     score = max(score, boost)
                     reasons.append(name)
-            vote_action = VerdictAction.BLOCK if score >= 0.65 else (
-                VerdictAction.ESCALATE if score >= 0.45 else VerdictAction.ALLOW
+            vote_action = (
+                VerdictAction.BLOCK
+                if score >= 0.65
+                else (VerdictAction.ESCALATE if score >= 0.45 else VerdictAction.ALLOW)
             )
             if vote_action in (VerdictAction.BLOCK, VerdictAction.ESCALATE):
                 unsafe_votes += 1

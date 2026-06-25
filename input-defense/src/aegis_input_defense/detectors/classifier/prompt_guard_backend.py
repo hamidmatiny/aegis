@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from aegis_input_defense.detectors.classifier.backend import ClassifierBackend, ClassifierPrediction
 from aegis_input_defense.ml.loader import PROMPT_GUARD_MODEL_ID, get_prompt_guard_model
@@ -11,7 +12,7 @@ _MAX_CHARS = 2048
 _CHUNK_CHARS = 1800  # conservative char budget for 512-token windows
 
 
-def _injection_class_index(id2label: dict[int | str, str]) -> int:
+def _injection_class_index(id2label: dict[int, str]) -> int:
     """Resolve which logit index corresponds to injection/malicious."""
     normalized = {int(k): str(v).upper() for k, v in id2label.items()}
     injection_keywords = ("INJECTION", "MALICIOUS", "JAILBREAK", "ATTACK", "UNSAFE")
@@ -33,8 +34,8 @@ def _injection_class_index(id2label: dict[int | str, str]) -> int:
     return max(normalized)
 
 
-def _segment_probability(model, tokenizer, segment: str) -> tuple[float, str]:
-    import torch
+def _segment_probability(model: Any, tokenizer: Any, segment: str) -> tuple[float, str]:
+    import torch  # type: ignore[import-not-found]
 
     inputs = tokenizer(
         segment,
@@ -81,10 +82,7 @@ def _predict_sync(text: str, *, model_id: str) -> ClassifierPrediction:
         label = "benign"
 
     if len(segments) == 1:
-        reasoning = (
-            f"Prompt Guard: {label} probability {probability:.3f} "
-            f"(model={bundle.model_id})"
-        )
+        reasoning = f"Prompt Guard: {label} probability {probability:.3f} (model={bundle.model_id})"
     else:
         reasoning = (
             f"Prompt Guard: max segment probability {probability:.3f} across "

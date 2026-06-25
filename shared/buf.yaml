@@ -4,9 +4,14 @@ modules:
     name: buf.build/aegis/schemas
 lint:
   use:
-    - DEFAULT
+    - STANDARD
   except:
     - PACKAGE_VERSION_SUFFIX
+    # Service-specific RPC/message names are intentional; full STANDARD RPC naming
+    # would require breaking renames across all generated clients.
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
 breaking:
   use:
     - FILE

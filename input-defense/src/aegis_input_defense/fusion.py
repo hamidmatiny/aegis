@@ -71,14 +71,15 @@ def build_verdict(
     action = select_action(fused, has_transform)
     escalation_reason: str | None = None
     if action == VerdictAction.ESCALATE:
-        top = sorted(scoring, key=lambda r: r.score, reverse=True)[:2]
-        escalation_reason = (
-            f"Ambiguous fused score {fused:.2f}; top signals: "
-            + ", ".join(f"{r.detector_id}={r.score:.2f}" for r in top)
+        top_scorers = sorted(scoring, key=lambda r: r.score, reverse=True)[:2]
+        escalation_reason = f"Ambiguous fused score {fused:.2f}; top signals: " + ", ".join(
+            f"{r.detector_id}={r.score:.2f}" for r in top_scorers
         )
     elif action == VerdictAction.BLOCK:
-        top = max(scoring, key=lambda r: r.score)
-        escalation_reason = f"Blocked: fused={fused:.2f}, primary={top.detector_id}={top.score:.2f}"
+        primary = sorted(scoring, key=lambda r: r.score, reverse=True)[0]
+        escalation_reason = (
+            f"Blocked: fused={fused:.2f}, primary={primary.detector_id}={primary.score:.2f}"
+        )
 
     detector_scores = [
         DetectorScore(

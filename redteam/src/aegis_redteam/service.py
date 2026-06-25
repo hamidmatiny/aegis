@@ -20,7 +20,11 @@ from aegis_redteam.models import (
     RunCampaignResponse,
     StrategyInfo,
 )
-from aegis_redteam.mutation.strategies import apply_strategy, list_strategies, normalize_strategy_ids
+from aegis_redteam.mutation.strategies import (
+    apply_strategy,
+    list_strategies,
+    normalize_strategy_ids,
+)
 from aegis_redteam.probe.bypass import is_bypass
 from aegis_redteam.probe.client import DefenseClient
 from aegis_redteam.store.memory import MemoryPatternStore

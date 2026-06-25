@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from aegis_input_defense.detectors.base import Detector, DetectorContext
 from aegis_input_defense.detectors.perplexity_lm import (
@@ -56,7 +56,10 @@ def _structural_boosts(text: str) -> tuple[float, float]:
         structural_boost += 0.25
     if re.search(r"[\u0370-\u03ff\u0400-\u04ff]", text):
         structural_boost += 0.20
-    if len(re.findall(r"\b(ignore|disregard|override|execute|dump|reveal|disable)\b", text, re.I)) >= 2:
+    if (
+        len(re.findall(r"\b(ignore|disregard|override|execute|dump|reveal|disable)\b", text, re.I))
+        >= 2
+    ):
         structural_boost += 0.20
 
     return special_boost, structural_boost

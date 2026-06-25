@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -52,8 +53,8 @@ def build_campaign_report(
     results: list[ProbeResult],
     *,
     threshold: float,
-    started_at,
-    completed_at,
+    started_at: datetime,
+    completed_at: datetime,
 ) -> CampaignReport:
     bypasses = [r for r in results if r.bypassed]
     by_target: dict[str, TargetMetrics] = {}
@@ -79,13 +80,13 @@ def build_campaign_report(
         ),
     )
     by_category: list[CategoryBypassMetrics] = []
-    for category, target in categories:
-        rows = category_map[(category, target)]
+    for category, target_name in categories:
+        rows = category_map[(category, target_name)]
         bypass_count = sum(1 for r in rows if r.bypassed)
         by_category.append(
             CategoryBypassMetrics(
                 category=category,
-                target=target,
+                target=target_name,
                 probes=len(rows),
                 bypasses=bypass_count,
                 bypass_rate=bypass_count / len(rows) if rows else 0.0,
