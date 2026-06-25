@@ -159,7 +159,7 @@ func (p *Gemini) buildPayload(req models.ChatRequest) map[string]any {
 			role = "user"
 		}
 		contents = append(contents, map[string]any{
-			"role": role,
+			"role":  role,
 			"parts": []map[string]string{{"text": m.Content}},
 		})
 	}

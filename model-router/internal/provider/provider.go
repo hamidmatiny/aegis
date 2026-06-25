@@ -25,11 +25,11 @@ type RouteTarget struct {
 
 // ProviderConfig holds connection settings for a single upstream.
 type ProviderConfig struct {
-	ID         string
-	BaseURL    string
-	APIKey     string
-	APIKeyEnv  string
-	Enabled    bool
+	ID           string
+	BaseURL      string
+	APIKey       string
+	APIKeyEnv    string
+	Enabled      bool
 	DefaultModel string
 	ExtraHeaders map[string]string
 }

@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aegis-platform/aegis/audit/internal/models"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/aegis-platform/aegis/audit/internal/models"
 )
 
 type PostgresStore struct {

@@ -44,9 +44,9 @@ func TestHTTPVerifyAfterPostgresRoundTrip(t *testing.T) {
 	defer srv.Close()
 
 	payload := models.WriteReceiptRequest{
-		EventType: models.EventInputDefense,
-		TenantID:  "default",
-		Trace:     &models.TraceContext{TraceID: "http-pg-roundtrip", RequestID: "req-1"},
+		EventType:    models.EventInputDefense,
+		TenantID:     "default",
+		Trace:        &models.TraceContext{TraceID: "http-pg-roundtrip", RequestID: "req-1"},
 		InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.95}`),
 	}
 	body, _ := json.Marshal(payload)

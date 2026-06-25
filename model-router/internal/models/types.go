@@ -28,15 +28,15 @@ type Usage struct {
 
 // ChatResponse is the unified non-streaming completion response.
 type ChatResponse struct {
-	ID               string    `json:"id"`
-	Provider         string    `json:"provider"`
-	Model            string    `json:"model"`
-	Content          string    `json:"content"`
-	FinishReason     string    `json:"finish_reason,omitempty"`
-	Usage            Usage     `json:"usage,omitempty"`
-	FallbackUsed     bool      `json:"fallback_used,omitempty"`
-	AttemptedProviders []string `json:"attempted_providers,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	Provider           string    `json:"provider"`
+	Model              string    `json:"model"`
+	Content            string    `json:"content"`
+	FinishReason       string    `json:"finish_reason,omitempty"`
+	Usage              Usage     `json:"usage,omitempty"`
+	FallbackUsed       bool      `json:"fallback_used,omitempty"`
+	AttemptedProviders []string  `json:"attempted_providers,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 // StreamChunk is a unified streaming delta.
@@ -51,13 +51,13 @@ type StreamChunk struct {
 
 // ProviderInfo describes a registered upstream provider.
 type ProviderInfo struct {
-	ID            string           `json:"id"`
-	Enabled       bool             `json:"enabled"`
-	BaseURL       string           `json:"base_url,omitempty"`
-	DefaultModel  string           `json:"default_model,omitempty"`
-	Healthy       bool             `json:"healthy"`
-	ModelStatus   string           `json:"model_status"`
-	ModelError    *ModelErrorDetail `json:"model_error,omitempty"`
+	ID           string            `json:"id"`
+	Enabled      bool              `json:"enabled"`
+	BaseURL      string            `json:"base_url,omitempty"`
+	DefaultModel string            `json:"default_model,omitempty"`
+	Healthy      bool              `json:"healthy"`
+	ModelStatus  string            `json:"model_status"`
+	ModelError   *ModelErrorDetail `json:"model_error,omitempty"`
 }
 
 // ModelErrorDetail is exposed when a configured model ID is rejected by upstream.

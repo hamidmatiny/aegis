@@ -26,9 +26,9 @@ func TestWriteQueryVerify(t *testing.T) {
 	ctx := context.Background()
 
 	writeResp, err := svc.Write(ctx, models.WriteReceiptRequest{
-		EventType: models.EventInputDefense,
-		TenantID:  "acme",
-		Trace:     &models.TraceContext{TraceID: "t-1"},
+		EventType:    models.EventInputDefense,
+		TenantID:     "acme",
+		Trace:        &models.TraceContext{TraceID: "t-1"},
 		InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.88}`),
 		PolicyPackID: "default",
 	})
@@ -91,9 +91,9 @@ func TestExportJSON(t *testing.T) {
 	svc := newTestService(t)
 	ctx := context.Background()
 	_, err := svc.Write(ctx, models.WriteReceiptRequest{
-		EventType:      models.EventToolGate,
-		TenantID:       "default",
-		ToolDecision:   json.RawMessage(`{"status":"DENIED"}`),
+		EventType:    models.EventToolGate,
+		TenantID:     "default",
+		ToolDecision: json.RawMessage(`{"status":"DENIED"}`),
 	})
 	if err != nil {
 		t.Fatal(err)

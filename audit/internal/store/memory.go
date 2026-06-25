@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aegis-platform/aegis/audit/internal/models"
 	"github.com/google/uuid"
+
+	"github.com/aegis-platform/aegis/audit/internal/models"
 )
 
 var ErrNotFound = errors.New("receipt not found")

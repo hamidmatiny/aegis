@@ -18,9 +18,9 @@ const (
 type Action string
 
 const (
-	ActionAllow          Action = "allow"
-	ActionBlock          Action = "block"
-	ActionTransform      Action = "transform"
+	ActionAllow           Action = "allow"
+	ActionBlock           Action = "block"
+	ActionTransform       Action = "transform"
 	ActionEscalateToJudge Action = "escalate_to_judge"
 )
 
@@ -56,34 +56,34 @@ type InputVerdict struct {
 
 // OutputVerdict placeholder for output-defense integration (Stage 5).
 type OutputVerdict struct {
-	Action         string          `json:"action"`
-	FusedScore     float64         `json:"fused_score"`
-	DetectorScores []DetectorScore `json:"detector_scores,omitempty"`
-	RedactedContent *string        `json:"redacted_content,omitempty"`
+	Action          string          `json:"action"`
+	FusedScore      float64         `json:"fused_score"`
+	DetectorScores  []DetectorScore `json:"detector_scores,omitempty"`
+	RedactedContent *string         `json:"redacted_content,omitempty"`
 }
 
 // ToolArgument placeholder for agent-gate integration (Stage 6).
 type ToolArgument struct {
-	Name                 string `json:"name"`
-	TaintLevel           string `json:"taint_level,omitempty"`
-	ContainsCredentials  bool   `json:"contains_credentials"`
+	Name                string `json:"name"`
+	TaintLevel          string `json:"taint_level,omitempty"`
+	ContainsCredentials bool   `json:"contains_credentials"`
 }
 
 // ToolCallRequest placeholder for agent-gate integration.
 type ToolCallRequest struct {
-	ToolName   string         `json:"tool_name"`
-	RiskLevel  string         `json:"risk_level,omitempty"`
-	Arguments  []ToolArgument `json:"arguments,omitempty"`
+	ToolName  string         `json:"tool_name"`
+	RiskLevel string         `json:"risk_level,omitempty"`
+	Arguments []ToolArgument `json:"arguments,omitempty"`
 }
 
 // PolicyRule is a single CEL rule within a policy pack.
 type PolicyRule struct {
-	ID          string  `yaml:"id" json:"id"`
-	Name        string  `yaml:"name" json:"name"`
-	CEL         string  `yaml:"cel" json:"cel"`
-	Action      Action  `yaml:"action" json:"action"`
-	Enabled     bool    `yaml:"enabled" json:"enabled"`
-	Priority    int     `yaml:"priority,omitempty" json:"priority,omitempty"`
+	ID            string `yaml:"id" json:"id"`
+	Name          string `yaml:"name" json:"name"`
+	CEL           string `yaml:"cel" json:"cel"`
+	Action        Action `yaml:"action" json:"action"`
+	Enabled       bool   `yaml:"enabled" json:"enabled"`
+	Priority      int    `yaml:"priority,omitempty" json:"priority,omitempty"`
 	TransformSpec string `yaml:"transform_spec,omitempty" json:"transform_spec,omitempty"`
 }
 
@@ -115,26 +115,26 @@ type RuleOverride struct {
 
 // PolicyRuleMatch records an evaluated rule outcome for audit.
 type PolicyRuleMatch struct {
-	RuleID         string `json:"rule_id"`
-	RuleName       string `json:"rule_name"`
-	CELExpression  string `json:"cel_expression"`
-	Matched        bool   `json:"matched"`
-	MatchReason    string `json:"match_reason,omitempty"`
+	RuleID        string `json:"rule_id"`
+	RuleName      string `json:"rule_name"`
+	CELExpression string `json:"cel_expression"`
+	Matched       bool   `json:"matched"`
+	MatchReason   string `json:"match_reason,omitempty"`
 }
 
 // PolicyDecision is the evaluation result returned to callers.
 type PolicyDecision struct {
-	Action               Action            `json:"action"`
-	PolicyPackID         string            `json:"policy_pack_id"`
-	PolicyPackVersion    string            `json:"policy_pack_version"`
-	MatchedRules         []PolicyRuleMatch `json:"matched_rules"`
-	BlockReason          string            `json:"block_reason,omitempty"`
-	TransformSpec        string            `json:"transform_spec,omitempty"`
-	Mode                 EvaluationMode    `json:"mode"`
-	ShadowAction         Action            `json:"shadow_action,omitempty"`
-	TenantID             string            `json:"tenant_id,omitempty"`
-	EvaluatedAt          time.Time         `json:"evaluated_at"`
-	EvaluationLatencyMS  int64             `json:"evaluation_latency_ms"`
+	Action              Action            `json:"action"`
+	PolicyPackID        string            `json:"policy_pack_id"`
+	PolicyPackVersion   string            `json:"policy_pack_version"`
+	MatchedRules        []PolicyRuleMatch `json:"matched_rules"`
+	BlockReason         string            `json:"block_reason,omitempty"`
+	TransformSpec       string            `json:"transform_spec,omitempty"`
+	Mode                EvaluationMode    `json:"mode"`
+	ShadowAction        Action            `json:"shadow_action,omitempty"`
+	TenantID            string            `json:"tenant_id,omitempty"`
+	EvaluatedAt         time.Time         `json:"evaluated_at"`
+	EvaluationLatencyMS int64             `json:"evaluation_latency_ms"`
 }
 
 // DryRunRequest evaluates draft policy YAML against a sample verdict without persisting.

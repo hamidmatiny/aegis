@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/aegis-platform/aegis/audit/internal/models"
 	"github.com/aegis-platform/aegis/audit/internal/signer"
 	"github.com/aegis-platform/aegis/audit/internal/store"
-	"github.com/google/uuid"
 )
 
 type Service struct {

@@ -88,9 +88,9 @@ func toolActivation(tenantID string, call models.ToolCallRequest) map[string]any
 	args := make([]map[string]any, len(call.Arguments))
 	for i, a := range call.Arguments {
 		args[i] = map[string]any{
-			"name":                  a.Name,
-			"taint_level":           a.TaintLevel,
-			"contains_credentials":  a.ContainsCredentials,
+			"name":                 a.Name,
+			"taint_level":          a.TaintLevel,
+			"contains_credentials": a.ContainsCredentials,
 		}
 	}
 	return map[string]any{

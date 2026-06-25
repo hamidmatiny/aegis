@@ -15,6 +15,11 @@ linters:
     - goimports
 
 linters-settings:
+  errcheck:
+    exclude-functions:
+      - (io.Closer).Close
+      - (*database/sql.Rows).Close
+      - (*database/sql.DB).Close
   goimports:
     local-prefixes: github.com/aegis-platform/aegis
 

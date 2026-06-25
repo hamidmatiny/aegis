@@ -187,9 +187,7 @@ func mergePacks(base, override models.PolicyPack) models.PolicyPack {
 	result := clonePack(base)
 	result.TenantID = override.TenantID
 
-	if override.Extends != "" && override.Extends != base.ID {
-		// Tenant file may declare a different base; caller resolved base already.
-	}
+	// override.Extends is resolved by the caller before merge; no field copy needed here.
 
 	// Apply explicit rule disable/enable overrides from tenant pack.
 	if len(override.Overrides) > 0 {

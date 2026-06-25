@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/aegis-platform/aegis/audit/internal/models"
 	"github.com/aegis-platform/aegis/audit/internal/signer"
 	"github.com/aegis-platform/aegis/audit/internal/store"
-	"github.com/google/uuid"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const testDevSigningSeed = "YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE="

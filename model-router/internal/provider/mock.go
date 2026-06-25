@@ -28,13 +28,13 @@ func (p *Mock) Ping(_ context.Context) error { return nil }
 func (p *Mock) Chat(_ context.Context, req models.ChatRequest) (*models.ChatResponse, error) {
 	content := p.echo(req)
 	return &models.ChatResponse{
-		ID:       "mock-" + fmt.Sprintf("%d", time.Now().UnixNano()),
-		Provider: p.cfg.ID,
-		Model:    pickModel(req, p.cfg.DefaultModel),
-		Content:  content,
+		ID:           "mock-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Provider:     p.cfg.ID,
+		Model:        pickModel(req, p.cfg.DefaultModel),
+		Content:      content,
 		FinishReason: "stop",
-		Usage:    models.Usage{PromptTokens: 10, CompletionTokens: len(content), TotalTokens: 10 + len(content)},
-		CreatedAt: time.Now().UTC(),
+		Usage:        models.Usage{PromptTokens: 10, CompletionTokens: len(content), TotalTokens: 10 + len(content)},
+		CreatedAt:    time.Now().UTC(),
 	}, nil
 }
 

@@ -22,9 +22,9 @@ func TestQueryByTraceID(t *testing.T) {
 
 	trace := &models.TraceContext{TraceID: "trace-xyz", RequestID: "req-1"}
 	_, err = svc.Write(ctx, models.WriteReceiptRequest{
-		EventType: models.EventInputDefense,
-		TenantID:  "default",
-		Trace:     trace,
+		EventType:    models.EventInputDefense,
+		TenantID:     "default",
+		Trace:        trace,
 		InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.9}`),
 	})
 	if err != nil {

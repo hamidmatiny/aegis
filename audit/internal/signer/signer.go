@@ -95,18 +95,18 @@ func (s *Signer) VerifyReceipt(receipt *models.Receipt) (bool, string) {
 
 func canonicalBody(receipt *models.Receipt) ([]byte, error) {
 	type signable struct {
-		ReceiptID         string                `json:"receipt_id"`
-		EventType         string                `json:"event_type"`
-		TenantID          string                `json:"tenant_id"`
-		Trace             *models.TraceContext  `json:"trace,omitempty"`
-		InputVerdict      json.RawMessage       `json:"input_verdict,omitempty"`
-		PolicyDecision    json.RawMessage       `json:"policy_decision,omitempty"`
-		OutputVerdict     json.RawMessage       `json:"output_verdict,omitempty"`
-		ToolDecision      json.RawMessage       `json:"tool_decision,omitempty"`
-		PolicyPackID      string                `json:"policy_pack_id,omitempty"`
-		PolicyPackVersion string                `json:"policy_pack_version,omitempty"`
-		Metadata          json.RawMessage       `json:"metadata,omitempty"`
-		CreatedAt         string                `json:"created_at"`
+		ReceiptID         string               `json:"receipt_id"`
+		EventType         string               `json:"event_type"`
+		TenantID          string               `json:"tenant_id"`
+		Trace             *models.TraceContext `json:"trace,omitempty"`
+		InputVerdict      json.RawMessage      `json:"input_verdict,omitempty"`
+		PolicyDecision    json.RawMessage      `json:"policy_decision,omitempty"`
+		OutputVerdict     json.RawMessage      `json:"output_verdict,omitempty"`
+		ToolDecision      json.RawMessage      `json:"tool_decision,omitempty"`
+		PolicyPackID      string               `json:"policy_pack_id,omitempty"`
+		PolicyPackVersion string               `json:"policy_pack_version,omitempty"`
+		Metadata          json.RawMessage      `json:"metadata,omitempty"`
+		CreatedAt         string               `json:"created_at"`
 	}
 	body := signable{
 		ReceiptID:         receipt.ReceiptID,

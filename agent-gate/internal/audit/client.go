@@ -61,9 +61,9 @@ func (c *Client) EmitToolGate(
 		return
 	}
 	payload := map[string]any{
-		"event_type":     "TOOL_GATE",
-		"tenant_id":      tenantID,
-		"tool_decision":  json.RawMessage(toolJSON),
+		"event_type":    "TOOL_GATE",
+		"tenant_id":     tenantID,
+		"tool_decision": json.RawMessage(toolJSON),
 	}
 	if trace != nil && (trace.TraceID != "" || trace.RequestID != "") {
 		payload["trace"] = trace

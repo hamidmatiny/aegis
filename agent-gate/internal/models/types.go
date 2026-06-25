@@ -6,11 +6,11 @@ import "time"
 type ToolCallStatus string
 
 const (
-	StatusPending                ToolCallStatus = "PENDING"
-	StatusApproved               ToolCallStatus = "APPROVED"
-	StatusDenied                 ToolCallStatus = "DENIED"
-	StatusAwaitingHumanApproval  ToolCallStatus = "AWAITING_HUMAN_APPROVAL"
-	StatusExecuted               ToolCallStatus = "EXECUTED"
+	StatusPending               ToolCallStatus = "PENDING"
+	StatusApproved              ToolCallStatus = "APPROVED"
+	StatusDenied                ToolCallStatus = "DENIED"
+	StatusAwaitingHumanApproval ToolCallStatus = "AWAITING_HUMAN_APPROVAL"
+	StatusExecuted              ToolCallStatus = "EXECUTED"
 )
 
 // Taint levels for tool arguments.
@@ -49,13 +49,13 @@ type TaintLabel struct {
 // ToolCallRequest is an intercepted agent tool/MCP call.
 type ToolCallRequest struct {
 	Trace       map[string]string `json:"trace,omitempty"`
-	ToolName    string              `json:"tool_name"`
-	ToolID      string              `json:"tool_id,omitempty"`
-	Arguments   []ToolArgument      `json:"arguments"`
-	RiskLevel   string              `json:"risk_level,omitempty"`
-	TaintLabels []TaintLabel        `json:"taint_labels,omitempty"`
-	AgentID     string              `json:"agent_id,omitempty"`
-	RequestedAt *time.Time          `json:"requested_at,omitempty"`
+	ToolName    string            `json:"tool_name"`
+	ToolID      string            `json:"tool_id,omitempty"`
+	Arguments   []ToolArgument    `json:"arguments"`
+	RiskLevel   string            `json:"risk_level,omitempty"`
+	TaintLabels []TaintLabel      `json:"taint_labels,omitempty"`
+	AgentID     string            `json:"agent_id,omitempty"`
+	RequestedAt *time.Time        `json:"requested_at,omitempty"`
 }
 
 // ToolCallDecision is the gate outcome for a tool call.
@@ -101,14 +101,14 @@ type ApprovalAction struct {
 
 // ApprovalRequest tracks a pending human approval.
 type ApprovalRequest struct {
-	ApprovalID  string          `json:"approval_id"`
-	ToolCall    ToolCallRequest `json:"tool_call"`
-	TenantID    string          `json:"tenant_id"`
-	CreatedAt   time.Time       `json:"created_at"`
-	ExpiresAt   time.Time       `json:"expires_at"`
-	Status      ToolCallStatus  `json:"status"`
-	ReviewerID  string          `json:"reviewer_id,omitempty"`
-	ReviewComment string        `json:"review_comment,omitempty"`
+	ApprovalID    string          `json:"approval_id"`
+	ToolCall      ToolCallRequest `json:"tool_call"`
+	TenantID      string          `json:"tenant_id"`
+	CreatedAt     time.Time       `json:"created_at"`
+	ExpiresAt     time.Time       `json:"expires_at"`
+	Status        ToolCallStatus  `json:"status"`
+	ReviewerID    string          `json:"reviewer_id,omitempty"`
+	ReviewComment string          `json:"review_comment,omitempty"`
 }
 
 // PolicyEvaluateToolRequest is sent to policy-engine.

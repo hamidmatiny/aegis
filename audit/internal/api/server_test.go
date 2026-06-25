@@ -52,8 +52,8 @@ func TestWriteAndVerifyFlow(t *testing.T) {
 	defer srv.Close()
 
 	payload := models.WriteReceiptRequest{
-		EventType: models.EventInputDefense,
-		TenantID:  "default",
+		EventType:    models.EventInputDefense,
+		TenantID:     "default",
 		InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.95}`),
 	}
 	body, _ := json.Marshal(payload)

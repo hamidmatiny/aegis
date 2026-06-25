@@ -118,7 +118,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 
 	for chunk := range ch {
 		if chunk.Done {
-			fmt.Fprintf(w, "data: [DONE]\n\n")
+			_, _ = fmt.Fprintf(w, "data: [DONE]\n\n")
 			flusher.Flush()
 			return
 		}
@@ -134,7 +134,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 			}},
 		}
 		data, _ := json.Marshal(payload)
-		fmt.Fprintf(w, "data: %s\n\n", data)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 		flusher.Flush()
 	}
 }

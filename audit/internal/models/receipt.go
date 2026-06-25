@@ -61,8 +61,8 @@ type Receipt struct {
 }
 
 type WriteReceiptResponse struct {
-	ReceiptID string `json:"receipt_id"`
-	Persisted bool   `json:"persisted"`
+	ReceiptID string  `json:"receipt_id"`
+	Persisted bool    `json:"persisted"`
 	Receipt   Receipt `json:"receipt"`
 }
 

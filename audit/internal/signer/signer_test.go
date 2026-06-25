@@ -16,12 +16,12 @@ func TestSignAndVerifyReceipt(t *testing.T) {
 	}
 
 	receipt := models.Receipt{
-		ReceiptID: "11111111-1111-1111-1111-111111111111",
-		EventType: models.EventInputDefense,
-		TenantID:  "default",
-		Trace:     &models.TraceContext{TraceID: "trace-1", RequestID: "req-1"},
+		ReceiptID:    "11111111-1111-1111-1111-111111111111",
+		EventType:    models.EventInputDefense,
+		TenantID:     "default",
+		Trace:        &models.TraceContext{TraceID: "trace-1", RequestID: "req-1"},
 		InputVerdict: []byte(`{"action":"BLOCK","fused_score":0.91}`),
-		CreatedAt: time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC),
+		CreatedAt:    time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC),
 	}
 	if err := sg.SignReceipt(&receipt); err != nil {
 		t.Fatal(err)
@@ -55,11 +55,11 @@ func TestVerifyFailsAfterSignerKeyRotation(t *testing.T) {
 	}
 
 	receipt := models.Receipt{
-		ReceiptID: "44444444-4444-4444-4444-444444444444",
-		EventType: models.EventInputDefense,
-		TenantID:  "default",
+		ReceiptID:    "44444444-4444-4444-4444-444444444444",
+		EventType:    models.EventInputDefense,
+		TenantID:     "default",
 		InputVerdict: []byte(`{"action":"BLOCK","fused_score":0.91}`),
-		CreatedAt: time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC),
+		CreatedAt:    time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC),
 	}
 	if err := sg1.SignReceipt(&receipt); err != nil {
 		t.Fatal(err)
