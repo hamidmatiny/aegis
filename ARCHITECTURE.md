@@ -32,9 +32,9 @@ Intercepts and analyzes all user and retrieved content before it reaches the mod
 | Detector | Signal Type | Purpose |
 |----------|-------------|---------|
 | Heuristic/regex | Deterministic | Known injection markers, encoding tricks |
-| Perplexity | Statistical | Anomaly scoring vs reference LM (stub) |
+| Perplexity | Statistical | Token-level PPL anomaly (DistilGPT2; stub optional) |
 | Known-answer probe | Game-theoretic | Secret token reproduction test |
-| Transformer classifier | ML | Injection/jailbreak probability (stub) |
+| Transformer classifier | ML | Prompt-injection classifier (DeBERTa default; Llama-Prompt-Guard optional) |
 | Spotlighting transform | Structural | Delimit untrusted content |
 
 **Output:** `InputVerdict` with fused score, per-detector breakdown, optional transformed content.

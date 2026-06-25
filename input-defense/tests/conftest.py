@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import os
+
+# Fast stub backends for unit/regression tests (no model downloads).
+os.environ.setdefault("AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND", "stub")
+os.environ.setdefault("AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND", "stub")
+
 from pathlib import Path
 
 import pytest

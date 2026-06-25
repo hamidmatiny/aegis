@@ -8,6 +8,7 @@ from aegis_input_defense import __version__
 from aegis_input_defense.audit_client import AuditClient
 from aegis_input_defense.models import AnalyzeRequest, AnalyzeResponse, DetectorInfo, DetectorResult
 from aegis_input_defense.service import InputDefenseService
+from aegis_input_defense.ml.loader import warmup_models
 from aegis_input_defense.settings import settings
 
 app = FastAPI(
@@ -43,7 +44,20 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready")
 async def ready() -> dict[str, str]:
-    return {"status": "ready"}
+    try:
+        warmup_models(
+            prompt_guard=settings.classifier_backend == "prompt-guard",
+            perplexity=settings.perplexity_backend == "lm",
+            prompt_guard_model_id=settings.prompt_guard_model_id,
+            perplexity_model_id=settings.perplexity_model_id,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"model warmup failed: {exc}") from exc
+    return {
+        "status": "ready",
+        "classifier_backend": settings.classifier_backend,
+        "perplexity_backend": settings.perplexity_backend,
+    }
 
 
 @app.get("/detectors", response_model=list[DetectorInfo])
