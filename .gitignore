@@ -16,9 +16,9 @@ dist/
 *.out
 vendor/
 
-# Generated code
-shared/gen/
-**/gen/
+# Generated protobuf (keep shared/gen/go/go.mod + placeholder.go in git)
+shared/gen/python/
+shared/gen/go/aegis/
 *.pb.go
 *_pb2.py
 *_pb2_grpc.py

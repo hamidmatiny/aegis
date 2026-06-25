@@ -19,10 +19,10 @@ proto-lint:
 lint: lint-go lint-python lint-ts
 
 lint-go:
-	@for dir in gateway policy-engine model-router agent-gate audit shared/gen/go; do \
+	@for dir in gateway policy-engine model-router agent-gate audit; do \
 		if [ -f "$$dir/go.mod" ]; then \
 			echo "==> golangci-lint $$dir"; \
-			(cd "$$dir" && golangci-lint run ./...) || exit 1; \
+			(cd "$$dir" && GOWORK=off golangci-lint run ./...) || exit 1; \
 		fi; \
 	done
 
@@ -50,10 +50,10 @@ lint-ts:
 test: test-go test-python
 
 test-go:
-	@for dir in gateway policy-engine model-router agent-gate audit shared/gen/go; do \
+	@for dir in gateway policy-engine model-router agent-gate audit; do \
 		if [ -f "$$dir/go.mod" ]; then \
 			echo "==> go test $$dir"; \
-			(cd "$$dir" && go test ./...) || exit 1; \
+			(cd "$$dir" && GOWORK=off go test ./...) || exit 1; \
 		fi; \
 	done
 
