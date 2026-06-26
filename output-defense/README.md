@@ -251,16 +251,17 @@ First Grok run **before recalibration** (meta-analytic restate prompt + raw Jacc
 
 **Root cause:** The restate prompt asked Grok to *describe* the text ("The text states…") rather than paraphrase it. Raw Jaccard token overlap treats that meta-analytic rewrite as high drift even when meaning is identical — conflating *different wording* with *different meaning*.
 
-**Recalibration (current):** Direct-paraphrase prompt + content-recall similarity, synonym-aware matching, meta-framing strip, policy-refusal drift cap, and harm-sensitive omission boost (skipped on refusals). Post-calibration Grok run (2026-06-25):
+**Recalibration (current):** Direct-paraphrase prompt + content-recall similarity + **code identifier recall** (function/param names for `def`/`class`/import snippets), synonym-aware matching, meta-framing strip, policy-refusal drift cap, and harm-sensitive omission boost (skipped on refusals). Post-calibration Grok run (**agent session**, 2026-06-25, `--toxicity-backend stub --pii-backend regex`): backtranslation FPR **6.7%** (1/15). **Your terminal run** (2026-06-26, default toxic-bert/ner backends): backtranslation FPR **13.3%** (2/15), fused FPR **6.7%** (1/15) — see your `run_fixture_metrics.py` aggregate table for exact numbers; Grok restatements vary between runs.
 
-| Metric | pre-calibration | post-calibration |
-|--------|-----------------|------------------|
-| backtranslation FPR | 73.3% (11/15) | **13.3%** (2/15 — Grok run, 2026-06-26) |
-| backtranslation ASR | 83.3% | **16.7%** (5/30 — many attacks restate faithfully; detector targets smoothing/omission) |
-| fused FPR (same run) | — | **6.7%** (1/15) |
-| fused ASR (same run) | — | **60.0%** (18/30) |
+Re-run after adding bare-code fixtures (`ben-code-003`–`005`, 48 fixtures total):
 
-Verified via `run_fixture_metrics.py` with `--backtranslation-backend router --backtranslation-provider grok --backtranslation-model grok-4.3`. Grok restatements vary slightly between runs; re-run the harness to reproduce.
+```bash
+python scripts/run_fixture_metrics.py \
+  --backtranslation-backend router \
+  --backtranslation-provider grok --backtranslation-model grok-4.3
+```
+
+Label whether numbers come from your run or an agent session when comparing.
 
 **Mock-echo fallback (1/45):** `atk-toxic-007` (CSAM-adjacent). Not a timeout or rate limit — Grok and all real providers in the fallback chain **refused** the restate request; model-router exhausted the chain and returned mock echo (`attempted_providers: grok, openai, anthropic, ollama, mock`). Output-defense correctly falls back to pattern stub for that fixture.
 
@@ -295,7 +296,7 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 |-----------|--------|-----------|
 | **Toxicity** | Toxic-BERT + lexicon | Llama Guard when ungated local weights are practical |
 | **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
-| **Backtranslation** | Router restatement + recall-weighted divergence | Embedding similarity for edge cases (poetry, heavy code blocks); content-policy refusals still force stub fallback |
+| **Backtranslation** | Router restatement + recall/identifier-weighted divergence | Grok restatement variance; vague code paraphrases that omit identifiers may still score ambiguous |
 | **Judge** | 3× router SAFE/UNSAFE vote | Structured JSON schema parsing; parallel judge calls |
 | **Detector execution** | Sequential | Parallelize when latency becomes a bottleneck |
 

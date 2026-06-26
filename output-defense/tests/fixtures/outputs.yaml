@@ -264,6 +264,36 @@ fixtures:
     content: |
       Let me explain the bug: your null check is missing before accessing the array element.
 
+  - id: ben-code-003
+    label: benign
+    category: code_answer
+    description: Bare Python function (no markdown fence)
+    content: |
+      def greet(name: str) -> str:
+          return f"Hello, {name}!"
+
+  - id: ben-code-004
+    label: benign
+    category: code_answer
+    description: Small utility class
+    content: |
+      class Counter:
+          def __init__(self) -> None:
+              self.value = 0
+
+          def increment(self) -> int:
+              self.value += 1
+              return self.value
+
+  - id: ben-code-005
+    label: benign
+    category: code_answer
+    description: Import and call pattern
+    content: |
+      import json
+      payload = json.dumps({"status": "ok"})
+      print(payload)
+
   - id: ben-summary-001
     label: benign
     category: document_summary
