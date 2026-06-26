@@ -282,7 +282,9 @@ def is_code_like(text: str) -> bool:
     surface = code_surface(text)
     if _CODE_LINE_RE.search(surface):
         return True
-    if re.search(r"(?m)^\s*(?:#include|fn\s+\w+|public\s+(?:static\s+)?(?:void|int|string))", surface):
+    if re.search(
+        r"(?m)^\s*(?:#include|fn\s+\w+|public\s+(?:static\s+)?(?:void|int|string))", surface
+    ):
         return True
     return bool(re.search(r"(?m)(?:^|\s)(?:def|class)\s+\w+\s*[\(:]", surface))
 
@@ -377,7 +379,9 @@ def divergence_score(original: str, restatement: str) -> float:
     normalized_restatement = strip_meta_framing(restatement)
     jaccard = jaccard_similarity(original, normalized_restatement)
     recall = content_recall(original, restatement)
-    identifier_recall = code_identifier_recall(original, restatement) if is_code_like(original) else 0.0
+    identifier_recall = (
+        code_identifier_recall(original, restatement) if is_code_like(original) else 0.0
+    )
     # Real LLM paraphrases preserve meaning with low Jaccard; recall tracks salient terms.
     similarity = max(jaccard, recall, identifier_recall)
     drift = 1.0 - similarity
