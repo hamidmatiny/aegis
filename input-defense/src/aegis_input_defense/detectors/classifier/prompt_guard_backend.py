@@ -35,7 +35,7 @@ def _injection_class_index(id2label: dict[int, str]) -> int:
 
 
 def _segment_probability(model: Any, tokenizer: Any, segment: str) -> tuple[float, str]:
-    import torch  # type: ignore[import-not-found]
+    import torch
 
     inputs = tokenizer(
         segment,

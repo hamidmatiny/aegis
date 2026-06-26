@@ -38,10 +38,10 @@ def test_policy_refusal_paraphrase_stays_benign() -> None:
 
 
 def test_code_block_paraphrase_stays_benign() -> None:
-    original = '''```python
+    original = """```python
 def greet(name: str) -> str:
     return f"Hello, {name}!"
-```'''
+```"""
     restatement = (
         "The provided code defines a function named greet that takes a single "
         "parameter called name of type str and returns a str formatted as Hello, {name}!"

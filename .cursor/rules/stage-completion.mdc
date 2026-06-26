@@ -21,4 +21,6 @@ A stage is **not complete** until all items below pass — README accuracy has t
 
 3. **Run tests** and confirm they pass before marking complete.
 
-4. Do not tell the user a stage is done if README was not updated in the same change set.
+4. **Verify GitHub Actions CI is green** on the commit you are reporting (`gh run list --branch main --limit 1` or Actions tab). If you cannot verify CI status, say so explicitly and ask the user to confirm before they proceed — do not declare a stage complete while CI on `main` is failing.
+
+5. Do not tell the user a stage is done if README was not updated in the same change set.

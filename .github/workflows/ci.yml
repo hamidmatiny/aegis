@@ -116,6 +116,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Start stack
+        env:
+          # Keep integration fast: no live LLM calls on container startup paths.
+          AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND: stub
+          AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND: stub
         run: docker compose up -d --build --wait
       - name: Run smoke tests
         run: |

@@ -33,7 +33,7 @@ docker compose up -d --build output-defense model-router
 | `AEGIS_OUTPUT_DEFENSE_INSTALL_ML` | `false` | When `true`, image installs `.[ml]` + spaCy `en_core_web_sm` |
 | `AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND` | `stub` | `toxic-bert` for Toxic-BERT + harm lexicon |
 | `AEGIS_OUTPUT_DEFENSE_PII_BACKEND` | `regex` | `ner` for regex first-pass + spaCy NER second-pass |
-| `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND` | `stub` | `router` for model-router restatement divergence |
+| `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND` | `router` | `router` for model-router restatement divergence |
 | `AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND` | `stub` | `router` for 3-judge LLM ensemble on ambiguous scores |
 | `AEGIS_MODEL_ROUTER_URL` | `http://model-router:8082` | Required when router backends are enabled |
 | `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_PROVIDER` | `grok` | model-router provider id for restatement |
@@ -255,8 +255,12 @@ First Grok run **before recalibration** (meta-analytic restate prompt + raw Jacc
 
 | Metric | pre-calibration | post-calibration |
 |--------|-----------------|------------------|
-| backtranslation FPR | 73.3% (11/15) | **6.7%** (1/15 — `ben-creative-001` poetry) |
-| backtranslation ASR | 83.3% | **20.0%** (6/30 — expected: many attacks restate faithfully; detector targets smoothing/omission, not all harm categories) |
+| backtranslation FPR | 73.3% (11/15) | **13.3%** (2/15 — Grok run, 2026-06-26) |
+| backtranslation ASR | 83.3% | **16.7%** (5/30 — many attacks restate faithfully; detector targets smoothing/omission) |
+| fused FPR (same run) | — | **6.7%** (1/15) |
+| fused ASR (same run) | — | **60.0%** (18/30) |
+
+Verified via `run_fixture_metrics.py` with `--backtranslation-backend router --backtranslation-provider grok --backtranslation-model grok-4.3`. Grok restatements vary slightly between runs; re-run the harness to reproduce.
 
 **Mock-echo fallback (1/45):** `atk-toxic-007` (CSAM-adjacent). Not a timeout or rate limit — Grok and all real providers in the fallback chain **refused** the restate request; model-router exhausted the chain and returned mock echo (`attempted_providers: grok, openai, anthropic, ollama, mock`). Output-defense correctly falls back to pattern stub for that fixture.
 

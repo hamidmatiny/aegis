@@ -171,15 +171,22 @@ async def main() -> int:
             f"retries={settings.router_max_retries}",
             flush=True,
         )
-    print(f"model-router: url={router_url} reachable={router_ok} detail={router_detail!r}", flush=True)
+    print(
+        f"model-router: url={router_url} reachable={router_ok} detail={router_detail!r}",
+        flush=True,
+    )
     print(
         f"Scoring {len(fixtures)} fixtures once each ({attacks} attacks, {benign} benign)...",
         flush=True,
     )
 
     start = time.perf_counter()
-    progress = None if args.no_progress else (
-        lambda i, total, case, elapsed: _progress_line(i, total, case.id, case.label, elapsed)
+    progress = (
+        None
+        if args.no_progress
+        else (
+            lambda i, total, case, elapsed: _progress_line(i, total, case.id, case.label, elapsed)
+        )
     )
     rows = await score_fixtures(service, fixtures, on_progress=progress)
     reports = compute_metrics_from_rows(rows, threshold=threshold)
@@ -194,7 +201,8 @@ async def main() -> int:
             flush=True,
         )
     print(f"Detection threshold: {threshold:.2f}", flush=True)
-    print(f"Scoring time: {elapsed:.1f}s ({elapsed / max(len(fixtures), 1):.1f}s/fixture)", flush=True)
+    per_fixture = elapsed / max(len(fixtures), 1)
+    print(f"Scoring time: {elapsed:.1f}s ({per_fixture:.1f}s/fixture)", flush=True)
     print(flush=True)
     print(format_backend_audit(audit))
     if args.backtranslation_backend == "router" and attacks:
