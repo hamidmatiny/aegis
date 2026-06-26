@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 
 from aegis_output_defense.fusion import detection_threshold
-from aegis_output_defense.models import FixtureCase
+from aegis_output_defense.models import FixtureCase, FixtureScoreRow
 from aegis_output_defense.provenance import (
     EXECUTION_BACKEND,
     FALLBACK_REASON,
@@ -17,14 +17,13 @@ from aegis_output_defense.provenance import (
 from aegis_output_defense.service import OutputDefenseService
 
 
-async def audit_backend_execution(
-    service: OutputDefenseService,
-    fixtures: list[FixtureCase],
+def audit_backend_execution_from_rows(
+    rows: list[FixtureScoreRow],
     *,
     requested: dict[str, str],
     threshold: float | None = None,
 ) -> list[BackendAuditSummary]:
-    """Summarize which backend path actually ran for each detector across fixtures."""
+    """Summarize backend paths from pre-scored fixture rows (no extra detector calls)."""
     thresh = threshold if threshold is not None else detection_threshold()
     summaries: list[BackendAuditSummary] = []
 
@@ -34,10 +33,8 @@ async def audit_backend_execution(
         ml_outcome_changes = 0
         ner_outcome_changes = 0
 
-        for case in fixtures:
-            content = case.content.strip()
-            result = await service.analyze_detector(detector_id, content)
-            meta = result.metadata
+        for row in rows:
+            meta = row.metadata.get(detector_id, {})
             execution = meta.get(EXECUTION_BACKEND, "unknown")
             counts[execution] += 1
             if meta.get(FALLBACK_REASON):
@@ -67,3 +64,21 @@ async def audit_backend_execution(
         )
 
     return summaries
+
+
+async def audit_backend_execution(
+    service: OutputDefenseService,
+    fixtures: list[FixtureCase],
+    *,
+    requested: dict[str, str],
+    threshold: float | None = None,
+    rows: list[FixtureScoreRow] | None = None,
+) -> list[BackendAuditSummary]:
+    """Summarize which backend path actually ran for each detector across fixtures."""
+    if rows is not None:
+        return audit_backend_execution_from_rows(rows, requested=requested, threshold=threshold)
+
+    from aegis_output_defense.metrics import score_fixtures
+
+    scored = await score_fixtures(service, fixtures)
+    return audit_backend_execution_from_rows(scored, requested=requested, threshold=threshold)

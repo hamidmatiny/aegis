@@ -36,9 +36,13 @@ docker compose up -d --build output-defense model-router
 | `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND` | `stub` | `router` for model-router restatement divergence |
 | `AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND` | `stub` | `router` for 3-judge LLM ensemble on ambiguous scores |
 | `AEGIS_MODEL_ROUTER_URL` | `http://model-router:8082` | Required when router backends are enabled |
-| `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL` | `mock-model` | Model id passed to model-router for restatement |
-| `AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL` | `mock-model` | Model id for judge ensemble calls |
-| `AEGIS_AUDIT_URL` | — | Audit service URL (from compose) |
+| `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_PROVIDER` | `grok` | model-router provider id for restatement |
+| `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL` | `grok-4.3` | Model id passed with `provider` to model-router |
+| `AEGIS_OUTPUT_DEFENSE_JUDGE_PROVIDER` | `grok` | model-router provider id for judge ensemble |
+| `AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL` | `grok-4.3` | Model id for judge calls |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_TIMEOUT` | `60.0` | model-router HTTP timeout (seconds) |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_MAX_RETRIES` | `3` | Retries on 429/5xx/timeout before surfacing error |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_RETRY_BACKOFF_SECONDS` | `1.0` | Exponential backoff base between retries |
 | `AEGIS_AUDIT_EMIT` | `true` | Toggle audit emission |
 
 ### Local Python
@@ -88,6 +92,9 @@ Pytest uses stub backends by default (`tests/conftest.py`).
 | `AEGIS_MODEL_ROUTER_URL` | `http://localhost:8082` | model-router base URL |
 | `AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL` | `mock-model` | Router model for restatement |
 | `AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL` | `mock-model` | Router model for judge calls |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_TIMEOUT` | `60.0` | model-router HTTP timeout (seconds) |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_MAX_RETRIES` | `3` | Retries on 429/5xx/timeout before surfacing error |
+| `AEGIS_OUTPUT_DEFENSE_ROUTER_RETRY_BACKOFF_SECONDS` | `1.0` | Exponential backoff base between retries |
 | `AEGIS_AUDIT_URL` | `""` | Audit service |
 | `AEGIS_AUDIT_EMIT` | `true` | Emit signed receipts |
 
@@ -210,6 +217,8 @@ python scripts/run_fixture_metrics.py --toxicity-backend toxic-bert --pii-backen
 python scripts/run_fixture_metrics.py --backtranslation-backend router   # needs model-router up
 ```
 
+**Harness behaviour:** `run_fixture_metrics.py` scores each fixture **once** via `analyze_all` (45 router calls when backtranslation=router, not ~165 redundant calls). Per-fixture progress prints to **stderr** immediately (`[1/45] ben-helpful-001 (benign) 3.2s`). Router HTTP uses connect/read/write timeouts (60s read default) with 3× retry on 429/5xx.
+
 ### Why local ML ASR matches stub on this fixture set
 
 | Detector | Root cause (not a silent fallback bug) |
@@ -230,6 +239,28 @@ The fixture set is now **too coarse** to show ML/NER/router improvements at aggr
 | hallucination/incoherent | 57% | 57% |
 
 With `--backtranslation-backend router` and model-router on **mock-model**, audit shows `stub-fallback-mock-echo: 45/45` — router HTTP calls occur (~1.6s for 45 fixtures) but scores match the pattern stub.
+
+### Router-live backtranslation (Grok) — calibration
+
+First Grok run **before recalibration** (meta-analytic restate prompt + raw Jaccard drift):
+
+| Metric | stub | Grok router-live (pre-calibration) |
+|--------|------|-------------------------------------|
+| backtranslation ASR | 33.3% | 83.3% |
+| backtranslation FPR | 0.0% | **73.3%** (11/15 benign) |
+
+**Root cause:** The restate prompt asked Grok to *describe* the text ("The text states…") rather than paraphrase it. Raw Jaccard token overlap treats that meta-analytic rewrite as high drift even when meaning is identical — conflating *different wording* with *different meaning*.
+
+**Recalibration (current):** Direct-paraphrase prompt + content-recall similarity, synonym-aware matching, meta-framing strip, policy-refusal drift cap, and harm-sensitive omission boost (skipped on refusals). Post-calibration Grok run (2026-06-25):
+
+| Metric | pre-calibration | post-calibration |
+|--------|-----------------|------------------|
+| backtranslation FPR | 73.3% (11/15) | **6.7%** (1/15 — `ben-creative-001` poetry) |
+| backtranslation ASR | 83.3% | **20.0%** (6/30 — expected: many attacks restate faithfully; detector targets smoothing/omission, not all harm categories) |
+
+**Mock-echo fallback (1/45):** `atk-toxic-007` (CSAM-adjacent). Not a timeout or rate limit — Grok and all real providers in the fallback chain **refused** the restate request; model-router exhausted the chain and returned mock echo (`attempted_providers: grok, openai, anthropic, ollama, mock`). Output-defense correctly falls back to pattern stub for that fixture.
+
+**Router client retries:** `ModelRouterClient` retries transient 429/5xx/timeout errors (3×, exponential backoff) before surfacing failure — important for H3 adaptive campaigns.
 
 ## Model footprint and latency
 
@@ -260,7 +291,7 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 |-----------|--------|-----------|
 | **Toxicity** | Toxic-BERT + lexicon | Llama Guard when ungated local weights are practical |
 | **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
-| **Backtranslation** | Router restatement + divergence | Embedding similarity instead of token Jaccard |
+| **Backtranslation** | Router restatement + recall-weighted divergence | Embedding similarity for edge cases (poetry, heavy code blocks); content-policy refusals still force stub fallback |
 | **Judge** | 3× router SAFE/UNSAFE vote | Structured JSON schema parsing; parallel judge calls |
 | **Detector execution** | Sequential | Parallelize when latency becomes a bottleneck |
 

@@ -36,14 +36,20 @@ class Settings(BaseSettings):
         default_factory=lambda: os.getenv("AEGIS_MODEL_ROUTER_URL", "http://localhost:8082")
     )
     backtranslation_model: str = Field(
-        default_factory=lambda: os.getenv(
-            "AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL", "mock-model"
-        )
+        default_factory=lambda: os.getenv("AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL", "grok-4.3")
+    )
+    backtranslation_provider: str = Field(
+        default_factory=lambda: os.getenv("AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_PROVIDER", "grok")
     )
     judge_model: str = Field(
-        default_factory=lambda: os.getenv("AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL", "mock-model")
+        default_factory=lambda: os.getenv("AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL", "grok-4.3")
+    )
+    judge_provider: str = Field(
+        default_factory=lambda: os.getenv("AEGIS_OUTPUT_DEFENSE_JUDGE_PROVIDER", "grok")
     )
     router_timeout: float = 60.0
+    router_max_retries: int = 3
+    router_retry_backoff_seconds: float = 1.0
 
 
 settings = Settings()

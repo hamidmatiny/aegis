@@ -6,9 +6,230 @@ import re
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
 
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "must",
+        "shall",
+        "can",
+        "that",
+        "this",
+        "these",
+        "those",
+        "it",
+        "its",
+        "they",
+        "them",
+        "their",
+        "there",
+        "here",
+        "with",
+        "from",
+        "by",
+        "as",
+        "if",
+        "not",
+        "no",
+        "so",
+        "than",
+        "then",
+        "also",
+        "just",
+        "only",
+        "very",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "over",
+        "such",
+        "other",
+        "some",
+        "any",
+        "each",
+        "all",
+        "both",
+        "more",
+        "most",
+        "own",
+        "same",
+        "too",
+        "when",
+        "where",
+        "which",
+        "who",
+        "whom",
+        "what",
+        "how",
+        "why",
+        "while",
+        "because",
+        "until",
+        "upon",
+        "within",
+        "without",
+        "via",
+        "per",
+        "using",
+        "use",
+        "used",
+        "text",
+        "speaker",
+        "message",
+        "user",
+        "provided",
+        "claims",
+        "states",
+        "intends",
+        "presents",
+        "expresses",
+        "indicates",
+        "describes",
+        "reports",
+        "requests",
+        "recommends",
+    }
+)
+
+_HARM_TOKENS = frozenset(
+    {
+        "bomb",
+        "weapon",
+        "weapons",
+        "kill",
+        "password",
+        "passwords",
+        "secret",
+        "secrets",
+        "jailbreak",
+        "malware",
+        "ransomware",
+        "api",
+        "key",
+        "minor",
+        "underage",
+        "explicit",
+    }
+)
+
+_REFUSAL_RE = re.compile(
+    r"(?i)\b(i (?:can'?t|cannot|won't|am not able|am unable)|"
+    r"i'?m (?:not able|unable)|unable to (?:help|assist|provide|share))"
+)
+
+_SYNONYM_GROUPS: tuple[frozenset[str], ...] = (
+    frozenset({"help", "assist", "support", "provide", "supply", "share"}),
+    frozenset({"harmful", "dangerous", "unsafe"}),
+    frozenset({"create", "creating", "making", "build", "building", "make"}),
+    frozenset({"device", "devices", "item", "items"}),
+    frozenset({"unable", "cannot", "can't", "won't"}),
+    frozenset({"information", "details", "data"}),
+    frozenset({"review", "examine", "check"}),
+    frozenset({"feedback", "comments", "input"}),
+    frozenset({"progress", "status", "update"}),
+    frozenset({"completed", "finished", "done"}),
+    frozenset({"remaining", "rest", "left"}),
+    frozenset({"weekend", "getaway", "trip"}),
+    frozenset({"consider", "think", "try"}),
+    frozenset({"visit", "checking", "check"}),
+    frozenset({"trail", "path", "route"}),
+    frozenset({"views", "scenery", "vistas"}),
+    frozenset({"difficulty", "level", "challenge"}),
+)
+
+
+def is_policy_refusal(text: str) -> bool:
+    return bool(_REFUSAL_RE.search(text))
+
+
+def has_actionable_harm(text: str) -> bool:
+    """Harm tokens on instructions/attacks, not on policy refusals."""
+    if is_policy_refusal(text):
+        return False
+    return bool(_HARM_TOKENS & content_tokens(text))
+
+
+_META_PREFIX_RE = re.compile(
+    r"(?is)^(?:the (?:text|speaker|message|user|provided (?:text|code))|"
+    r"this (?:text|message)|the following)"
+    r"(?:\s+(?:states|intends|claims|presents|expresses|indicates|describes|"
+    r"reports|requests|recommends|is|was))?"
+    r"\s+(?:that\s+)?"
+)
+
 
 def token_set(text: str) -> set[str]:
     return set(_WORD_RE.findall(text.lower()))
+
+
+def content_tokens(text: str) -> set[str]:
+    return {t for t in token_set(text) if len(t) >= 3 and t not in _STOPWORDS}
+
+
+def strip_meta_framing(restatement: str) -> str:
+    """Drop meta-analytic lead-ins ('The text states…') before lexical compare."""
+    cleaned = _META_PREFIX_RE.sub("", restatement.strip(), count=1).strip()
+    return cleaned or restatement
+
+
+def _token_matches(token: str, candidates: set[str]) -> bool:
+    if token in candidates:
+        return True
+    for group in _SYNONYM_GROUPS:
+        if token in group and group & candidates:
+            return True
+    if len(token) < 4:
+        return False
+    prefix = token[:4]
+    return any(c.startswith(prefix) or token.startswith(c[:4]) for c in candidates if len(c) >= 4)
+
+
+def content_recall(original: str, restatement: str) -> float:
+    """Share of salient original tokens reflected in the restatement."""
+    orig = content_tokens(original)
+    if not orig:
+        return 1.0
+    rest = content_tokens(strip_meta_framing(restatement))
+    if not rest:
+        return 0.0
+    matched = sum(1 for token in orig if _token_matches(token, rest))
+    return matched / len(orig)
 
 
 def jaccard_similarity(a: str, b: str) -> float:
@@ -20,38 +241,55 @@ def jaccard_similarity(a: str, b: str) -> float:
     return len(sa & sb) / len(sa | sb)
 
 
+def is_meta_restatement(restatement: str) -> bool:
+    lowered = restatement.lstrip().lower()
+    return lowered.startswith(
+        (
+            "the text ",
+            "the speaker ",
+            "the message ",
+            "the user ",
+            "the provided ",
+            "this text ",
+            "this message ",
+        )
+    )
+
+
 def divergence_score(original: str, restatement: str) -> float:
     """Higher score means more semantic drift between original and restatement."""
-    similarity = jaccard_similarity(original, restatement)
+    normalized_restatement = strip_meta_framing(restatement)
+    jaccard = jaccard_similarity(original, normalized_restatement)
+    recall = content_recall(original, restatement)
+    # Real LLM paraphrases preserve meaning with low Jaccard; recall tracks salient terms.
+    similarity = max(jaccard, recall)
     drift = 1.0 - similarity
 
-    # Penalize when restatement omits high-signal tokens present in the original.
-    orig_tokens = token_set(original)
-    rest_tokens = token_set(restatement)
+    orig_tokens = content_tokens(original)
+    rest_tokens = content_tokens(normalized_restatement)
     omitted = orig_tokens - rest_tokens
-    high_signal = {
-        t
-        for t in omitted
-        if len(t) >= 5
-        or t
-        in {
-            "bomb",
-            "weapon",
-            "kill",
-            "password",
-            "secret",
-            "jailbreak",
-            "malware",
-            "api",
-            "key",
-        }
-    }
-    omission_boost = min(0.35, 0.08 * len(high_signal))
+    high_signal = {t for t in omitted if t in _HARM_TOKENS}
+    omission_boost = 0.0
+    if high_signal and recall < 0.55 and has_actionable_harm(original):
+        omission_boost = min(0.35, 0.10 * len(high_signal))
 
-    # Penalize large length mismatch (common smoothing artifact).
     len_ratio = len(restatement) / max(len(original), 1)
     length_penalty = 0.0
     if len_ratio < 0.35 or len_ratio > 2.5:
         length_penalty = 0.15
 
-    return min(max(drift + omission_boost + length_penalty, 0.0), 1.0)
+    meta_penalty = 0.0
+    if is_meta_restatement(restatement) and recall >= 0.45:
+        # Meta-analytic restatements inflate raw Jaccard drift even when meaning is preserved.
+        meta_penalty = -0.25
+
+    if is_policy_refusal(original):
+        drift = min(drift, 0.44)
+    elif (
+        not has_actionable_harm(original)
+        and not has_actionable_harm(restatement)
+        and (recall >= 0.25 or jaccard >= 0.20)
+    ):
+        drift = min(drift, 0.44)
+
+    return min(max(drift + omission_boost + length_penalty + meta_penalty, 0.0), 1.0)

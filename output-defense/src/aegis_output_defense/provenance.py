@@ -36,8 +36,7 @@ class BackendAuditSummary:
             rows.append(f"    fallbacks: {self.fallback_count}/{total}")
         if self.detector_id == "pii" and self.fixtures_where_ner_changed_outcome == 0:
             rows.append(
-                "    NER changed threshold outcome on 0 fixtures "
-                "(regex sufficient on this set)"
+                "    NER changed threshold outcome on 0 fixtures (regex sufficient on this set)"
             )
         if (
             self.detector_id == "toxicity"

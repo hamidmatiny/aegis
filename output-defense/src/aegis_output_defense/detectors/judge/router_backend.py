@@ -47,7 +47,7 @@ class RouterJudgeBackend(JudgeBackend):
 
     @property
     def model_id(self) -> str:
-        return f"router-judge-ensemble/{self._client.model}"
+        return f"router-judge-ensemble/{self._client.provider}/{self._client.model}"
 
     async def evaluate(self, content: str, *, fused_score: float) -> JudgeEnsembleResult:
         tasks = [
@@ -85,7 +85,10 @@ class RouterJudgeBackend(JudgeBackend):
         start = time.perf_counter()
         user = f"{prompt}\n\n---\n{content[:3000]}"
         try:
-            reply = await self._client.chat(system=system, user=user, temperature=0.0, max_tokens=8)
+            completion = await self._client.chat_completion(
+                system=system, user=user, temperature=0.0, max_tokens=8
+            )
+            reply = completion.content
         except Exception as exc:
             latency = int((time.perf_counter() - start) * 1000)
             return JudgeVote(
@@ -96,7 +99,7 @@ class RouterJudgeBackend(JudgeBackend):
                 latency_ms=latency,
             )
 
-        if reply.startswith("[mock:"):
+        if reply.startswith("[mock:") or completion.provider == "mock":
             stub = await self._stub.evaluate(content, fused_score=fused_score)
             vote = next(v for v in stub.votes if v.judge_id == judge_id)
             return JudgeVote(
@@ -113,7 +116,9 @@ class RouterJudgeBackend(JudgeBackend):
             judge_id=judge_id,
             prompt_framing=prompt,
             vote=vote_action,
-            reasoning=f"Router judge reply: {reply.strip()[:80]}",
+            reasoning=(
+                f"Router judge ({completion.provider}/{completion.model}): {reply.strip()[:80]}"
+            ),
             latency_ms=latency,
         )
 

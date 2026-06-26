@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import time
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
 
 from aegis_output_defense.fusion import detection_threshold
-from aegis_output_defense.models import CategoryMetricsReport, FixtureCase, MetricsReport
+from aegis_output_defense.models import (
+    CategoryMetricsReport,
+    FixtureCase,
+    FixtureScoreRow,
+    MetricsReport,
+)
 from aegis_output_defense.service import OutputDefenseService
 
 FIXTURES_PATH = (
@@ -31,6 +38,8 @@ CATEGORY_LABELS: dict[str, str] = {
     "hallucination_incoherent": "hallucination/incoherent",
 }
 
+ProgressCallback = Callable[[int, int, FixtureCase, float], None]
+
 
 def load_fixtures(path: Path | None = None) -> list[FixtureCase]:
     fixture_path = path or FIXTURES_PATH
@@ -39,38 +48,48 @@ def load_fixtures(path: Path | None = None) -> list[FixtureCase]:
     return [FixtureCase.model_validate(item) for item in data["fixtures"]]
 
 
-async def _score_case(
-    service: OutputDefenseService,
-    case: FixtureCase,
-    detector_id: str,
-) -> float:
-    content = case.content.strip()
-    if detector_id == "fused":
-        verdict = await service.analyze_all(content, invoke_judge=False)
-        return verdict.fused_score
-    result = await service.analyze_detector(detector_id, content)
-    return result.score
-
-
-async def compute_metrics(
+async def score_fixtures(
     service: OutputDefenseService,
     fixtures: list[FixtureCase],
+    *,
+    on_progress: ProgressCallback | None = None,
+) -> list[FixtureScoreRow]:
+    """Score each fixture once via analyze_all (one router call per fixture when enabled)."""
+    rows: list[FixtureScoreRow] = []
+    total = len(fixtures)
+    for index, case in enumerate(fixtures, start=1):
+        started = time.perf_counter()
+        verdict = await service.analyze_all(case.content.strip(), invoke_judge=False)
+        elapsed = time.perf_counter() - started
+
+        scores = {entry.detector_id: entry.score for entry in verdict.detector_scores}
+        scores["fused"] = verdict.fused_score
+        metadata = {entry.detector_id: dict(entry.metadata) for entry in verdict.detector_scores}
+
+        rows.append(
+            FixtureScoreRow(
+                case=case,
+                scores=scores,
+                metadata=metadata,
+            )
+        )
+        if on_progress is not None:
+            on_progress(index, total, case, elapsed)
+    return rows
+
+
+def compute_metrics_from_rows(
+    rows: list[FixtureScoreRow],
     threshold: float | None = None,
 ) -> list[MetricsReport]:
     thresh = threshold if threshold is not None else detection_threshold()
-    attacks = [f for f in fixtures if f.is_attack]
-    benign = [f for f in fixtures if f.is_benign]
+    attacks = [row for row in rows if row.case.is_attack]
+    benign = [row for row in rows if row.case.is_benign]
     reports: list[MetricsReport] = []
 
     for det_id in DETECTOR_IDS:
-        attack_caught = 0
-        false_pos = 0
-        for case in attacks:
-            if (await _score_case(service, case, det_id)) >= thresh:
-                attack_caught += 1
-        for case in benign:
-            if (await _score_case(service, case, det_id)) >= thresh:
-                false_pos += 1
+        attack_caught = sum(1 for row in attacks if row.scores.get(det_id, 0.0) >= thresh)
+        false_pos = sum(1 for row in benign if row.scores.get(det_id, 0.0) >= thresh)
         reports.append(
             MetricsReport(
                 detector_id=det_id,
@@ -86,16 +105,15 @@ async def compute_metrics(
     return reports
 
 
-async def compute_category_metrics(
-    service: OutputDefenseService,
-    fixtures: list[FixtureCase],
+def compute_category_metrics_from_rows(
+    rows: list[FixtureScoreRow],
     threshold: float | None = None,
 ) -> list[CategoryMetricsReport]:
     thresh = threshold if threshold is not None else detection_threshold()
-    attacks_by_category: dict[str, list[FixtureCase]] = defaultdict(list)
-    for case in fixtures:
-        if case.is_attack:
-            attacks_by_category[case.category].append(case)
+    attacks_by_category: dict[str, list[FixtureScoreRow]] = defaultdict(list)
+    for row in rows:
+        if row.case.is_attack:
+            attacks_by_category[row.case.category].append(row)
 
     categories = sorted(
         attacks_by_category.keys(),
@@ -104,23 +122,42 @@ async def compute_category_metrics(
 
     reports: list[CategoryMetricsReport] = []
     for category in categories:
-        cases = attacks_by_category[category]
+        category_rows = attacks_by_category[category]
         for det_id in DETECTOR_IDS:
-            caught = 0
-            for case in cases:
-                if (await _score_case(service, case, det_id)) >= thresh:
-                    caught += 1
+            caught = sum(1 for row in category_rows if row.scores.get(det_id, 0.0) >= thresh)
             reports.append(
                 CategoryMetricsReport(
                     category=category,
                     detector_id=det_id,
-                    attack_total=len(cases),
+                    attack_total=len(category_rows),
                     attack_caught=caught,
-                    attack_success_rate=caught / len(cases) if cases else 0.0,
+                    attack_success_rate=caught / len(category_rows) if category_rows else 0.0,
                     threshold=thresh,
                 )
             )
     return reports
+
+
+async def compute_metrics(
+    service: OutputDefenseService,
+    fixtures: list[FixtureCase],
+    threshold: float | None = None,
+    *,
+    rows: list[FixtureScoreRow] | None = None,
+) -> list[MetricsReport]:
+    scored = rows if rows is not None else await score_fixtures(service, fixtures)
+    return compute_metrics_from_rows(scored, threshold)
+
+
+async def compute_category_metrics(
+    service: OutputDefenseService,
+    fixtures: list[FixtureCase],
+    threshold: float | None = None,
+    *,
+    rows: list[FixtureScoreRow] | None = None,
+) -> list[CategoryMetricsReport]:
+    scored = rows if rows is not None else await score_fixtures(service, fixtures)
+    return compute_category_metrics_from_rows(scored, threshold)
 
 
 def format_metrics_table(reports: list[MetricsReport]) -> str:

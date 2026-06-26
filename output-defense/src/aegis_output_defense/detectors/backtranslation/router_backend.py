@@ -14,8 +14,10 @@ from aegis_output_defense.detectors.semantic import divergence_score
 from aegis_output_defense.provenance import EXECUTION_BACKEND, FALLBACK_REASON, REQUESTED_BACKEND
 
 _RESTATE_SYSTEM = (
-    "You are a semantic analyst. Restate the apparent intent and factual claims of the "
-    "user-provided text in one or two neutral sentences. Do not add new information."
+    "Paraphrase the assistant output in your own words while preserving the exact meaning. "
+    "Output only the paraphrase — no preamble, no meta-commentary (never write "
+    "'The text states' or 'The speaker'), and do not wrap the original in quotes. "
+    "Keep technical terms, numbers, and named entities when present."
 )
 
 
@@ -33,7 +35,7 @@ class RouterBacktranslationBackend(BacktranslationBackend):
 
     @property
     def model_id(self) -> str:
-        return f"router-backtranslation/{self._client.model}"
+        return f"router-backtranslation/{self._client.provider}/{self._client.model}"
 
     async def evaluate(
         self,
@@ -42,12 +44,13 @@ class RouterBacktranslationBackend(BacktranslationBackend):
         original_prompt: str | None = None,
     ) -> BacktranslationResult:
         try:
-            restatement = await self._client.chat(
+            completion = await self._client.chat_completion(
                 system=_RESTATE_SYSTEM,
                 user=content[:3000],
                 temperature=0.0,
                 max_tokens=180,
             )
+            restatement = completion.content
         except Exception as exc:
             fallback = await self._stub.evaluate(content, original_prompt=original_prompt)
             return BacktranslationResult(
@@ -62,17 +65,28 @@ class RouterBacktranslationBackend(BacktranslationBackend):
                 },
             )
 
-        # Dev mock provider echoes prompts — pattern stub is more reliable there.
-        if restatement.startswith("[mock:"):
+        # Mock echo means model-router exhausted the fallback chain (often content-policy
+        # refusals on all real providers, not a transient network blip).
+        if restatement.startswith("[mock:") or completion.provider == "mock":
             fallback = await self._stub.evaluate(content, original_prompt=original_prompt)
+            reason = "provider-chain-mock-echo"
+            if completion.fallback_used and completion.attempted_providers:
+                reason = "provider-chain-exhausted-mock-echo"
             return BacktranslationResult(
                 score=fallback.score,
-                reasoning=f"Mock router echo; stub fallback: {fallback.reasoning}",
+                reasoning=(
+                    f"Model-router fell back to mock echo "
+                    f"(attempted={completion.attempted_providers}); stub fallback: {fallback.reasoning}"
+                ),
                 model_id=self.model_id,
                 metadata={
                     REQUESTED_BACKEND: "router",
                     EXECUTION_BACKEND: "stub-fallback-mock-echo",
-                    FALLBACK_REASON: "mock-echo",
+                    FALLBACK_REASON: reason,
+                    "router_provider": completion.provider,
+                    "router_model": completion.model,
+                    "attempted_providers": ",".join(completion.attempted_providers),
+                    "fallback_used": str(completion.fallback_used),
                     "stub_matches": fallback.metadata.get("matches", ""),
                 },
             )
@@ -97,6 +111,9 @@ class RouterBacktranslationBackend(BacktranslationBackend):
             metadata={
                 REQUESTED_BACKEND: "router",
                 EXECUTION_BACKEND: "router-live",
+                "router_provider": completion.provider,
+                "router_model": completion.model,
+                "attempted_providers": ",".join(completion.attempted_providers),
                 "divergence": f"{drift:.3f}",
                 "restatement_chars": str(len(restatement)),
             },

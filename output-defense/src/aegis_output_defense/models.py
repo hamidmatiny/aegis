@@ -102,6 +102,14 @@ class FixtureCase(BaseModel):
         return self.label == "benign"
 
 
+class FixtureScoreRow(BaseModel):
+    """Single-pass scores for one fixture (avoids redundant detector/router calls)."""
+
+    case: FixtureCase
+    scores: dict[str, float]
+    metadata: dict[str, dict[str, str]] = Field(default_factory=dict)
+
+
 class MetricsReport(BaseModel):
     detector_id: str
     attack_total: int
