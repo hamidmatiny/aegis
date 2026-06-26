@@ -18,7 +18,17 @@ class Settings(BaseSettings):
     database_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL", ""))
     store_bypasses: bool = True
     adaptive_rounds: int = 3
-    adaptive_max_variants_per_bypass: int = 5
+    adaptive_max_variants_per_bypass: int = 4
+    model_router_url: str = Field(
+        default_factory=lambda: os.getenv("AEGIS_MODEL_ROUTER_URL", "http://localhost:8082")
+    )
+    router_provider: str = "grok"
+    router_model: str = "grok-4.3"
+    router_timeout: float = 60.0
+    router_max_retries: int = 3
+    use_router_mutations: bool = True
+    max_router_blocked: int = 15
+    max_router_bypass: int = 5
 
 
 settings = Settings()

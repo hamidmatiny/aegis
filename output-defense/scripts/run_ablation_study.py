@@ -45,8 +45,8 @@ async def main() -> int:
     args = _parse_args()
     if args.warmup:
         warmup_models(
-            toxic_bert=args.toxicity_backend == "toxic-bert",
-            spacy_ner=args.pii_backend == "ner",
+            toxicity=args.toxicity_backend == "toxic-bert",
+            pii_ner=args.pii_backend == "ner",
         )
 
     fixtures = load_fixtures()

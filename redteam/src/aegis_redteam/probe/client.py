@@ -19,7 +19,7 @@ class DefenseClient:
     ) -> None:
         self._input_url = input_url.rstrip("/")
         self._output_url = output_url.rstrip("/")
-        self._client = client or httpx.AsyncClient(timeout=30.0)
+        self._client = client or httpx.AsyncClient(timeout=120.0)
 
     async def close(self) -> None:
         await self._client.aclose()

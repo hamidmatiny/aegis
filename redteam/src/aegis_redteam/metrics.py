@@ -197,19 +197,19 @@ def format_before_after_table(
     headers = ["Campaign", "Probes", "Bypasses", "Bypass rate"]
     rows = [
         [
-            "Phase 1 stub (baseline)",
+            "Phase 1 stub (same corpus)",
             str(phase1_probes),
             str(phase1_bypasses),
             f"{phase1_bypass_rate:.1%}",
         ],
         [
-            "Phase 2 hardened (round 1)",
+            "Phase 2 hardened round 1 (same corpus)",
             str(hardened_probes),
             str(hardened_bypasses),
             f"{hardened_bypass_rate:.1%}",
         ],
         [
-            "Phase 2 adaptive (rounds 2+)",
+            "Phase 2 hardened adaptive (rounds 2+)",
             str(adaptive_probes),
             str(adaptive_bypasses),
             f"{adaptive_bypass_rate:.1%}",

@@ -6,7 +6,8 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from aegis_redteam.adaptive.variants import generate_variants_from_bypasses
+from aegis_redteam.adaptive.variants import generate_adaptive_variants
+from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import build_campaign_report, load_fixtures
 from aegis_redteam.models import (
     AdaptiveCampaignReport,
@@ -32,6 +33,7 @@ from aegis_redteam.mutation.strategies import (
 )
 from aegis_redteam.probe.bypass import is_bypass
 from aegis_redteam.probe.client import DefenseClient
+from aegis_redteam.probe.local_stack import LocalDefenseProbe
 from aegis_redteam.store.memory import MemoryPatternStore
 from aegis_redteam.store.postgres import PostgresPatternStore
 
@@ -41,14 +43,16 @@ class RedTeamService:
 
     def __init__(
         self,
-        defense_client: DefenseClient,
+        defense_client: DefenseClient | LocalDefenseProbe,
         *,
         threshold: float = 0.50,
         database_url: str = "",
         store_bypasses: bool = True,
+        router_client: ModelRouterClient | None = None,
     ) -> None:
         self._defense = defense_client
         self._threshold = threshold
+        self._router_client = router_client
         self._memory_store = MemoryPatternStore()
         self._postgres = PostgresPatternStore(database_url) if database_url else None
         self._store_bypasses = store_bypasses
@@ -176,15 +180,17 @@ class RedTeamService:
                         round_results.append(result)
             else:
                 prev_round = str(round_num - 1)
-                round_bypasses = [
-                    r
-                    for r in all_results
-                    if r.bypassed and r.metadata.get("round") == prev_round
+                prior_round_probes = [
+                    r for r in all_results if r.metadata.get("round") == prev_round
                 ]
-                variants = generate_variants_from_bypasses(
-                    round_bypasses,
+                router = self._router_client if req.use_router_mutations else None
+                variants = await generate_adaptive_variants(
+                    prior_round_probes,
                     round_number=round_num,
-                    max_per_bypass=req.max_variants_per_bypass,
+                    max_lexical_per_bypass=req.max_variants_per_bypass,
+                    router_client=router,
+                    max_router_blocked=req.max_router_blocked,
+                    max_router_bypass=req.max_router_bypass,
                 )
                 variants_generated = len(variants)
                 for variant in variants:
@@ -197,6 +203,7 @@ class RedTeamService:
                         metadata={
                             "round": str(round_num),
                             "phase": "adaptive",
+                            "mutation_kind": variant.mutation_kind,
                             "source_attack_id": variant.source_attack_id,
                             "source_strategy": variant.source_strategy,
                         },

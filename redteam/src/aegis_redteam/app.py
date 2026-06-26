@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from aegis_redteam import __version__
+from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.models import (
     BypassPattern,
     ProbeRequest,
@@ -28,11 +29,21 @@ _client: DefenseClient | None = None
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     global _service, _client
     _client = DefenseClient(settings.input_defense_url, settings.output_defense_url)
+    router_client = None
+    if settings.use_router_mutations:
+        router_client = ModelRouterClient(
+            settings.model_router_url,
+            model=settings.router_model,
+            provider=settings.router_provider,
+            timeout=settings.router_timeout,
+            max_retries=settings.router_max_retries,
+        )
     _service = RedTeamService(
         _client,
         threshold=settings.detection_threshold,
         database_url=settings.database_url,
         store_bypasses=settings.store_bypasses,
+        router_client=router_client,
     )
     yield
     if _client:
