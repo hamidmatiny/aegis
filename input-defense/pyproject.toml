@@ -64,6 +64,7 @@ module = [
 ]
 ignore_missing_imports = true
 disallow_untyped_defs = false
+disable_error_code = ["import-not-found"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
