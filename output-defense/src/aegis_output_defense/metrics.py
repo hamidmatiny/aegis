@@ -9,8 +9,10 @@ from pathlib import Path
 
 import yaml
 
+from aegis_output_defense.detectors.registry import ALWAYS_RUN_IDS
 from aegis_output_defense.fusion import detection_threshold
 from aegis_output_defense.models import (
+    AblationMetricsReport,
     CategoryMetricsReport,
     FixtureCase,
     FixtureScoreRow,
@@ -23,6 +25,8 @@ FIXTURES_PATH = (
 )
 
 DETECTOR_IDS = ["toxicity", "pii", "backtranslation", "fused"]
+
+ABLATION_OMIT_IDS = ["toxicity", "pii", "backtranslation"]
 
 CATEGORY_ORDER = [
     "leaked_pii",
@@ -103,6 +107,99 @@ def compute_metrics_from_rows(
             )
         )
     return reports
+
+
+async def _fused_rates(
+    service: OutputDefenseService,
+    fixtures: list[FixtureCase],
+    *,
+    enabled_detectors: list[str],
+    threshold: float,
+) -> tuple[float, float]:
+    attacks = [f for f in fixtures if f.is_attack]
+    benign = [f for f in fixtures if f.is_benign]
+    attack_caught = 0
+    false_pos = 0
+    for case in attacks:
+        verdict = await service.analyze_all(
+            case.content.strip(),
+            enabled_detectors=enabled_detectors,
+            invoke_judge=False,
+        )
+        if verdict.fused_score >= threshold:
+            attack_caught += 1
+    for case in benign:
+        verdict = await service.analyze_all(
+            case.content.strip(),
+            enabled_detectors=enabled_detectors,
+            invoke_judge=False,
+        )
+        if verdict.fused_score >= threshold:
+            false_pos += 1
+    asr = attack_caught / len(attacks) if attacks else 0.0
+    fpr = false_pos / len(benign) if benign else 0.0
+    return asr, fpr
+
+
+async def compute_ablation_metrics(
+    service: OutputDefenseService,
+    fixtures: list[FixtureCase],
+    threshold: float | None = None,
+) -> list[AblationMetricsReport]:
+    thresh = threshold if threshold is not None else detection_threshold()
+    full_enabled = list(ALWAYS_RUN_IDS)
+    full_asr, full_fpr = await _fused_rates(
+        service, fixtures, enabled_detectors=full_enabled, threshold=thresh
+    )
+
+    reports: list[AblationMetricsReport] = [
+        AblationMetricsReport(
+            omitted_detector="(none — full ensemble)",
+            attack_success_rate=full_asr,
+            false_positive_rate=full_fpr,
+            delta_asr=0.0,
+            delta_fpr=0.0,
+            threshold=thresh,
+        )
+    ]
+
+    for omit in ABLATION_OMIT_IDS:
+        enabled = [d for d in ALWAYS_RUN_IDS if d != omit]
+        asr, fpr = await _fused_rates(
+            service, fixtures, enabled_detectors=enabled, threshold=thresh
+        )
+        reports.append(
+            AblationMetricsReport(
+                omitted_detector=omit,
+                attack_success_rate=asr,
+                false_positive_rate=fpr,
+                delta_asr=full_asr - asr,
+                delta_fpr=full_fpr - fpr,
+                threshold=thresh,
+            )
+        )
+    return reports
+
+
+def format_ablation_table(reports: list[AblationMetricsReport]) -> str:
+    headers = [
+        "Omitted detector",
+        "Fused ASR",
+        "Fused FPR",
+        "Δ ASR vs full",
+        "Δ FPR vs full",
+    ]
+    rows = [
+        [
+            r.omitted_detector,
+            f"{r.attack_success_rate:.1%}",
+            f"{r.false_positive_rate:.1%}",
+            f"{r.delta_asr:+.1%}",
+            f"{r.delta_fpr:+.1%}",
+        ]
+        for r in reports
+    ]
+    return _render_table(headers, rows)
 
 
 def compute_category_metrics_from_rows(

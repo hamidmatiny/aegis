@@ -121,6 +121,17 @@ class MetricsReport(BaseModel):
         }
 
 
+class AblationMetricsReport(BaseModel):
+    """Fused ASR/FPR with one scoring detector removed from fusion."""
+
+    omitted_detector: str
+    attack_success_rate: float
+    false_positive_rate: float
+    delta_asr: float
+    delta_fpr: float
+    threshold: float
+
+
 class CategoryMetricsReport(BaseModel):
     """Attack catch rate for a single detector within one attack category."""
 

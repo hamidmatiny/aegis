@@ -24,13 +24,21 @@ class DefenseClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def probe(self, target: DefenseTarget, payload: str) -> dict[str, Any]:
+    async def probe(
+        self,
+        target: DefenseTarget,
+        payload: str,
+        *,
+        enabled_detectors: list[str] | None = None,
+    ) -> dict[str, Any]:
         if target == DefenseTarget.INPUT_DEFENSE:
             url = f"{self._input_url}/analyze"
-            body = {"text": payload}
+            body: dict[str, Any] = {"text": payload}
         else:
             url = f"{self._output_url}/analyze"
             body = {"content": payload}
+        if enabled_detectors is not None:
+            body["enabled_detectors"] = enabled_detectors
 
         resp = await self._client.post(url, json=body)
         resp.raise_for_status()

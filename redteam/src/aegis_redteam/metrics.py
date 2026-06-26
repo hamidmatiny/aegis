@@ -166,6 +166,58 @@ def format_category_table(report: CampaignReport) -> str:
     return _render_table(headers, rows)
 
 
+def format_round_table(rounds: list) -> str:
+    """Render per-round bypass summary (accepts RoundReport models)."""
+    headers = ["Round", "Probes", "Bypasses", "BR", "Variants generated"]
+    rows = [
+        [
+            str(r.round_number),
+            str(r.total_probes),
+            str(r.bypass_count),
+            f"{r.bypass_rate:.1%}",
+            str(r.variants_generated),
+        ]
+        for r in rounds
+    ]
+    return _render_table(headers, rows)
+
+
+def format_before_after_table(
+    *,
+    phase1_bypass_rate: float,
+    phase1_probes: int,
+    phase1_bypasses: int,
+    hardened_bypass_rate: float,
+    hardened_probes: int,
+    hardened_bypasses: int,
+    adaptive_bypass_rate: float,
+    adaptive_probes: int,
+    adaptive_bypasses: int,
+) -> str:
+    headers = ["Campaign", "Probes", "Bypasses", "Bypass rate"]
+    rows = [
+        [
+            "Phase 1 stub (baseline)",
+            str(phase1_probes),
+            str(phase1_bypasses),
+            f"{phase1_bypass_rate:.1%}",
+        ],
+        [
+            "Phase 2 hardened (round 1)",
+            str(hardened_probes),
+            str(hardened_bypasses),
+            f"{hardened_bypass_rate:.1%}",
+        ],
+        [
+            "Phase 2 adaptive (rounds 2+)",
+            str(adaptive_probes),
+            str(adaptive_bypasses),
+            f"{adaptive_bypass_rate:.1%}",
+        ],
+    ]
+    return _render_table(headers, rows)
+
+
 def _render_table(headers: list[str], rows: list[list[str]]) -> str:
     if not rows:
         return "(no data)"

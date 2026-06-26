@@ -4,6 +4,8 @@ Python service for continuous adversarial testing against AEGIS defense layers i
 
 Probes **input-defense** and **output-defense** with a local attack corpus and mutation strategies, measures bypass rates, and stores successful bypass patterns for the adaptive defense feedback loop.
 
+**Stage H3** adds multi-round **adaptive campaigns** (mutate successful bypasses), a **Phase 1 vs Phase 2 before/after** comparison script, and documents findings in the repo-root [RESULTS.md](../RESULTS.md).
+
 ## Install and run
 
 ### Docker (recommended)
@@ -38,6 +40,8 @@ python -m aegis_redteam.main
 | `AEGIS_REDTEAM_INPUT_DEFENSE_URL` | `http://localhost:8090` | Input defense base URL |
 | `AEGIS_REDTEAM_OUTPUT_DEFENSE_URL` | `http://localhost:8091` | Output defense base URL |
 | `AEGIS_REDTEAM_DETECTION_THRESHOLD` | `0.50` | Score threshold matching defense ASR metrics |
+| `AEGIS_REDTEAM_ADAPTIVE_ROUNDS` | `3` | Default adaptive campaign rounds (CLI) |
+| `AEGIS_REDTEAM_ADAPTIVE_MAX_VARIANTS_PER_BYPASS` | `5` | Max mutators applied per bypass per adaptive round |
 | `DATABASE_URL` | — | Postgres for `attack_patterns` table (optional) |
 | `AEGIS_REDTEAM_STORE_BYPASSES` | `true` | Persist bypass patterns to memory/Postgres |
 
@@ -53,6 +57,8 @@ python -m aegis_redteam.main
 | `encoding` | Encoding/obfuscation reference |
 | `multi_turn` | Multi-turn escalation framing |
 | `indirect` | Indirect injection via tool-result framing |
+
+Adaptive rounds (2+) emit strategies prefixed `adaptive:` (e.g. `adaptive:roleplay`) applied to **successful bypass payloads** from the prior round.
 
 ## API
 
@@ -78,6 +84,11 @@ curl -X POST localhost:8092/v1/campaigns/run \
   -H 'Content-Type: application/json' \
   -d '{"strategies": ["identity"], "store_bypasses": true}'
 
+# Run adaptive campaign (3 rounds: baseline + mutate bypasses)
+curl -X POST localhost:8092/v1/campaigns/run-adaptive \
+  -H 'Content-Type: application/json' \
+  -d '{"rounds": 3, "max_variants_per_bypass": 5, "store_bypasses": true}'
+
 # Run campaign against one target only
 curl -X POST localhost:8092/v1/campaigns/run \
   -H 'Content-Type: application/json' \
@@ -101,7 +112,7 @@ A probe is a bypass when defense returns `ALLOW`/`TRANSFORM` with `fused_score <
 
 ## Fixture corpus
 
-Attack corpus: `src/aegis_redteam/fixtures/attacks.yaml` (24 attacks targeting input-defense and output-defense across injection, jailbreak, PII leak, toxic output, and hallucination categories). A copy also lives under `tests/fixtures/` for local editing.
+Attack corpus: `src/aegis_redteam/fixtures/attacks.yaml` (**30** attacks targeting input-defense and output-defense). Includes H3 harder cases (paraphrased toxicity, name-only PII, semantic-smoothing jailbreaks). A copy also lives under `tests/fixtures/`.
 
 ## Tests
 
@@ -109,7 +120,9 @@ Attack corpus: `src/aegis_redteam/fixtures/attacks.yaml` (24 attacks targeting i
 cd redteam
 pytest                                    # unit tests (mocked defenses)
 pytest tests/test_fixture_metrics.py -s   # prints bypass rate tables
-python scripts/run_fixture_metrics.py     # live campaign against running defenses
+python scripts/run_fixture_metrics.py     # live standard campaign
+python scripts/run_adaptive_campaign.py --rounds 3   # live adaptive campaign
+python scripts/run_before_after.py --rounds 3      # Phase 1 baseline vs live hardened
 ```
 
 From repo root: `make test-python`
@@ -122,12 +135,34 @@ docker compose up -d --build input-defense output-defense redteam
 ./scripts/e2e-redteam.sh
 ```
 
+## H3 adaptive campaign summary
+
+| Phase | Probes | Purpose |
+|-------|--------|---------|
+| Round 1 (baseline) | fixtures × strategies | Same as standard campaign |
+| Rounds 2–3 (adaptive) | mutators × prior-round bypasses | New variants from successful evasions |
+
+**Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies → 24.5% overall BR). Compare live hardened stack via `scripts/run_before_after.py`.
+
+Full analysis: [RESULTS.md](../RESULTS.md)
+
+## Ablation studies (defense services)
+
+Detector ablation (one detector removed from fusion at a time) runs against each defense service's fixture set:
+
+```bash
+cd input-defense && python scripts/run_ablation_study.py --classifier-backend prompt-guard --perplexity-backend lm --warmup
+cd output-defense && python scripts/run_ablation_study.py --toxicity-backend toxic-bert --pii-backend ner --warmup
+```
+
+See [RESULTS.md](../RESULTS.md) for stub-backend ablation tables (agent session).
+
 ## Known limitations (tracked gaps)
 
 | Component | Status | Follow-up |
 |-----------|--------|-----------|
-| **Attack corpus** | Local YAML only (~24 attacks) | HarmBench/AdvBench loader adapters |
-| **Mutations** | Lexical transforms only | LLM paraphrase via model-router |
+| **Attack corpus** | Local YAML (~30 attacks) | HarmBench/AdvBench loader adapters |
+| **Mutations** | Lexical transforms + adaptive compounding | LLM paraphrase via model-router |
 | **Embeddings** | Postgres `embedding` column unused | Wire sentence-transformer for similarity dedup |
 | **Audit events** | Manual `POST /v1/receipts` | Auto-emit from campaign runner (Stage 9+) |
 | **Agent-gate probing** | Not implemented | Add tool-abuse campaign target |

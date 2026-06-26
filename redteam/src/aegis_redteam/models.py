@@ -102,8 +102,34 @@ class RunCampaignRequest(BaseModel):
     store_bypasses: bool | None = None
 
 
+class RunAdaptiveCampaignRequest(RunCampaignRequest):
+    """Multi-round campaign: baseline fixtures then mutate successful bypasses."""
+
+    rounds: int = Field(default=3, ge=1, le=10)
+    max_variants_per_bypass: int = Field(default=5, ge=1, le=20)
+
+
+class RoundReport(BaseModel):
+    round_number: int
+    total_probes: int
+    bypass_count: int
+    bypass_rate: float
+    variants_generated: int = 0
+
+
+class AdaptiveCampaignReport(CampaignReport):
+    rounds: list[RoundReport] = Field(default_factory=list)
+    baseline_bypass_rate: float = 0.0
+    adaptive_bypass_rate: float = 0.0
+
+
 class RunCampaignResponse(BaseModel):
     report: CampaignReport
+    patterns_stored: int
+
+
+class RunAdaptiveCampaignResponse(BaseModel):
+    report: AdaptiveCampaignReport
     patterns_stored: int
 
 

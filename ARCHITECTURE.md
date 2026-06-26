@@ -91,9 +91,10 @@ Continuous adversarial testing in sandboxed staging.
 
 | Capability | Description |
 |------------|-------------|
-| Attack corpus | Local YAML fixtures targeting input/output defenses |
+| Attack corpus | Local YAML fixtures targeting input/output defenses (30 attacks, H3 expanded) |
 | Mutation strategies | 8 transforms (paraphrase, roleplay, encoding, multi-turn, etc.) |
 | Campaign runner | Probes defenses via HTTP; reports bypass rate by target/category |
+| **Adaptive campaigns (H3)** | Multi-round: mutate successful bypass payloads (`POST /v1/campaigns/run-adaptive`) |
 | Pattern store | In-memory + optional Postgres `attack_patterns` for bypasses |
 
 **Port:** 8092 — see [redteam/README.md](./redteam/README.md)

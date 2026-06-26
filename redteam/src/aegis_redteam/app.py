@@ -9,7 +9,13 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from aegis_redteam import __version__
-from aegis_redteam.models import BypassPattern, ProbeRequest, RunCampaignRequest, StrategyInfo
+from aegis_redteam.models import (
+    BypassPattern,
+    ProbeRequest,
+    RunAdaptiveCampaignRequest,
+    RunCampaignRequest,
+    StrategyInfo,
+)
 from aegis_redteam.probe.client import DefenseClient
 from aegis_redteam.service import RedTeamService
 from aegis_redteam.settings import settings
@@ -79,6 +85,14 @@ async def probe(body: ProbeRequest) -> dict[str, Any]:
 async def run_campaign(body: RunCampaignRequest) -> dict[str, Any]:
     try:
         return (await get_service().run_campaign(body)).model_dump()
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/v1/campaigns/run-adaptive")
+async def run_adaptive_campaign(body: RunAdaptiveCampaignRequest) -> dict[str, Any]:
+    try:
+        return (await get_service().run_adaptive_campaign(body)).model_dump()
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

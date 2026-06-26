@@ -6,8 +6,10 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
+from aegis_redteam.adaptive.variants import generate_variants_from_bypasses
 from aegis_redteam.metrics import build_campaign_report, load_fixtures
 from aegis_redteam.models import (
+    AdaptiveCampaignReport,
     AttackFixture,
     BypassPattern,
     CampaignReport,
@@ -16,6 +18,9 @@ from aegis_redteam.models import (
     ProbeRequest,
     ProbeResponse,
     ProbeResult,
+    RoundReport,
+    RunAdaptiveCampaignRequest,
+    RunAdaptiveCampaignResponse,
     RunCampaignRequest,
     RunCampaignResponse,
     StrategyInfo,
@@ -132,6 +137,120 @@ class RedTeamService:
         patterns_stored = sum(1 for r in results if r.bypassed) if store else 0
         return RunCampaignResponse(report=report, patterns_stored=patterns_stored)
 
+    async def run_adaptive_campaign(
+        self, req: RunAdaptiveCampaignRequest
+    ) -> RunAdaptiveCampaignResponse:
+        fixtures = load_fixtures()
+        fixtures = [f for f in fixtures if f.is_attack]
+
+        if req.targets:
+            allowed = {t.value for t in req.targets}
+            fixtures = [f for f in fixtures if f.target.value in allowed]
+        if req.categories:
+            fixtures = [f for f in fixtures if f.category in req.categories]
+
+        strategies = normalize_strategy_ids(req.strategies)
+        store = req.store_bypasses if req.store_bypasses is not None else self._store_bypasses
+
+        started = datetime.now(tz=UTC)
+        campaign_id = f"adaptive-{int(started.timestamp() * 1000)}"
+        all_results: list[ProbeResult] = []
+        round_reports: list[RoundReport] = []
+
+        for round_num in range(1, req.rounds + 1):
+            round_results: list[ProbeResult] = []
+            variants_generated = 0
+
+            if round_num == 1:
+                for fixture in fixtures:
+                    for strategy in strategies:
+                        mutated = apply_strategy(strategy, fixture.payload())
+                        result = await self._run_probe(
+                            attack_id=fixture.id,
+                            category=fixture.category,
+                            target=fixture.target,
+                            strategy=strategy,
+                            payload=mutated,
+                            metadata={"round": str(round_num), "phase": "baseline"},
+                        )
+                        round_results.append(result)
+            else:
+                prev_round = str(round_num - 1)
+                round_bypasses = [
+                    r
+                    for r in all_results
+                    if r.bypassed and r.metadata.get("round") == prev_round
+                ]
+                variants = generate_variants_from_bypasses(
+                    round_bypasses,
+                    round_number=round_num,
+                    max_per_bypass=req.max_variants_per_bypass,
+                )
+                variants_generated = len(variants)
+                for variant in variants:
+                    result = await self._run_probe(
+                        attack_id=variant.attack_id,
+                        category=variant.category,
+                        target=variant.target,
+                        strategy=variant.strategy,
+                        payload=variant.payload,
+                        metadata={
+                            "round": str(round_num),
+                            "phase": "adaptive",
+                            "source_attack_id": variant.source_attack_id,
+                            "source_strategy": variant.source_strategy,
+                        },
+                    )
+                    round_results.append(result)
+
+            for result in round_results:
+                if store:
+                    self._persist_bypass(result)
+            all_results.extend(round_results)
+
+            bypass_count = sum(1 for r in round_results if r.bypassed)
+            round_reports.append(
+                RoundReport(
+                    round_number=round_num,
+                    total_probes=len(round_results),
+                    bypass_count=bypass_count,
+                    bypass_rate=bypass_count / len(round_results) if round_results else 0.0,
+                    variants_generated=variants_generated,
+                )
+            )
+
+        completed = datetime.now(tz=UTC)
+        base_report = build_campaign_report(
+            campaign_id,
+            all_results,
+            threshold=self._threshold,
+            started_at=started,
+            completed_at=completed,
+        )
+
+        baseline_rows = [r for r in all_results if r.metadata.get("phase") == "baseline"]
+        adaptive_rows = [r for r in all_results if r.metadata.get("phase") == "adaptive"]
+        baseline_bypass_rate = (
+            sum(1 for r in baseline_rows if r.bypassed) / len(baseline_rows)
+            if baseline_rows
+            else 0.0
+        )
+        adaptive_bypass_rate = (
+            sum(1 for r in adaptive_rows if r.bypassed) / len(adaptive_rows)
+            if adaptive_rows
+            else 0.0
+        )
+
+        report = AdaptiveCampaignReport(
+            **base_report.model_dump(),
+            rounds=round_reports,
+            baseline_bypass_rate=baseline_bypass_rate,
+            adaptive_bypass_rate=adaptive_bypass_rate,
+        )
+        self._campaigns[campaign_id] = report
+        patterns_stored = sum(1 for r in all_results if r.bypassed) if store else 0
+        return RunAdaptiveCampaignResponse(report=report, patterns_stored=patterns_stored)
+
     async def _run_probe(
         self,
         *,
@@ -140,6 +259,7 @@ class RedTeamService:
         target: DefenseTarget,
         strategy: str,
         payload: str,
+        metadata: dict[str, str] | None = None,
     ) -> ProbeResult:
         start = time.perf_counter()
         verdict: dict[str, Any] = await self._defense.probe(target, payload)
@@ -156,6 +276,7 @@ class RedTeamService:
             fused_score=score,
             bypassed=is_bypass(action, score, self._threshold),
             latency_ms=latency,
+            metadata=metadata or {},
         )
 
     def _persist_bypass(self, result: ProbeResult) -> None:

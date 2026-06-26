@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     detection_threshold: float = 0.50
     database_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL", ""))
     store_bypasses: bool = True
+    adaptive_rounds: int = 3
+    adaptive_max_variants_per_bypass: int = 5
 
 
 settings = Settings()

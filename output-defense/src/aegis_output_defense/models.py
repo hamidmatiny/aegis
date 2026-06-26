@@ -133,6 +133,15 @@ class MetricsReport(BaseModel):
         }
 
 
+class AblationMetricsReport(BaseModel):
+    omitted_detector: str
+    attack_success_rate: float
+    false_positive_rate: float
+    delta_asr: float
+    delta_fpr: float
+    threshold: float
+
+
 class CategoryMetricsReport(BaseModel):
     category: str
     detector_id: str

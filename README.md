@@ -18,6 +18,8 @@ Application → [SDK / Reverse Proxy] → Gateway (Go)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 
+**Phase 2 evidence:** Adaptive red-team campaigns and detector ablation results are summarized in [RESULTS.md](./RESULTS.md) (Stage H3).
+
 ## Monorepo layout
 
 | Path | Language | Purpose | Stage |

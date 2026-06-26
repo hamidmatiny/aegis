@@ -160,6 +160,10 @@ python scripts/run_fixture_metrics.py --classifier-backend prompt-guard --perple
 
 # Phase 1 stub baseline for comparison
 python scripts/run_fixture_metrics.py --classifier-backend stub --perplexity-backend stub
+
+# Ablation study (one detector removed from fusion at a time)
+python scripts/run_ablation_study.py --classifier-backend stub --perplexity-backend stub
+python scripts/run_ablation_study.py --classifier-backend prompt-guard --perplexity-backend lm --warmup
 ```
 
 From repo root: `make test-python` (runs input-defense among other Python services; uses stub backends).
@@ -191,6 +195,14 @@ Threshold **0.50** (same as Phase 1). ASR = attack catch rate; FPR = benign fals
 | multi-turn | 4 | 4/4 (100%) | 0/4 (0%) | 4/4 (100%) | 4/4 (100%) | 4/4 (100%) |
 
 Reproduce: `python scripts/run_fixture_metrics.py --classifier-backend prompt-guard --perplexity-backend lm --warmup`
+
+### Ablation (H3)
+
+See [RESULTS.md](../RESULTS.md). Reproduce:
+
+```bash
+python scripts/run_ablation_study.py --classifier-backend stub --perplexity-backend stub
+```
 
 ## Known limitations (tracked gaps)
 

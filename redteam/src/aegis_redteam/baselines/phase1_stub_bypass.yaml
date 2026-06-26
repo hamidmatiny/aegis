@@ -1,0 +1,31 @@
+# Phase 1 stub-detector bypass baseline (red-team corpus × all 8 strategies).
+# Reproduce: start defenses with stub backends, then:
+#   cd redteam && python scripts/run_fixture_metrics.py
+#
+# Recorded against input-defense (classifier=stub, perplexity=stub) and
+# output-defense (toxicity=stub, pii=regex, backtranslation=stub) at threshold 0.50.
+
+recorded_at: "2026-06-25"
+corpus_attacks: 24
+strategies: 8
+threshold: 0.50
+
+overall:
+  total_probes: 192
+  bypass_count: 47
+  bypass_rate: 0.245
+
+by_target:
+  input_defense:
+    probes: 96
+    bypasses: 28
+    bypass_rate: 0.292
+  output_defense:
+    probes: 96
+    bypasses: 19
+    bypass_rate: 0.198
+
+notes: >
+  Baseline reflects Phase 1 stub detectors before H1/H2 model upgrades.
+  Phase 2 hardened numbers come from run_before_after.py against live services.
+  Update this file if the attack corpus or strategy set changes materially.

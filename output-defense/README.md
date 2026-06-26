@@ -191,6 +191,10 @@ python scripts/run_fixture_metrics.py --toxicity-backend stub --pii-backend rege
 
 # H2 real local backends (router backends still stub in this script)
 python scripts/run_fixture_metrics.py --toxicity-backend toxic-bert --pii-backend ner --warmup
+
+# Ablation study (H3)
+python scripts/run_ablation_study.py --toxicity-backend stub --pii-backend regex --backtranslation-backend stub
+python scripts/run_ablation_study.py --toxicity-backend toxic-bert --pii-backend ner --warmup
 ```
 
 From repo root: `make test-python`
