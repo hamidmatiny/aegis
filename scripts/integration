@@ -21,11 +21,20 @@ services=(
   "http://localhost:3000/|dashboard"
 )
 
+DASHBOARD_AUTH=()
+if [[ -n "${AEGIS_DASHBOARD_PASSWORD:-changeme}" ]]; then
+  DASHBOARD_AUTH=(-u "${AEGIS_DASHBOARD_USER:-admin}:${AEGIS_DASHBOARD_PASSWORD:-changeme}")
+fi
+
 for entry in "${services[@]}"; do
   url="${entry%%|*}"
   name="${entry##*|}"
   echo "  Checking $name at $url"
-  curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
+  if [[ "$name" == "dashboard" ]]; then
+    curl -sf "${DASHBOARD_AUTH[@]}" "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
+  else
+    curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
+  fi
 done
 
 echo "==> Policy engine input evaluation smoke test..."
