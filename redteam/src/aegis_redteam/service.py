@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -166,6 +167,8 @@ class RedTeamService:
             variants_generated = 0
 
             if round_num == 1:
+                total_r1 = len(fixtures) * len(strategies)
+                done = 0
                 for fixture in fixtures:
                     for strategy in strategies:
                         mutated = apply_strategy(strategy, fixture.payload())
@@ -178,12 +181,27 @@ class RedTeamService:
                             metadata={"round": str(round_num), "phase": "baseline"},
                         )
                         round_results.append(result)
+                        done += 1
+                        bypassed = sum(1 for r in round_results if r.bypassed)
+                        print(
+                            f"\r  R1 [{campaign_id[-6:]}] {done}/{total_r1} probes"
+                            f" | bypasses: {bypassed}",
+                            end="",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                print(file=sys.stderr)
             else:
                 prev_round = str(round_num - 1)
                 prior_round_probes = [
                     r for r in all_results if r.metadata.get("round") == prev_round
                 ]
                 router = self._router_client if req.use_router_mutations else None
+                print(
+                    f"  R{round_num}: generating adaptive variants...",
+                    file=sys.stderr,
+                    flush=True,
+                )
                 variants = await generate_adaptive_variants(
                     prior_round_probes,
                     round_number=round_num,
@@ -193,7 +211,12 @@ class RedTeamService:
                     max_router_bypass=req.max_router_bypass,
                 )
                 variants_generated = len(variants)
-                for variant in variants:
+                print(
+                    f"  R{round_num}: {variants_generated} variants — probing...",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                for vi, variant in enumerate(variants, 1):
                     result = await self._run_probe(
                         attack_id=variant.attack_id,
                         category=variant.category,
@@ -209,6 +232,15 @@ class RedTeamService:
                         },
                     )
                     round_results.append(result)
+                    bypassed = sum(1 for r in round_results if r.bypassed)
+                    print(
+                        f"\r  R{round_num} {vi}/{variants_generated} variants"
+                        f" | bypasses: {bypassed}",
+                        end="",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                print(file=sys.stderr)
 
             for result in round_results:
                 if store:
