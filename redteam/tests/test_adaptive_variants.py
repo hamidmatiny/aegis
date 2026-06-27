@@ -42,7 +42,9 @@ async def test_router_variants_for_blocked_payloads() -> None:
     blocked = _probe(bypassed=False, defense_action="BLOCK", fused_score=0.92)
     client = MagicMock()
     client.chat = AsyncMock(return_value="Rephrased evasion attempt.")
-    variants = await generate_router_variants([blocked], round_number=2, client=client, max_blocked=5)
+    variants = await generate_router_variants(
+        [blocked], round_number=2, client=client, max_blocked=5
+    )
     assert len(variants) == 1
     assert variants[0].strategy == "adaptive:router_rephrase"
     assert variants[0].mutation_kind == "router_rephrase"

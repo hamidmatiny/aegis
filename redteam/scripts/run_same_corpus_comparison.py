@@ -20,7 +20,6 @@ from dataclasses import dataclass
 
 from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import (
-    format_metrics_table,
     format_round_table,
     load_fixtures,
 )

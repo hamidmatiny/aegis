@@ -77,7 +77,9 @@ def build_defense_stack(config: DefenseStackConfig) -> LocalDefenseProbe:
         build_detector_registry,
     )
     from aegis_input_defense.service import InputDefenseService
-    from aegis_output_defense.detectors.registry import build_detector_registry as build_out_registry
+    from aegis_output_defense.detectors.registry import (
+        build_detector_registry as build_out_registry,
+    )
     from aegis_output_defense.service import OutputDefenseService
 
     input_registry = build_detector_registry(

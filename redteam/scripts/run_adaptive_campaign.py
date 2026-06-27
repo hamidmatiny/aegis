@@ -61,8 +61,7 @@ async def main() -> int:
     )
 
     print(
-        f"Starting adaptive campaign ({args.rounds} rounds, "
-        f"{len(attacks)} attack fixtures)...",
+        f"Starting adaptive campaign ({args.rounds} rounds, {len(attacks)} attack fixtures)...",
         file=sys.stderr,
         flush=True,
     )
