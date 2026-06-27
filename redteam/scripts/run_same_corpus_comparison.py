@@ -216,7 +216,7 @@ async def main() -> int:
         assert _round1_probe_count(stub.report) == expected_r1, (
             f"Expected {expected_r1} round-1 probes, got {_round1_probe_count(stub.report)}"
         )
-        print("-- Headline comparison (identical round-1 corpus; adaptive rounds reported separately) --")
+        print("-- Headline comparison (R1 corpus identical; adaptive reported separately) --")
         print(_format_same_corpus_table(stub, hardened))
         print()
         print(

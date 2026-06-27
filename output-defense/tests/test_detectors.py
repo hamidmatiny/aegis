@@ -70,4 +70,3 @@ async def test_ambiguous_band_triggers_judge_and_affects_verdict(
         1 for v in verdict.judge_votes if v.vote in (VerdictAction.BLOCK, VerdictAction.ESCALATE)
     )
     assert unsafe >= 2
-
