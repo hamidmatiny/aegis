@@ -83,14 +83,9 @@ func (c *Config) BuildRegistry(reg *provider.Registry) (map[string]provider.Prov
 		if !entry.Enabled {
 			continue
 		}
-		apiKey := ""
-		if entry.APIKeyEnv != "" {
-			apiKey = os.Getenv(entry.APIKeyEnv)
-		}
 		p, err := reg.Build(provider.ProviderConfig{
 			ID:           id,
 			BaseURL:      entry.BaseURL,
-			APIKey:       apiKey,
 			APIKeyEnv:    entry.APIKeyEnv,
 			Enabled:      entry.Enabled,
 			DefaultModel: entry.DefaultModel,

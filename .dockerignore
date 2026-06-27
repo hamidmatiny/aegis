@@ -1,0 +1,22 @@
+# Never bake secrets or local env into any image layer.
+.env
+.env.*
+!.env.example
+
+# VCS / IDE / caches
+.git
+.gitignore
+.idea
+.vscode
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/venv
+**/node_modules
+
+# Local data
+.docker-data
+postgres_data
+*.log

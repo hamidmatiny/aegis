@@ -7,7 +7,7 @@ import (
 
 func TestClassifyGrokModelNotFound(t *testing.T) {
 	body := `{"code":"invalid-argument","error":"Model not found"}`
-	err := classifyUpstreamError("grok", "grok-2-latest", 400, body)
+	err := classifyUpstreamError("grok", "grok-2-latest", "XAI_API_KEY", 400, body)
 	modelErr, ok := AsModelRetiredError(err)
 	if !ok {
 		t.Fatalf("expected ModelRetiredError, got %T: %v", err, err)
@@ -19,7 +19,7 @@ func TestClassifyGrokModelNotFound(t *testing.T) {
 
 func TestClassifyOpenAIModelNotFound(t *testing.T) {
 	body := `{"error":{"code":"model_not_found","message":"The model gpt-foo does not exist"}}`
-	err := classifyUpstreamError("openai", "gpt-foo", 404, body)
+	err := classifyUpstreamError("openai", "gpt-foo", "OPENAI_API_KEY", 404, body)
 	if _, ok := AsModelRetiredError(err); !ok {
 		t.Fatalf("expected ModelRetiredError, got %v", err)
 	}
@@ -27,7 +27,7 @@ func TestClassifyOpenAIModelNotFound(t *testing.T) {
 
 func TestClassifyAnthropicModelNotFound(t *testing.T) {
 	body := `{"type":"error","error":{"type":"not_found_error","message":"model: claude-old"}}`
-	err := classifyUpstreamError("anthropic", "claude-old", 404, body)
+	err := classifyUpstreamError("anthropic", "claude-old", "ANTHROPIC_API_KEY", 404, body)
 	if _, ok := AsModelRetiredError(err); !ok {
 		t.Fatalf("expected ModelRetiredError, got %v", err)
 	}
@@ -35,7 +35,7 @@ func TestClassifyAnthropicModelNotFound(t *testing.T) {
 
 func TestTransientErrorNotModelRetired(t *testing.T) {
 	body := `{"error":"internal server error"}`
-	err := classifyUpstreamError("openai", "gpt-4o-mini", 500, body)
+	err := classifyUpstreamError("openai", "gpt-4o-mini", "OPENAI_API_KEY", 500, body)
 	if IsModelRetiredError(err) {
 		t.Fatal("500 should not be classified as model retired")
 	}

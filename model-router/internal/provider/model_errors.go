@@ -54,8 +54,16 @@ func IsModelRetiredError(err error) bool {
 	return ok
 }
 
-// classifyUpstreamError maps HTTP error bodies to ModelRetiredError or UpstreamError.
-func classifyUpstreamError(providerID, model string, status int, body string) error {
+// classifyUpstreamError maps HTTP error bodies to AuthError, ModelRetiredError, or UpstreamError.
+func classifyUpstreamError(providerID, model, apiKeyEnv string, status int, body string) error {
+	if isAuthFailure(status, body) {
+		return &AuthError{
+			Provider:  providerID,
+			Status:    status,
+			Body:      body,
+			APIKeyEnv: apiKeyEnv,
+		}
+	}
 	if isModelNotFound(providerID, status, body) {
 		return &ModelRetiredError{
 			Provider:      providerID,

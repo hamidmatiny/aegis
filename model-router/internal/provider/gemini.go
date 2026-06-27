@@ -31,10 +31,14 @@ func NewGemini(cfg ProviderConfig) (Provider, error) {
 func (p *Gemini) ID() string { return p.cfg.ID }
 
 func (p *Gemini) Ping(ctx context.Context) error {
-	if p.cfg.APIKey == "" {
+	if ResolveAPIKey(p.cfg) == "" {
 		return fmt.Errorf("gemini: missing API key")
 	}
 	return nil
+}
+
+func (p *Gemini) geminiKey() string {
+	return ResolveAPIKey(p.cfg)
 }
 
 func (p *Gemini) Chat(ctx context.Context, req models.ChatRequest) (*models.ChatResponse, error) {
@@ -45,7 +49,7 @@ func (p *Gemini) Chat(ctx context.Context, req models.ChatRequest) (*models.Chat
 	if model == "" {
 		model = "gemini-1.5-flash"
 	}
-	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", p.cfg.BaseURL, model, p.cfg.APIKey)
+	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", p.cfg.BaseURL, model, p.geminiKey())
 	body, err := json.Marshal(p.buildPayload(req))
 	if err != nil {
 		return nil, err
@@ -63,7 +67,7 @@ func (p *Gemini) Chat(ctx context.Context, req models.ChatRequest) (*models.Chat
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, model, p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	var parsed geminiResponse
@@ -98,7 +102,7 @@ func (p *Gemini) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 	if model == "" {
 		model = "gemini-1.5-flash"
 	}
-	url := fmt.Sprintf("%s/models/%s:streamGenerateContent?alt=sse&key=%s", p.cfg.BaseURL, model, p.cfg.APIKey)
+	url := fmt.Sprintf("%s/models/%s:streamGenerateContent?alt=sse&key=%s", p.cfg.BaseURL, model, p.geminiKey())
 	body, err := json.Marshal(p.buildPayload(req))
 	if err != nil {
 		return nil, err
@@ -116,7 +120,7 @@ func (p *Gemini) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, model, p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	out := make(chan models.StreamChunk, 16)

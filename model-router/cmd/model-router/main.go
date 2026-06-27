@@ -34,6 +34,7 @@ func main() {
 		logger.Error("failed to build providers", "error", err)
 		os.Exit(1)
 	}
+	logProviderKeys(logger, cfg)
 
 	rtr := router.New(cfg, providers)
 	srv := api.NewServer(rtr)
@@ -73,4 +74,28 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func logProviderKeys(logger *slog.Logger, cfg config.Config) {
+	for id, entry := range cfg.Providers {
+		if !entry.Enabled || entry.APIKeyEnv == "" {
+			continue
+		}
+		key := provider.ResolveAPIKey(provider.ProviderConfig{APIKeyEnv: entry.APIKeyEnv})
+		if key == "" {
+			logger.Warn(
+				"enabled provider has no API key in process environment",
+				"provider", id,
+				"env", entry.APIKeyEnv,
+				"hint", "set in .env and use docker compose env_file — shell exports override compose interpolation",
+			)
+			continue
+		}
+		logger.Info(
+			"provider API key loaded from process environment",
+			"provider", id,
+			"env", entry.APIKeyEnv,
+			"fingerprint", provider.APIKeyFingerprint(key),
+		)
+	}
 }

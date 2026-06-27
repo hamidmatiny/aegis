@@ -8,16 +8,18 @@ All vendor-specific HTTP logic lives in `internal/provider/` — nothing leaks o
 
 ### Docker (recommended)
 
+Use `docker compose up -d --build model-router` after editing `.env`. Provider keys are injected via **`env_file: .env`** at container start — they are **never** baked into the image.
+
+**Important:** Do **not** put `XAI_API_KEY=...` in your shell profile. Docker Compose `${VAR}` interpolation prefers the **shell environment over `.env`**, which causes stale keys to win even after you update `.env`. If you previously exported a key, run `unset XAI_API_KEY` before `docker compose up`.
+
 ```bash
 cp .env.example .env
-# Set XAI_API_KEY, OPENAI_API_KEY, etc. in .env
+# Set XAI_API_KEY once in .env only
 docker compose up -d --build model-router
 
 curl localhost:8082/health
-curl localhost:8082/v1/providers
+curl localhost:8082/v1/providers   # check api_key_fingerprint + model_status
 ```
-
-Use `docker compose --env-file .env up -d model-router` — do not rely on manual `export` + `docker run -e VARNAME`.
 
 ### Local Go
 
@@ -127,8 +129,11 @@ Fix by updating `model-router/config/providers.yaml` with a current model ID.
 |-----------|----------------|---------|
 | `true` | `"ok"` | Reachable and default model accepted |
 | `true` | `"invalid_model"` | Reachable but configured default model rejected — see `model_error` |
-| `false` | `"unreachable"` | Network/auth/upstream down |
+| `false` | `"auth_failed"` | API key rejected (401/403) — update `.env` and recreate container |
+| `false` | `"unreachable"` | Network/upstream down (non-auth) |
 | `false` | `"not_checked"` | Provider disabled or no default model configured |
+
+Each provider entry includes `api_key_env`, `api_key_configured`, and `api_key_fingerprint` (last 4 chars) so you can verify which runtime key is loaded without exposing secrets.
 
 Note: this endpoint performs live upstream Ping + minimal completion probes when API keys are set (may incur latency/cost).
 
@@ -137,8 +142,9 @@ Note: this endpoint performs live upstream Ping + minimal completion probes when
 1. Resolve primary provider/model from request or config defaults
 2. Retry transient upstream errors (`429`, `5xx`) up to `retry.max_attempts`
 3. **Stop immediately** on model-not-found / retired errors — no retry, no fallback
-4. Walk `routing.fallback_chain` on other failures
-5. Return unified response regardless of upstream vendor
+4. **Stop immediately** on authentication failures (`401`/`403`) — no silent fallback to mock
+5. Walk `routing.fallback_chain` on other transient failures
+6. Return unified response regardless of upstream vendor
 
 ## Tests
 

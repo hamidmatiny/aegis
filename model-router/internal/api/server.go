@@ -154,6 +154,19 @@ func writeRouterError(w http.ResponseWriter, err error) {
 		})
 		return
 	}
+	if authErr, ok := provider.AsAuthError(err); ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error": authErr.Error(),
+			"aegis": map[string]any{
+				"model_error": map[string]any{
+					"provider":   authErr.Provider,
+					"error_type": authErr.ErrorType(),
+					"message":    authErr.Error(),
+				},
+			},
+		})
+		return
+	}
 
 	status := http.StatusBadGateway
 	var routerErr *models.RouterError

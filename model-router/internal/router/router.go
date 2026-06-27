@@ -15,6 +15,7 @@ const (
 	modelStatusOK           = "ok"
 	modelStatusInvalidModel = "invalid_model"
 	modelStatusUnreachable  = "unreachable"
+	modelStatusAuthFailed   = "auth_failed"
 	modelStatusNotChecked   = "not_checked"
 )
 
@@ -39,6 +40,12 @@ func (r *Router) ListProviders() []models.ProviderInfo {
 			BaseURL:      entry.BaseURL,
 			DefaultModel: entry.DefaultModel,
 			ModelStatus:  modelStatusNotChecked,
+		}
+		if entry.APIKeyEnv != "" {
+			key := provider.ResolveAPIKey(provider.ProviderConfig{APIKeyEnv: entry.APIKeyEnv})
+			info.APIKeyConfigured = key != ""
+			info.APIKeyEnv = entry.APIKeyEnv
+			info.APIKeyFingerprint = provider.APIKeyFingerprint(key)
 		}
 
 		if !entry.Enabled {
@@ -82,6 +89,10 @@ func (r *Router) ListProviders() []models.ProviderInfo {
 				info.ModelStatus = modelStatusInvalidModel
 				info.ModelError = modelErrorDetail(modelErr)
 				logModelRetired(modelErr)
+			} else if authErr, ok := provider.AsAuthError(err); ok {
+				info.ModelStatus = modelStatusAuthFailed
+				info.ModelError = authErrorDetail(authErr)
+				logAuthFailure(authErr)
 			} else {
 				info.ModelStatus = modelStatusUnreachable
 			}
@@ -123,6 +134,10 @@ func (r *Router) Chat(ctx context.Context, req models.ChatRequest) (*models.Chat
 		if modelErr, ok := provider.AsModelRetiredError(err); ok {
 			logModelRetired(modelErr)
 			return nil, modelErr
+		}
+		if authErr, ok := provider.AsAuthError(err); ok {
+			logAuthFailure(authErr)
+			return nil, authErr
 		}
 
 		attempts = append(attempts, models.RouteAttempt{
@@ -169,6 +184,10 @@ func (r *Router) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 			logModelRetired(modelErr)
 			return nil, "", modelErr
 		}
+		if authErr, ok := provider.AsAuthError(err); ok {
+			logAuthFailure(authErr)
+			return nil, "", authErr
+		}
 
 		attempts = append(attempts, models.RouteAttempt{
 			Provider: target.Provider,
@@ -188,6 +207,9 @@ func (r *Router) tryWithRetry(ctx context.Context, p provider.Provider, req mode
 		}
 		lastErr = err
 		if provider.IsModelRetiredError(err) {
+			return nil, err
+		}
+		if provider.IsAuthError(err) {
 			return nil, err
 		}
 		if up, ok := err.(*provider.UpstreamError); ok && !up.Retryable() {
@@ -233,6 +255,24 @@ func logModelRetired(err *provider.ModelRetiredError) {
 		"status_code", err.StatusCode,
 		"guidance", err.Guidance(),
 		"upstream_body", err.UpstreamBody,
+	)
+}
+
+func authErrorDetail(err *provider.AuthError) *models.ModelErrorDetail {
+	return &models.ModelErrorDetail{
+		Provider:  err.Provider,
+		ErrorType: err.ErrorType(),
+		Message:   err.Error(),
+	}
+}
+
+func logAuthFailure(err *provider.AuthError) {
+	slog.Error(
+		"provider authentication failed — update runtime env (not image build)",
+		"provider", err.Provider,
+		"api_key_env", err.APIKeyEnv,
+		"status_code", err.Status,
+		"upstream_body", err.Body,
 	)
 }
 

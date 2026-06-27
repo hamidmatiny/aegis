@@ -31,7 +31,7 @@ func NewAnthropic(cfg ProviderConfig) (Provider, error) {
 func (p *Anthropic) ID() string { return p.cfg.ID }
 
 func (p *Anthropic) Ping(ctx context.Context) error {
-	if p.cfg.APIKey == "" {
+	if ResolveAPIKey(p.cfg) == "" {
 		return fmt.Errorf("anthropic: missing API key")
 	}
 	return nil
@@ -56,7 +56,7 @@ func (p *Anthropic) Chat(ctx context.Context, req models.ChatRequest) (*models.C
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	var parsed anthropicResponse
@@ -108,7 +108,7 @@ func (p *Anthropic) ChatStream(ctx context.Context, req models.ChatRequest) (<-c
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, modelFromRequest(req.Model, p.cfg.DefaultModel), p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	out := make(chan models.StreamChunk, 16)
@@ -179,7 +179,7 @@ func (p *Anthropic) buildPayload(req models.ChatRequest, maxTokens int) map[stri
 }
 
 func (p *Anthropic) applyHeaders(req *http.Request) {
-	req.Header.Set("x-api-key", p.cfg.APIKey)
+	req.Header.Set("x-api-key", ResolveAPIKey(p.cfg))
 	req.Header.Set("anthropic-version", "2023-06-01")
 	for k, v := range p.cfg.ExtraHeaders {
 		req.Header.Set(k, v)

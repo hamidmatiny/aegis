@@ -80,7 +80,7 @@ func (p *OpenAICompat) Chat(ctx context.Context, req models.ChatRequest) (*model
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
 		model := modelFromRequest(req.Model, p.cfg.DefaultModel)
-		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, model, p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	var parsed openAIResponse
@@ -129,7 +129,7 @@ func (p *OpenAICompat) ChatStream(ctx context.Context, req models.ChatRequest) (
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		model := modelFromRequest(req.Model, p.cfg.DefaultModel)
-		return nil, classifyUpstreamError(p.cfg.ID, model, resp.StatusCode, string(raw))
+		return nil, classifyUpstreamError(p.cfg.ID, model, p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
 	}
 
 	out := make(chan models.StreamChunk, 16)
@@ -193,8 +193,8 @@ func (p *OpenAICompat) buildPayload(req models.ChatRequest, stream bool) map[str
 }
 
 func (p *OpenAICompat) applyHeaders(req *http.Request) {
-	if p.cfg.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+p.cfg.APIKey)
+	if key := ResolveAPIKey(p.cfg); key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
 	}
 	for k, v := range p.cfg.ExtraHeaders {
 		req.Header.Set(k, v)

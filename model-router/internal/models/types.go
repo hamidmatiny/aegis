@@ -51,13 +51,16 @@ type StreamChunk struct {
 
 // ProviderInfo describes a registered upstream provider.
 type ProviderInfo struct {
-	ID           string            `json:"id"`
-	Enabled      bool              `json:"enabled"`
-	BaseURL      string            `json:"base_url,omitempty"`
-	DefaultModel string            `json:"default_model,omitempty"`
-	Healthy      bool              `json:"healthy"`
-	ModelStatus  string            `json:"model_status"`
-	ModelError   *ModelErrorDetail `json:"model_error,omitempty"`
+	ID                string            `json:"id"`
+	Enabled           bool              `json:"enabled"`
+	BaseURL           string            `json:"base_url,omitempty"`
+	DefaultModel      string            `json:"default_model,omitempty"`
+	Healthy           bool              `json:"healthy"`
+	ModelStatus       string            `json:"model_status"`
+	ModelError        *ModelErrorDetail `json:"model_error,omitempty"`
+	APIKeyEnv         string            `json:"api_key_env,omitempty"`
+	APIKeyConfigured  bool              `json:"api_key_configured,omitempty"`
+	APIKeyFingerprint string            `json:"api_key_fingerprint,omitempty"`
 }
 
 // ModelErrorDetail is exposed when a configured model ID is rejected by upstream.

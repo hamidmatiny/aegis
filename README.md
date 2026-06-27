@@ -119,7 +119,7 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 
 | Variable | Service | Purpose |
 |----------|---------|---------|
-| `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) |
+| `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) — set **only** in `.env`; never `export` in shell (shell wins over `.env` for compose interpolation) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | model-router | Cloud LLM providers |
 | `AEGIS_MODEL_ROUTER_CONFIG` | model-router | Path to `providers.yaml` |
 | `AEGIS_POLICY_DIR` | policy-engine | YAML policy pack directory |
