@@ -4,6 +4,20 @@ This document reports **adaptive red-team evidence** and **detector ablation** a
 
 ---
 
+## H4 root-cause fixes (2026-06-27)
+
+Stage H4 closes the two architectural gaps from Phase 2 planning:
+
+| Gap | Fix |
+|-----|-----|
+| **Gateway placement** | Go `gateway/` owns port 8080 in compose; Python SDK proxy demoted to optional `aegis-sdk-proxy` CLI |
+| **Dashboard auth** | HTTP basic auth via `AEGIS_DASHBOARD_USER` / `AEGIS_DASHBOARD_PASSWORD` (compose default `admin` / `changeme`) |
+| **Streaming** | Explicitly **unsupported** on defended path (`400 streaming_unsupported`); unchanged from Stage 10 rationale |
+
+**Verification:** `scripts/e2e-sdk.sh` (Go gateway benign + block + streaming reject), `scripts/e2e-dashboard.sh` (auth + API proxies), `go test ./...` in `gateway/`.
+
+---
+
 ## H3 root-cause fixes (2026-06-25)
 
 Three fixes address the convergence analysis root causes (B: detector blind spot, C: judge not wired in red-team path, A: misleading blended reporting).

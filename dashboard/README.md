@@ -52,8 +52,12 @@ npm run preview
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `DASHBOARD_PORT` | `3000` | Host port for dashboard nginx container |
+| `AEGIS_DASHBOARD_USER` | `admin` | HTTP basic auth username (compose default) |
+| `AEGIS_DASHBOARD_PASSWORD` | `changeme` | HTTP basic auth password — **change in `.env`** |
 
-Backend URLs are configured via nginx proxy in Docker or Vite proxy in local dev — no separate env vars required in the UI.
+When `AEGIS_DASHBOARD_PASSWORD` is set (default in compose), nginx enables **HTTP basic auth** on the entire dashboard (UI + `/api/*` proxies). This is **dev-grade** protection, not enterprise SSO. Local Vite dev (`npm run dev`) has no auth unless you add a reverse proxy.
+
+Backend URLs are configured via nginx proxy in Docker or Vite proxy in local dev.
 
 ## API proxy paths
 
@@ -88,7 +92,7 @@ Added to support the dashboard:
 | **Policy persist from UI** | Not implemented | Edit files under `policy-engine/policies/` and `POST /v1/reload` |
 | **ASR history across restarts** | In-memory only | Red-team campaigns reset when container restarts |
 | **Approval persistence** | In-memory | Agent-gate approvals lost on restart |
-| **AuthN / RBAC** | Not implemented | Dashboard is open on the dev port — add auth before production |
+| **AuthN / RBAC** | HTTP basic auth (H4) | Dev-grade only — replace with SSO/OIDC before production |
 
 ## Tests
 

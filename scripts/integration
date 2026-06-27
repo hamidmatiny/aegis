@@ -40,10 +40,10 @@ curl -sf -X POST http://localhost:8082/v1/chat/completions \
   -d '{"messages":[{"role":"user","content":"Hello"}]}' \
   | grep -q '"object":"chat.completion"' || { echo "FAIL: model-router chat/completions"; exit 1; }
 
-echo "==> SDK proxy defended chat smoke test..."
+echo "==> Go gateway defended chat smoke test..."
 curl -sf -X POST http://localhost:8080/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"mock-model","messages":[{"role":"user","content":"Hello"}]}' \
-  | grep -q '"object":"chat.completion"' || { echo "FAIL: sdk proxy chat/completions"; exit 1; }
+  | grep -q '"object":"chat.completion"' || { echo "FAIL: gateway chat/completions"; exit 1; }
 
 echo "==> All integration smoke tests passed"

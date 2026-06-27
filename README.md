@@ -25,7 +25,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 | Path | Language | Purpose | Stage |
 |------|----------|---------|-------|
 | `shared/` | Protobuf + JSON Schema | Cross-service schemas and codegen | 0 |
-| `gateway/` | Go | gRPC + REST orchestration (scaffold) | 0 |
+| `gateway/` | Go | HTTP orchestration (defended chat pipeline) | H4 |
 | `input-defense/` | Python | Input-side detectors + fusion | 2 |
 | `policy-engine/` | Go | CEL policy evaluation | 3 |
 | `model-router/` | Go | Provider-agnostic LLM routing | 4 |
@@ -119,7 +119,8 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 
 | Variable | Service | Purpose |
 |----------|---------|---------|
-| `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) — set **only** in `.env`; never `export` in shell (shell wins over `.env` for compose interpolation) |
+| `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) — set **only** in `.env`; never `export` in shell |
+| `AEGIS_DASHBOARD_USER` / `AEGIS_DASHBOARD_PASSWORD` | dashboard | HTTP basic auth (compose default `admin` / `changeme`) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | model-router | Cloud LLM providers |
 | `AEGIS_MODEL_ROUTER_CONFIG` | model-router | Path to `providers.yaml` |
 | `AEGIS_POLICY_DIR` | policy-engine | YAML policy pack directory |

@@ -25,6 +25,12 @@ flowchart LR
     ID & PE & OD & AG --> Audit[Audit Service]
 ```
 
+### 0. Gateway (Go) — Stage H4
+
+HTTP orchestrator for the defended chat pipeline. Calls input-defense, policy-engine, model-router, output-defense, and agent-gate over REST.
+
+**Port:** 8080 — see [gateway/README.md](./gateway/README.md)
+
 ### 1. Input Defense (Python) — Stage 2
 
 Intercepts and analyzes all user and retrieved content before it reaches the model.
@@ -167,18 +173,19 @@ All cross-service communication uses protobuf definitions in `shared/proto/aegis
 
 JSON Schema mirrors live in `shared/jsonschema/v1/` for REST/OpenAPI.
 
-## Current wiring (Stages 0–11)
+## Current wiring (Stages 0–11 + Phase 2 H4)
 
-Services run independently via `docker-compose.yml`. Cross-service orchestration through the gateway is planned for later stages. Today:
+Services run via `docker-compose.yml`. **Stage H4** restored the Go gateway as the HTTP orchestrator on port **8080**:
 
-- **Input defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/input`
-- **Output defense → policy engine:** caller invokes `POST /analyze` then `POST /v1/evaluate/output`
-- **Agent gate → policy engine:** caller invokes `POST /v1/evaluate` (gate calls policy-engine internally)
-- **Red team → defenses:** `POST /v1/campaigns/run` probes input-defense and output-defense
-- **Audit:** any layer can `POST /v1/receipts` to persist a signed decision receipt
-- **Audit wiring:** input-defense, output-defense, policy-engine, and agent-gate emit receipts automatically when `AEGIS_AUDIT_URL` is set
-- **SDK / gateway:** `gateway` container runs the Python SDK proxy (interim HTTP entry on 8080) — see [sdk/README.md](./sdk/README.md#gateway-vs-go-orchestrator). Go `gateway/` orchestration is still planned.
-- **Streaming:** model-router supports SSE; the **defended** pipeline does not stream to clients because output defense requires the complete assistant response before release (structural — not a TODO). See [sdk/python/README.md](./sdk/python/README.md#streaming-and-output-defense).
+- **Go gateway (`gateway:8080`):** `POST /v1/chat/completions` runs input-defense → policy → model-router → output-defense → policy in one call. `POST /v1/tools/evaluate` delegates to agent-gate.
+- **Input defense → policy engine:** also callable directly (`POST /analyze` then `POST /v1/evaluate/input`)
+- **Output defense → policy engine:** also callable directly (`POST /analyze` then `POST /v1/evaluate/output`)
+- **Agent gate → policy engine:** `POST /v1/evaluate` (gate calls policy-engine internally)
+- **Red team → defenses:** campaigns probe defenses directly or via HTTP URLs
+- **Audit:** services emit receipts when `AEGIS_AUDIT_URL` is set
+- **Python SDK proxy:** optional via `aegis-sdk-proxy` CLI for embedded dev — **not** the compose `gateway` service after H4
+- **Dashboard:** nginx on `:3000` with HTTP basic auth when `AEGIS_DASHBOARD_PASSWORD` is set (compose default)
+- **Streaming (H4 decision — unchanged):** model-router supports SSE at `:8082`; the **defended gateway path rejects `stream: true`** (HTTP 400 `streaming_unsupported`) because output defense requires the full assistant response before release. This is intentional, not backlog.
 
 See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-redteam.sh`, `scripts/e2e-audit.sh`, `scripts/e2e-audit-pipeline.sh`, `scripts/e2e-sdk.sh`, and `scripts/e2e-examples.sh` for working examples.
 

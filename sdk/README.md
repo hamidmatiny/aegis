@@ -1,6 +1,6 @@
 # AEGIS SDKs
 
-Drop-in Python and TypeScript clients plus an OpenAI-compatible reverse proxy (Docker `gateway` service on port **8080**).
+Drop-in Python and TypeScript clients plus a **Go gateway** on port **8080** (Docker `gateway` service).
 
 | Package | Path | Install |
 |---------|------|---------|
@@ -44,24 +44,21 @@ resp = client.chat.completions.create(
 )
 ```
 
-## Gateway vs Go orchestrator
+## Gateway (Go orchestrator)
 
-Stage 0 scaffolded a **Go gateway** (`gateway/`) as the long-term gRPC/REST orchestration layer. Stage 10 did **not** implement that orchestrator; it wired the Docker **`gateway` service** (port 8080) to the **Python SDK reverse proxy** instead.
+**Stage H4 (done):** Docker `gateway` on port **8080** is the **Go orchestrator** (`gateway/`). It runs the same pipeline as the Python SDK (`input → policy → model-router → output → policy`).
 
-**Why port 8080 was given to the SDK proxy (pragmatic, interim):**
+Use `OPENAI_BASE_URL=http://localhost:8080/v1` for reverse-proxy mode — no application code changes.
 
-- Stage 10’s deliverable was SDK + `OPENAI_BASE_URL` reverse-proxy mode. The pipeline already existed in Python (`DefensePipeline`); exposing it on 8080 made “point your OpenAI client at AEGIS” work immediately without duplicating orchestration in Go.
-- The Go gateway was still a health-only stub — no orchestration was removed, only the unused HTTP entry was repurposed.
+The Python **SDK proxy** (`aegis-sdk-proxy`) remains for embedded/local development when you run it explicitly; it is no longer the compose `gateway` service.
 
-**Tradeoffs (why this is not the final architecture):**
+| Component | Role |
+|-----------|------|
+| **Go gateway** (`gateway/`, compose `gateway:8080`) | Production HTTP entrypoint; defended chat + tool evaluate |
+| **Python SDK proxy** (`aegis-sdk-proxy`) | Optional dev/embedded orchestration |
+| **Python `DefensePipeline`** | In-process orchestration via `OpenAI()` client without HTTP gateway |
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **What we did** — SDK proxy as `gateway` on 8080 | Fast Stage 10; one URL for apps; no duplicated Go logic yet | Conflates “product gateway” with “SDK dev proxy”; Go `gateway/` orphaned on that port |
-| **Separate `sdk-proxy` + Go gateway on 8080** | Clear separation; Go scaffold stays visible | Two HTTP entrypoints; `OPENAI_BASE_URL` less obvious |
-| **Finish Go gateway orchestration in Stage 10** | Matches original architecture; better hot-path home | Large scope; duplicates pipeline until shared library exists |
-
-**Intended direction:** Go gateway should eventually own orchestration (gRPC hot path, OTEL, connection pooling). The Python proxy remains valid for SDK development and OpenAI-compat HTTP, but production may colocate orchestration in Go and call the same defense services. Stage 10 optimized for **shipping a verifiable SDK**, not for final gateway placement.
+gRPC orchestration (`shared/proto/aegis/v1/gateway.proto`) is defined; REST is implemented in H4.
 
 ## Streaming
 
