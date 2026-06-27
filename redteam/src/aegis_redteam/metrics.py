@@ -15,6 +15,7 @@ from aegis_redteam.models import (
     DefenseTarget,
     MetricsReport,
     ProbeResult,
+    RoundReport,
     TargetMetrics,
 )
 
@@ -166,7 +167,7 @@ def format_category_table(report: CampaignReport) -> str:
     return _render_table(headers, rows)
 
 
-def format_round_table(rounds: list) -> str:
+def format_round_table(rounds: list[RoundReport]) -> str:
     """Render per-round bypass summary (accepts RoundReport models)."""
     headers = ["Round", "Probes", "Bypasses", "BR", "Variants generated"]
     rows = [
