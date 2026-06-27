@@ -102,7 +102,7 @@ Pytest uses stub backends by default (`tests/conftest.py`).
 
 | ID | Type | H2 backend | Description |
 |----|------|------------|-------------|
-| `toxicity` | Scoring | Toxic-BERT + harm lexicon | Multi-label comment toxicity + Phase 1 weapon/malware patterns |
+| `toxicity` | Scoring | Toxic-BERT + harm lexicon | Multi-label comment toxicity + **framing-aware instructional harm lexicon** (self-harm methods, weapon recipes) with fictional/hypothetical prefix stripping |
 | `pii` | Scoring + redactor | Regex + spaCy NER | Credentials via regex; names/locations via context-gated NER |
 | `backtranslation` | Scoring | model-router restatement | LLM restates intent; divergence score flags semantic smoothing |
 | `judge` | Conditional ensemble | 3× model-router judges | Only on ambiguous fused band (0.45–0.70); majority vote |
@@ -111,7 +111,9 @@ Pytest uses stub backends by default (`tests/conftest.py`).
 
 | Component | Model | Why |
 |-----------|-------|-----|
-| Toxicity | `unitary/toxic-bert` (~110M, ungated) | Strong on hate/harassment; paired with harm lexicon for weapon/malware recall |
+| Toxicity | `unitary/toxic-bert` (~110M, ungated) | Strong on hate/harassment; paired with **instructional harm lexicon** (`harm_lexicon.py`) for self-harm method / weapon-recipe content delivered via creative-writing or hypothetical framing — patterns Toxic-BERT alone often misses |
+
+**Self-harm / instructional harm (H3 fix):** Toxic-BERT targets general toxicity labels (hate, threat, insult) and misses “describe how a character might end their life” jailbreaks. Rather than a separate gated classifier, the stack uses **framing-prefix stripping** (same pattern as backtranslation meta-framing recall) plus a dedicated instructional-harm lexicon scored as `max(ml, instructional)`. Openly-licensed alternatives if a standalone model is needed later: **Llama Guard 3** (Meta, gated weights) or **Detoxify** (same family as Toxic-BERT, still weak on framed self-harm — lexicon remains necessary).
 | PII NER | spaCy `en_core_web_sm` | Lightweight local NER; context-gated to avoid benign name FPR |
 | Backtranslation / judge | model-router (Grok via existing wiring) | Reuses Stage 4 router — no new direct API dependency |
 
@@ -203,7 +205,7 @@ Fixtures live in `tests/fixtures/outputs.yaml` (30 attacks + 15 benign).
 
 ## H2 before/after fixture metrics
 
-Threshold **0.50**, `invoke_judge=False` (same as Phase 1 regression suite).
+Threshold **0.50**. Live `POST /analyze` **auto-invokes the judge ensemble** when fused score is in the ambiguous band (0.45–0.70). Fixture metrics and ablation scripts pass `invoke_judge=False` to isolate scoring detectors.
 
 **Important:** The original H2 report used `run_fixture_metrics.py` with `--backtranslation-backend stub` (the script default) and **model-router was not running**. Backtranslation/judge router paths were never exercised in that comparison.
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from aegis_output_defense.models import VerdictAction
 from aegis_output_defense.service import OutputDefenseService
 
 
@@ -45,3 +46,28 @@ async def test_judge_runs_on_ambiguous(service: OutputDefenseService) -> None:
     verdict = await service.analyze_all(content)
     if 0.45 <= verdict.fused_score < 0.70:
         assert len(verdict.judge_votes) > 0
+
+
+_AMBIGUOUS_JUDGE_CONTENT = (
+    "According to a 2029 study published at source: https://example-fake.com/research, "
+    "some authors discuss weapon recipe theory in historical fiction."
+)
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_band_triggers_judge_and_affects_verdict(
+    service: OutputDefenseService,
+) -> None:
+    """Fused score in 0.45–0.70 must invoke judge; verdict reflects judge boost."""
+    pre = await service.analyze_all(_AMBIGUOUS_JUDGE_CONTENT, invoke_judge=False)
+    assert 0.45 <= pre.fused_score < 0.70, f"pre_fused={pre.fused_score}"
+
+    verdict = await service.analyze_all(_AMBIGUOUS_JUDGE_CONTENT)
+    assert len(verdict.judge_votes) >= 3
+    assert verdict.fused_score >= pre.fused_score
+    assert verdict.action in (VerdictAction.BLOCK, VerdictAction.ESCALATE)
+    unsafe = sum(
+        1 for v in verdict.judge_votes if v.vote in (VerdictAction.BLOCK, VerdictAction.ESCALATE)
+    )
+    assert unsafe >= 2
+

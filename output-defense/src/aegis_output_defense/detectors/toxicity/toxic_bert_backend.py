@@ -5,10 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from aegis_output_defense.detectors.toxicity.backend import ToxicityBackend, ToxicityPrediction
-from aegis_output_defense.detectors.toxicity.stub_backend import (
-    _BENIGN_PATTERNS,
-    _TOXIC_PATTERNS,
-)
+from aegis_output_defense.detectors.toxicity.harm_lexicon import score_with_framing_awareness
 from aegis_output_defense.ml.loader import TOXIC_BERT_MODEL_ID, get_toxic_bert_model
 from aegis_output_defense.provenance import (
     EXECUTION_BACKEND,
@@ -21,23 +18,12 @@ from aegis_output_defense.provenance import (
 _TOXIC_LABELS = ("toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate")
 
 
-def _lexical_harm_score(content: str) -> float:
-    score = 0.06
-    for _name, pattern, weight in _TOXIC_PATTERNS:
-        if pattern.search(content):
-            score += weight
-    for _name, pattern, weight in _BENIGN_PATTERNS:
-        if pattern.search(content):
-            score += weight
-    return min(max(score, 0.0), 1.0)
-
-
 class ToxicBERTBackend(ToxicityBackend):
-    """Toxic-BERT plus Phase 1 harm lexicon calibration.
+    """Toxic-BERT plus framing-aware instructional harm lexicon.
 
-    Toxic-BERT generalizes hate/harassment better than regex alone; the lexicon
-    retains high recall on explicit instructional harm (weapons, malware) that
-    comment-toxicity models often miss.
+    Toxic-BERT generalizes hate/harassment; the instructional harm lexicon catches
+    self-harm method content and weapon recipes delivered via fictional/hypothetical
+    framing — a documented jailbreak pattern Toxic-BERT often misses.
     """
 
     def __init__(self, *, model_id: str | None = None) -> None:
@@ -52,15 +38,18 @@ class ToxicBERTBackend(ToxicityBackend):
 
     def _predict_sync(self, content: str) -> ToxicityPrediction:
         ml = self._predict_ml(content)
-        lexical = _lexical_harm_score(content)
-        aggregate = max(ml.probability, lexical)
+        instructional, instr_signals, instr_execution = score_with_framing_awareness(content)
+        aggregate = max(ml.probability, instructional)
         label = "toxic" if aggregate >= 0.55 else "ambiguous" if aggregate >= 0.30 else "safe"
         reasoning = ml.reasoning
-        if lexical > ml.probability:
-            reasoning = f"{reasoning}; lexical boost {lexical:.2f}"
-        if lexical >= aggregate and lexical > ml.probability:
-            execution = "toxic-bert-lexical-calibration"
-        elif ml.probability > lexical:
+        if instructional > ml.probability:
+            reasoning = (
+                f"{reasoning}; instructional harm {instructional:.2f} "
+                f"({','.join(instr_signals[:4]) or 'none'})"
+            )
+        if instructional >= aggregate and instructional > ml.probability:
+            execution = instr_execution
+        elif ml.probability > instructional:
             execution = "toxic-bert-ml"
         else:
             execution = "toxic-bert-ml-low"
@@ -72,9 +61,12 @@ class ToxicBERTBackend(ToxicityBackend):
             metadata={
                 REQUESTED_BACKEND: "toxic-bert",
                 EXECUTION_BACKEND: execution,
-                SCORE_SOURCE: f"ml={ml.probability:.4f},lexical={lexical:.4f},aggregate={aggregate:.4f}",
+                SCORE_SOURCE: (
+                    f"ml={ml.probability:.4f},instructional={instructional:.4f},"
+                    f"aggregate={aggregate:.4f}"
+                ),
                 ML_SCORE: f"{ml.probability:.6f}",
-                LEXICAL_SCORE: f"{lexical:.6f}",
+                LEXICAL_SCORE: f"{instructional:.6f}",
             },
         )
 

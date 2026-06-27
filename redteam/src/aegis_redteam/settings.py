@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     database_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL", ""))
     store_bypasses: bool = True
     adaptive_rounds: int = 3
+    adaptive_max_rounds: int = 5
     adaptive_max_variants_per_bypass: int = 4
     model_router_url: str = Field(
         default_factory=lambda: os.getenv("AEGIS_MODEL_ROUTER_URL", "http://localhost:8082")

@@ -54,7 +54,12 @@ def _configure_streaming_output() -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rounds", type=int, default=settings.adaptive_rounds)
+    parser.add_argument(
+        "--rounds",
+        type=int,
+        default=settings.adaptive_rounds,
+        help=f"Adaptive rounds including round 1 (max {settings.adaptive_max_rounds})",
+    )
     parser.add_argument(
         "--strategies",
         nargs="*",
@@ -92,7 +97,6 @@ def _format_same_corpus_table(stub: CampaignSnapshot, hardened: CampaignSnapshot
             str(len(adaptive)),
             str(a_bypass),
             f"{report.adaptive_bypass_rate:.1%}",
-            f"{report.bypass_rate:.1%}",
         ]
 
     headers = [
@@ -103,7 +107,6 @@ def _format_same_corpus_table(stub: CampaignSnapshot, hardened: CampaignSnapshot
         "Adapt probes",
         "Adapt bypass",
         "Adapt BR",
-        "Overall BR",
     ]
     rows = [_row("Phase 1 stub", stub.report), _row("Phase 2 hardened", hardened.report)]
     widths = [max(len(headers[i]), max(len(r[i]) for r in rows)) for i in range(len(headers))]
@@ -140,6 +143,12 @@ async def _run_profile(
 async def main() -> int:
     _configure_streaming_output()
     args = _parse_args()
+    if args.rounds > settings.adaptive_max_rounds:
+        print(
+            f"Error: --rounds {args.rounds} exceeds cap {settings.adaptive_max_rounds}",
+            file=sys.stderr,
+        )
+        return 1
 
     attacks = [f for f in load_fixtures() if f.is_attack]
     strategy_count = len(args.strategies) if args.strategies else len(list_strategies())
@@ -207,9 +216,14 @@ async def main() -> int:
         assert _round1_probe_count(stub.report) == expected_r1, (
             f"Expected {expected_r1} round-1 probes, got {_round1_probe_count(stub.report)}"
         )
-        print("-- Headline comparison (identical round-1 corpus) --")
+        print("-- Headline comparison (identical round-1 corpus; adaptive rounds reported separately) --")
         print(_format_same_corpus_table(stub, hardened))
         print()
+        print(
+            "Methodology: R1 BR is a clean static sample (30 attacks × 8 strategies). "
+            "Adapt BR is conditional on round-(N-1) bypass survivors — do not blend into "
+            "a single 'overall bypass rate' headline."
+        )
         print(f"Stub elapsed: {stub.elapsed_s:.1f}s | Hardened elapsed: {hardened.elapsed_s:.1f}s")
         print()
         for snap in snapshots:
@@ -221,8 +235,9 @@ async def main() -> int:
         print(f"-- {snap.profile} only --")
         print(format_round_table(snap.report.rounds))
         print(
-            f"Overall BR: {snap.report.bypass_rate:.1%} "
-            f"({snap.report.bypass_count}/{snap.report.total_probes})"
+            f"R1 BR: {snap.report.baseline_bypass_rate:.1%} | "
+            f"Adaptive BR: {snap.report.adaptive_bypass_rate:.1%} "
+            f"(conditional on prior-round bypasses)"
         )
 
     print(

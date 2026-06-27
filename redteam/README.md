@@ -41,6 +41,7 @@ python -m aegis_redteam.main
 | `AEGIS_REDTEAM_OUTPUT_DEFENSE_URL` | `http://localhost:8091` | Output defense base URL |
 | `AEGIS_REDTEAM_DETECTION_THRESHOLD` | `0.50` | Score threshold matching defense ASR metrics |
 | `AEGIS_REDTEAM_ADAPTIVE_ROUNDS` | `3` | Default adaptive campaign rounds (CLI) |
+| `AEGIS_REDTEAM_ADAPTIVE_MAX_ROUNDS` | `5` | Hard cap on `--rounds` (adaptive methodology) |
 | `AEGIS_REDTEAM_ADAPTIVE_MAX_VARIANTS_PER_BYPASS` | `5` | Max mutators applied per bypass per adaptive round |
 | `DATABASE_URL` | — | Postgres for `attack_patterns` table (optional) |
 | `AEGIS_REDTEAM_STORE_BYPASSES` | `true` | Persist bypass patterns to memory/Postgres |
@@ -139,8 +140,12 @@ docker compose up -d --build input-defense output-defense redteam
 
 | Phase | Probes | Purpose |
 |-------|--------|---------|
-| Round 1 (baseline) | fixtures × strategies | Same as standard campaign |
-| Rounds 2–3 (adaptive) | mutators × prior-round bypasses | New variants from successful evasions |
+| Round 1 (baseline) | fixtures × strategies | **Clean static sample** — report R1 bypass rate separately |
+| Rounds 2–N (adaptive) | mutators × prior-round bypasses | **Conditional** on round-(N-1) survivors — not a fresh sample |
+
+**Reporting rule (H3 fix):** Do **not** blend R1 and adaptive bypass rates into a single “overall bypass rate” headline. R1 measures static catch rate on the full corpus; adaptive rounds measure evolutionary escape from prior bypass seeds (selection bias / ceiling effect). Default **3** rounds, hard cap **5** (`AEGIS_REDTEAM_ADAPTIVE_MAX_ROUNDS`).
+
+Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.45–0.70).
 
 **Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies → 24.5% overall BR). Compare live hardened stack via `scripts/run_before_after.py`.
 

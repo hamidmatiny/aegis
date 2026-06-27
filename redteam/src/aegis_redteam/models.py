@@ -105,7 +105,7 @@ class RunCampaignRequest(BaseModel):
 class RunAdaptiveCampaignRequest(RunCampaignRequest):
     """Multi-round campaign: baseline fixtures then adaptive mutations."""
 
-    rounds: int = Field(default=3, ge=1, le=10)
+    rounds: int = Field(default=3, ge=1, le=5)
     max_variants_per_bypass: int = Field(default=4, ge=0, le=20)
     use_router_mutations: bool = True
     max_router_blocked: int = Field(default=15, ge=0, le=100)

@@ -62,7 +62,6 @@ class LocalDefenseProbe:
             verdict = await self._output.analyze_all(
                 payload,
                 enabled_detectors=enabled_detectors,
-                invoke_judge=False,
             )
         return {
             "action": str(verdict.action),
