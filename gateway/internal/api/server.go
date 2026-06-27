@@ -92,10 +92,10 @@ func writePipelineError(w http.ResponseWriter, err error) {
 	if errors.As(err, &approval) {
 		writeJSON(w, http.StatusForbidden, map[string]any{
 			"error": map[string]any{
-				"type":         "aegis_approval_required",
-				"message":      approval.Message,
-				"approval_id":  approval.ApprovalID,
-				"tool_name":    approval.ToolName,
+				"type":        "aegis_approval_required",
+				"message":     approval.Message,
+				"approval_id": approval.ApprovalID,
+				"tool_name":   approval.ToolName,
 			},
 		})
 		return

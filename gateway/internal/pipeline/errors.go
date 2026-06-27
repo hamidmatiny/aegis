@@ -4,12 +4,12 @@ import "fmt"
 
 // PolicyBlockedError is returned when a defense or policy layer blocks the request.
 type PolicyBlockedError struct {
-	Message       string
-	Layer         string
-	Action        string
-	PolicyAction  string
-	FusedScore    float64
-	Details       map[string]any
+	Message      string
+	Layer        string
+	Action       string
+	PolicyAction string
+	FusedScore   float64
+	Details      map[string]any
 }
 
 func (e *PolicyBlockedError) Error() string {

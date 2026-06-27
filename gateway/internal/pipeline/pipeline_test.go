@@ -2,8 +2,8 @@ package pipeline_test
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,11 +45,11 @@ func TestChatCompletionsHappyPath(t *testing.T) {
 	defer output.Close()
 
 	p := pipeline.New(config.Config{
-		InputDefenseURL:  input.URL,
-		OutputDefenseURL: output.URL,
-		PolicyEngineURL:  policy.URL,
-		ModelRouterURL:   router.URL,
-		DefaultModel:     "mock-model",
+		InputDefenseURL:    input.URL,
+		OutputDefenseURL:   output.URL,
+		PolicyEngineURL:    policy.URL,
+		ModelRouterURL:     router.URL,
+		DefaultModel:       "mock-model",
 		HTTPTimeoutSeconds: 5,
 	})
 
