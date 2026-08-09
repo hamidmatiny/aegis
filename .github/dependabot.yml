@@ -1,0 +1,136 @@
+version: 2
+updates:
+  # --- Go modules ---------------------------------------------------------
+  - package-ecosystem: gomod
+    directory: /gateway
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /policy-engine
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /model-router
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /agent-gate
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /audit
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /shared/gen/go
+    schedule:
+      interval: weekly
+
+  # --- Python --------------------------------------------------------------
+  - package-ecosystem: pip
+    directory: /input-defense
+    schedule:
+      interval: weekly
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /output-defense
+    schedule:
+      interval: weekly
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /redteam
+    schedule:
+      interval: weekly
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /sdk/python
+    schedule:
+      interval: weekly
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+
+  # --- JavaScript / TypeScript ----------------------------------------------
+  - package-ecosystem: npm
+    directory: /dashboard
+    schedule:
+      interval: weekly
+    groups:
+      npm-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /sdk/typescript
+    schedule:
+      interval: weekly
+    groups:
+      npm-dependencies:
+        patterns: ["*"]
+
+  # --- Docker base images ---------------------------------------------------
+  - package-ecosystem: docker
+    directory: /gateway
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /policy-engine
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /model-router
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /agent-gate
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /audit
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /input-defense
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /output-defense
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /redteam
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /dashboard
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /sdk/python
+    schedule:
+      interval: weekly
+
+  # --- GitHub Actions --------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
