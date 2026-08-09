@@ -1,0 +1,124 @@
+name: Release
+
+# Builds and publishes signed container images for every AEGIS service when
+# a version tag is pushed. Images are signed keylessly with cosign via
+# GitHub's OIDC identity — no signing key to generate, store, or leak.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish (e.g. v0.2.0)"
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write # required for cosign keyless signing
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-sign-push:
+    name: Build, sign, and push
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - gateway
+          - policy-engine
+          - model-router
+          - agent-gate
+          - audit
+          - input-defense
+          - output-defense
+          - redteam
+          - dashboard
+          - sdk-proxy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: echo "value=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build context
+        id: ctx
+        run: |
+          if [ "${{ matrix.service }}" = "sdk-proxy" ]; then
+            echo "dockerfile=sdk/python/Dockerfile" >> "$GITHUB_OUTPUT"
+          else
+            echo "dockerfile=${{ matrix.service }}/Dockerfile" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.ctx.outputs.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/aegis-${{ matrix.service }}:${{ steps.tag.outputs.value }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/aegis-${{ matrix.service }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
+        run: |
+          cosign sign --yes \
+            "${REGISTRY}/${{ github.repository_owner }}/aegis-${{ matrix.service }}@${{ steps.build.outputs.digest }}"
+
+      - name: Generate SBOM for this image
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft "${REGISTRY}/${{ github.repository_owner }}/aegis-${{ matrix.service }}@${{ steps.build.outputs.digest }}" \
+            -o cyclonedx-json="sbom-${{ matrix.service }}.cyclonedx.json"
+
+      - name: Attest SBOM to image (keyless)
+        run: |
+          cosign attest --yes \
+            --predicate "sbom-${{ matrix.service }}.cyclonedx.json" \
+            --type cyclonedx \
+            "${REGISTRY}/${{ github.repository_owner }}/aegis-${{ matrix.service }}@${{ steps.build.outputs.digest }}"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.cyclonedx.json
+
+  github-release:
+    name: Publish GitHub Release
+    needs: build-sign-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve tag
+        id: tag
+        run: echo "value=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+      - name: Create/update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.value }}
+          generate_release_notes: true

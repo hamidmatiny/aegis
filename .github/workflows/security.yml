@@ -1,0 +1,86 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Catch newly-disclosed CVEs in already-merged dependencies, not just new PRs.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.22"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  govulncheck:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, policy-engine, model-router, agent-gate, audit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Scan ${{ matrix.service }}
+        run: cd ${{ matrix.service }} && govulncheck ./...
+
+  pip-audit:
+    name: Python dependency audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [input-defense, output-defense, redteam, sdk/python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Install ${{ matrix.service }}
+        run: pip install -e "./${{ matrix.service }}"
+      - name: Audit ${{ matrix.service }}
+        # Vulnerabilities with no fix yet are reported but don't fail the
+        # build (--strict flips this off); dependabot tracks fixable ones.
+        run: pip-audit --path "./${{ matrix.service }}" || pip-audit --path "./${{ matrix.service }}" --desc
+
+  npm-audit:
+    name: npm dependency audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [dashboard, sdk/typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        run: cd ${{ matrix.project }} && npm install
+      - name: Audit (high+ severity fails the build)
+        run: cd ${{ matrix.project }} && npm audit --audit-level=high
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate CycloneDX SBOM for the repo
+        run: syft dir:. -o cyclonedx-json=sbom.cyclonedx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json

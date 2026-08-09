@@ -4,7 +4,11 @@ set -euo pipefail
 
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:3000}"
 DASHBOARD_USER="${AEGIS_DASHBOARD_USER:-admin}"
-DASHBOARD_PASSWORD="${AEGIS_DASHBOARD_PASSWORD:-changeme}"
+# No static default password. Set AEGIS_DASHBOARD_PASSWORD (see
+# scripts/generate-credentials.sh, or check `docker compose logs dashboard`
+# for a generated one-time password) before running this script.
+: "${AEGIS_DASHBOARD_PASSWORD:?Set AEGIS_DASHBOARD_PASSWORD first — see scripts/generate-credentials.sh}"
+DASHBOARD_PASSWORD="${AEGIS_DASHBOARD_PASSWORD}"
 AUTH=(-u "${DASHBOARD_USER}:${DASHBOARD_PASSWORD}")
 
 echo "==> E2E: AEGIS dashboard"

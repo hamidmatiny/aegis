@@ -20,7 +20,7 @@ The dashboard nginx container proxies backend APIs under `/api/*` to avoid CORS 
 ### Docker (recommended)
 
 ```bash
-cp .env.example .env
+./scripts/generate-credentials.sh   # or cp .env.example .env and set your own
 docker compose up -d --build dashboard audit policy-engine agent-gate redteam
 
 open http://localhost:3000
@@ -52,10 +52,10 @@ npm run preview
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `DASHBOARD_PORT` | `3000` | Host port for dashboard nginx container |
-| `AEGIS_DASHBOARD_USER` | `admin` | HTTP basic auth username (compose default) |
-| `AEGIS_DASHBOARD_PASSWORD` | `changeme` | HTTP basic auth password — **change in `.env`** |
+| `AEGIS_DASHBOARD_USER` | `admin` | HTTP basic auth username |
+| `AEGIS_DASHBOARD_PASSWORD` | *(none — generated)* | HTTP basic auth password. No static default: run `scripts/generate-credentials.sh` to persist one, or read the one-time generated password from `docker compose logs dashboard` |
 
-When `AEGIS_DASHBOARD_PASSWORD` is set (default in compose), nginx enables **HTTP basic auth** on the entire dashboard (UI + `/api/*` proxies). This is **dev-grade** protection, not enterprise SSO. Local Vite dev (`npm run dev`) has no auth unless you add a reverse proxy.
+nginx always enables **HTTP basic auth** on the entire dashboard (UI + `/api/*` proxies) — either with the password you configured, or with a freshly generated one if you didn't. This is **dev-grade** protection, not enterprise SSO (tracked for the hosted control-plane tier). Local Vite dev (`npm run dev`) has no auth unless you add a reverse proxy.
 
 Backend URLs are configured via nginx proxy in Docker or Vite proxy in local dev.
 
