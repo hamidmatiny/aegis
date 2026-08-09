@@ -64,3 +64,6 @@ benchmark-results/
 
 # Helm
 deploy/helm/charts/*.tgz
+
+# Rendered demo nginx config contains a real API key (see deploy/oracle/setup.sh)
+deploy/oracle/nginx-demo.conf

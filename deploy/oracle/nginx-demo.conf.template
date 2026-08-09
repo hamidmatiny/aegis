@@ -1,0 +1,33 @@
+# Public demo reverse proxy. Sits in front of the gateway and:
+#  1. Injects the real AEGIS_API_KEYS server-side, so public visitors never
+#     see or need a key — the demo "just works" with plain curl/browser.
+#  2. Rate-limits per source IP so the free-tier demo can't be hammered.
+#  3. Only exposes /health and the defended chat endpoint — nothing else.
+#
+# ${AEGIS_DEMO_API_KEY} is substituted by deploy/oracle/setup.sh via envsubst
+# at container start; it is never committed to the repo.
+
+limit_req_zone $binary_remote_addr zone=aegis_demo:10m rate=6r/m;
+
+server {
+    listen 80;
+    server_name _;
+
+    location = /health {
+        proxy_pass http://gateway:8080/health;
+    }
+
+    location = /v1/chat/completions {
+        limit_req zone=aegis_demo burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_set_header Authorization "Bearer ${AEGIS_DEMO_API_KEY}";
+        proxy_set_header Content-Type "application/json";
+        proxy_pass http://gateway:8080/v1/chat/completions;
+    }
+
+    location / {
+        return 404 '{"error":"this demo only exposes /health and /v1/chat/completions"}';
+        default_type application/json;
+    }
+}
