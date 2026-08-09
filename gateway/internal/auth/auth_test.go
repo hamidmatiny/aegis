@@ -118,6 +118,8 @@ func TestMiddleware_AcceptsXAPIKeyHeader(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	// Ensure no ambient AEGIS_API_KEYS from the host leaks into tests.
-	os.Unsetenv(auth.EnvKeys)
+	if err := os.Unsetenv(auth.EnvKeys); err != nil {
+		panic(err)
+	}
 	os.Exit(m.Run())
 }

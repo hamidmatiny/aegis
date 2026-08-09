@@ -2,6 +2,14 @@
 # E2E: dashboard UI + proxied backend APIs (with HTTP basic auth)
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$ROOT/.env" && -z "${AEGIS_DASHBOARD_PASSWORD:-}" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:3000}"
 DASHBOARD_USER="${AEGIS_DASHBOARD_USER:-admin}"
 # No static default password. Set AEGIS_DASHBOARD_PASSWORD (see

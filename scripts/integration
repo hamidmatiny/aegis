@@ -9,7 +9,18 @@ $COMPOSE ps
 
 echo "==> Running integration smoke tests..."
 
-: "${AEGIS_DASHBOARD_USER:?AEGIS_DASHBOARD_USER must be set for integration tests (CI sets test credentials explicitly; there is no default)}"
+# Local dev convenience: pick up the same credentials used to start the
+# stack from .env if they aren't already in the environment. CI sets these
+# explicitly (no .env file exists in a fresh CI checkout), so this is a
+# no-op there.
+if [[ -f "$ROOT/.env" && ( -z "${AEGIS_DASHBOARD_PASSWORD:-}" || -z "${AEGIS_API_KEYS:-}" ) ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
+: "${AEGIS_DASHBOARD_USER:?AEGIS_DASHBOARD_USER must be set — run scripts/generate-credentials.sh, or export it, before running this script}"
 : "${AEGIS_DASHBOARD_PASSWORD:?AEGIS_DASHBOARD_PASSWORD must be set for integration tests}"
 : "${AEGIS_API_KEYS:?AEGIS_API_KEYS must be set for integration tests}"
 

@@ -222,8 +222,8 @@ from aegis_input_defense.detectors.classifier import ClassifierBackend, Classifi
 from aegis_input_defense.detectors.registry import build_detector_registry
 from aegis_input_defense.service import InputDefenseService
 
-class CustomBackend(ClassifierBackend):
-    ...
+class CustomBackend(ClassifierBackend): ...
+
 
 registry = build_detector_registry()
 registry["classifier"] = ClassifierDetector(backend=CustomBackend())
