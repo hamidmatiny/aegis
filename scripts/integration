@@ -8,6 +8,14 @@ echo "==> Waiting for services to be healthy..."
 $COMPOSE ps
 
 echo "==> Running integration smoke tests..."
+
+: "${AEGIS_DASHBOARD_USER:?AEGIS_DASHBOARD_USER must be set for integration tests (CI sets test credentials explicitly; there is no default)}"
+: "${AEGIS_DASHBOARD_PASSWORD:?AEGIS_DASHBOARD_PASSWORD must be set for integration tests}"
+: "${AEGIS_API_KEYS:?AEGIS_API_KEYS must be set for integration tests}"
+
+# AEGIS_API_KEYS may be a comma-separated list; use the first for smoke tests.
+API_KEY="${AEGIS_API_KEYS%%,*}"
+
 # Stage 0: verify health endpoints respond
 services=(
   "http://localhost:8080/health|gateway"
@@ -21,21 +29,21 @@ services=(
   "http://localhost:3000/|dashboard"
 )
 
-DASHBOARD_AUTH=()
-if [[ -n "${AEGIS_DASHBOARD_PASSWORD:-changeme}" ]]; then
-  DASHBOARD_AUTH=(-u "${AEGIS_DASHBOARD_USER:-admin}:${AEGIS_DASHBOARD_PASSWORD:-changeme}")
-fi
-
 for entry in "${services[@]}"; do
   url="${entry%%|*}"
   name="${entry##*|}"
   echo "  Checking $name at $url"
   if [[ "$name" == "dashboard" ]]; then
-    curl -sf "${DASHBOARD_AUTH[@]}" "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
+    curl -sf -u "${AEGIS_DASHBOARD_USER}:${AEGIS_DASHBOARD_PASSWORD}" "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
   else
+    # /health and /ready are always exempt from gateway API-key auth.
     curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
   fi
 done
+
+echo "==> Dashboard rejects wrong credentials..."
+status="$(curl -s -o /dev/null -w '%{http_code}' -u "${AEGIS_DASHBOARD_USER}:wrong-password" http://localhost:3000/)"
+[[ "$status" == "401" ]] || { echo "FAIL: dashboard accepted a wrong password (got $status)"; exit 1; }
 
 echo "==> Policy engine input evaluation smoke test..."
 curl -sf -X POST http://localhost:8081/v1/evaluate/input \
@@ -49,10 +57,24 @@ curl -sf -X POST http://localhost:8082/v1/chat/completions \
   -d '{"messages":[{"role":"user","content":"Hello"}]}' \
   | grep -q '"object":"chat.completion"' || { echo "FAIL: model-router chat/completions"; exit 1; }
 
-echo "==> Go gateway defended chat smoke test..."
+echo "==> Gateway rejects requests with no API key..."
+status="$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"mock-model","messages":[{"role":"user","content":"Hello"}]}')"
+[[ "$status" == "401" ]] || { echo "FAIL: gateway allowed an unauthenticated request (got $status)"; exit 1; }
+
+echo "==> Gateway rejects requests with a wrong API key..."
+status="$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer not-the-right-key' \
+  -d '{"model":"mock-model","messages":[{"role":"user","content":"Hello"}]}')"
+[[ "$status" == "401" ]] || { echo "FAIL: gateway allowed a wrong API key (got $status)"; exit 1; }
+
+echo "==> Go gateway defended chat smoke test (valid API key)..."
 curl -sf -X POST http://localhost:8080/v1/chat/completions \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer ${API_KEY}" \
   -d '{"model":"mock-model","messages":[{"role":"user","content":"Hello"}]}' \
-  | grep -q '"object":"chat.completion"' || { echo "FAIL: gateway chat/completions"; exit 1; }
+  | grep -q '"object":"chat.completion"' || { echo "FAIL: gateway chat/completions with valid key"; exit 1; }
 
 echo "==> All integration smoke tests passed"

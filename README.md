@@ -41,9 +41,12 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 ## Quick start
 
 ```bash
-# 1. Copy environment template (recommended secrets pattern)
-cp .env.example .env
-# Edit .env — set API keys, ports, etc.
+# 1. Generate credentials — there is no static default password or API key
+#    anywhere in this repo. This creates .env (from .env.example) and fills
+#    in a random dashboard password and gateway API key.
+chmod +x scripts/generate-credentials.sh
+./scripts/generate-credentials.sh
+# Edit .env further if you want to set LLM provider keys, ports, etc.
 
 # 2. Install dev dependencies and generate protobuf code
 chmod +x scripts/*.sh
@@ -58,11 +61,28 @@ make test-integration
 
 Use `docker compose --env-file .env up -d` if your shell does not auto-load `.env`.
 
+If you skip step 1, the gateway and dashboard each generate a one-time
+random credential at container startup and print it once to their logs
+(`docker compose logs gateway` / `docker compose logs dashboard`) — it
+changes on every restart until you persist one via `.env`. There is never a
+predictable default like `admin`/`changeme`.
+
+Every request to the gateway other than `/health` and `/ready` requires an
+API key, sent as `Authorization: Bearer <key>` (OpenAI-SDK compatible) or
+`X-API-Key: <key>`:
+
+```bash
+curl -H "Authorization: Bearer $AEGIS_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"mock-model","messages":[{"role":"user","content":"Hello"}]}' \
+  http://localhost:8080/v1/chat/completions
+```
+
 ## Service endpoints
 
 | Service | Port | Health | Docs |
 |---------|------|--------|------|
-| Gateway | 8080 | `/health` | scaffold |
+| Gateway | 8080 | `/health` | requires `Authorization: Bearer <key>` on all routes except `/health` and `/ready` — see [Quick start](#quick-start) |
 | Policy Engine | 8081 | `/health` | [policy-engine/README.md](./policy-engine/README.md) |
 | Model Router | 8082 | `/health` | [model-router/README.md](./model-router/README.md) |
 | Agent Gate | 8083 | `/health` | [agent-gate/README.md](./agent-gate/README.md) |
@@ -120,7 +140,8 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 | Variable | Service | Purpose |
 |----------|---------|---------|
 | `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) — set **only** in `.env`; never `export` in shell |
-| `AEGIS_DASHBOARD_USER` / `AEGIS_DASHBOARD_PASSWORD` | dashboard | HTTP basic auth (compose default `admin` / `changeme`) |
+| `AEGIS_DASHBOARD_USER` / `AEGIS_DASHBOARD_PASSWORD` | dashboard | HTTP basic auth. No static default — generated at container startup if unset; use `scripts/generate-credentials.sh` to persist one |
+| `AEGIS_API_KEYS` | gateway | Comma-separated API keys accepted by the gateway. No static default — generated at container startup if unset; use `scripts/generate-credentials.sh` to persist one |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | model-router | Cloud LLM providers |
 | `AEGIS_MODEL_ROUTER_CONFIG` | model-router | Path to `providers.yaml` |
 | `AEGIS_POLICY_DIR` | policy-engine | YAML policy pack directory |

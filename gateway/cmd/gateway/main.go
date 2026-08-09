@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aegis-platform/aegis/gateway/internal/api"
+	"github.com/aegis-platform/aegis/gateway/internal/auth"
 	"github.com/aegis-platform/aegis/gateway/internal/config"
 	"github.com/aegis-platform/aegis/gateway/internal/pipeline"
 )
@@ -19,15 +20,19 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := config.Load()
+	authCfg := auth.Load()
 	p := pipeline.New(cfg)
 	srv := api.NewServer(p)
 
 	mux := http.NewServeMux()
 	srv.Register(mux)
 
+	var handler http.Handler = mux
+	handler = auth.Middleware(authCfg)(handler)
+
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -40,6 +45,15 @@ func main() {
 			"model_router", cfg.ModelRouterURL,
 			"agent_gate", cfg.AgentGateURL,
 		)
+		switch authCfg.Source {
+		case auth.SourceGenerated:
+			logger.Warn("AEGIS_API_KEYS not set — generated a one-time API key for this process. "+
+				"It will change on restart. Set AEGIS_API_KEYS in your environment (see scripts/generate-credentials.sh) "+
+				"to persist a key across restarts.",
+				"generated_api_key", authCfg.GeneratedKey)
+		case auth.SourceConfigured:
+			logger.Info("gateway API key auth enabled", "configured_key_count", len(authCfg.Keys))
+		}
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)
 			os.Exit(1)

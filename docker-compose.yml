@@ -40,6 +40,7 @@ services:
       AEGIS_MODEL_ROUTER_URL: http://model-router:8082
       AEGIS_AGENT_GATE_URL: http://agent-gate:8083
       AEGIS_DEFAULT_MODEL: mock-model
+      AEGIS_API_KEYS: ${AEGIS_API_KEYS:-}
     depends_on:
       input-defense:
         condition: service_started
@@ -187,7 +188,7 @@ services:
       - "${DASHBOARD_PORT:-3000}:3000"
     environment:
       AEGIS_DASHBOARD_USER: ${AEGIS_DASHBOARD_USER:-admin}
-      AEGIS_DASHBOARD_PASSWORD: ${AEGIS_DASHBOARD_PASSWORD:-changeme}
+      AEGIS_DASHBOARD_PASSWORD: ${AEGIS_DASHBOARD_PASSWORD:-}
     depends_on:
       audit:
         condition: service_started
