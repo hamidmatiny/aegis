@@ -32,11 +32,17 @@ try {
 
 ## Reverse-proxy mode
 
+The Go `gateway` (port 8080) requires an API key on every request (see root
+README's Quick start / `scripts/generate-credentials.sh`):
+
 ```typescript
-const client = new OpenAI({ baseUrl: "http://localhost:8080/v1" });
+const client = new OpenAI({
+  baseUrl: "http://localhost:8080/v1",
+  apiKey: process.env.AEGIS_API_KEY, // from .env — required, the gateway rejects requests without it
+});
 ```
 
-Or set `OPENAI_BASE_URL=http://localhost:8080/v1` in apps using the official OpenAI SDK.
+Or set `OPENAI_BASE_URL=http://localhost:8080/v1` and `OPENAI_API_KEY=<your key>` in apps using the official OpenAI SDK.
 
 ## Environment variables
 
