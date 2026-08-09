@@ -78,6 +78,11 @@ curl -H "Authorization: Bearer $AEGIS_API_KEY" \
   http://localhost:8080/v1/chat/completions
 ```
 
+**Or skip straight to seeing it work:** `./scripts/demo.sh` generates
+credentials if needed, starts the gateway, and sends a benign request and a
+prompt-injection attempt side by side so you can see AEGIS catch the
+difference — no test fixtures, no reading code first.
+
 ## Service endpoints
 
 | Service | Port | Health | Docs |
