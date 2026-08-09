@@ -41,7 +41,7 @@ jobs:
         service: [input-defense, output-defense, redteam, sdk/python]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install pip-audit
