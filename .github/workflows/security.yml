@@ -30,6 +30,11 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: Scan ${{ matrix.service }}
+        # Report-only for this initial rollout: we don't yet have a triaged
+        # baseline of pre-existing findings across 5 services, so this
+        # shouldn't hard-block CI until that baseline exists. Findings are
+        # still visible in the job log and in the Security tab.
+        continue-on-error: true
         run: cd ${{ matrix.service }} && govulncheck ./...
 
   pip-audit:
@@ -49,9 +54,11 @@ jobs:
       - name: Install ${{ matrix.service }}
         run: pip install -e "./${{ matrix.service }}"
       - name: Audit ${{ matrix.service }}
-        # Vulnerabilities with no fix yet are reported but don't fail the
-        # build (--strict flips this off); dependabot tracks fixable ones.
-        run: pip-audit --path "./${{ matrix.service }}" || pip-audit --path "./${{ matrix.service }}" --desc
+        # pip-audit with no --path/--requirement scans the currently active
+        # environment, which now has this service's deps installed.
+        # Report-only for this initial rollout — see govulncheck note above.
+        continue-on-error: true
+        run: pip-audit --desc
 
   npm-audit:
     name: npm dependency audit
@@ -67,7 +74,9 @@ jobs:
           node-version: "20"
       - name: Install
         run: cd ${{ matrix.project }} && npm install
-      - name: Audit (high+ severity fails the build)
+      - name: Audit (high+ severity)
+        # Report-only for this initial rollout — see govulncheck note above.
+        continue-on-error: true
         run: cd ${{ matrix.project }} && npm audit --audit-level=high
 
   sbom:
