@@ -32,6 +32,7 @@ CATEGORY_ORDER = [
     "encoding_obfuscation",
     "indirect_injection",
     "multi_turn_escalation",
+    "harmful_intent",
 ]
 
 CATEGORY_LABELS: dict[str, str] = {
@@ -40,6 +41,7 @@ CATEGORY_LABELS: dict[str, str] = {
     "encoding_obfuscation": "encoding/obfuscation",
     "indirect_injection": "indirect injection",
     "multi_turn_escalation": "multi-turn",
+    "harmful_intent": "harmful intent (non-injection)",
 }
 
 

@@ -120,6 +120,51 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         0.80,
         "Simulated execution environment jailbreak",
     ),
+    # --- Harmful-intent requests (distinct from injection-mechanics above:
+    # these are plainly-stated or narratively-framed requests to facilitate
+    # violence, crime, or hacking against a third party, rather than an
+    # attempt to override the model's own instructions). ---
+    (
+        "emotional_illegal_framing",
+        re.compile(
+            r"(grandmother|grandma|late\s+\w+).{0,80}(stories?|used to tell).{0,120}"
+            r"(steal|stealing|hack|hacking|bomb|explosive|drug|poison|kill|murder)",
+            re.I | re.S,
+        ),
+        0.85,
+        "Emotional/nostalgic narrative framing around illegal or harmful instructions",
+    ),
+    (
+        "violence_facilitation",
+        re.compile(
+            r"help\s+me\s+(kill|murder|hurt|attack|assault|poison)\s+"
+            r"(someone|somebody|a person|people|him|her|them|my\s+\w+)",
+            re.I,
+        ),
+        0.90,
+        "Direct request to facilitate violence against a person",
+    ),
+    (
+        "crime_instruction_request",
+        re.compile(
+            r"(step[- ]by[- ]step|how to|teach me to|show me how to|tell me how to).{0,60}"
+            r"(steal(?:ing)?|rob(?:bing)?|break(?:ing)? into|hotwire|hot-wire|pick a lock)",
+            re.I,
+        ),
+        0.80,
+        "Step-by-step instructions requested for theft or burglary",
+    ),
+    (
+        "harmful_persona_action",
+        re.compile(
+            r"(you are|act as|pretend to be|pretend you are).{0,40}"
+            r"(the\s+)?(best\s+)?(hacker|assassin|killer|thief|terrorist)"
+            r".{0,60}(hack|kill|steal|attack|hurt|bomb)",
+            re.I | re.S,
+        ),
+        0.80,
+        "Harmful persona assigned, followed by a request to act on it",
+    ),
 ]
 
 # Suspicious base64 blobs (decode and re-scan)
