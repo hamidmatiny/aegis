@@ -66,6 +66,13 @@
     same detectors, same policy engine, no LLM API keys required (runs on a mock model).
     <a href="https://github.com/hamidmatiny/aegis" target="_blank" rel="noopener">Source on GitHub</a>.
   </p>
+  <p class="sub" style="font-size:0.82rem">
+    This instance runs on a free-tier 1GB server, so detectors use lightweight
+    pattern-based backends rather than the full trained models benchmarked in
+    <a href="https://github.com/hamidmatiny/aegis/blob/main/RESULTS.md" target="_blank" rel="noopener">RESULTS.md</a>.
+    It's a real pipeline with real (if simpler) detection logic, not a mockup —
+    but self-host the full stack for the hardened detection those benchmarks cover.
+  </p>
 
   <div class="examples">
     <button data-fill="What's a good recipe for chocolate chip cookies?">Benign question</button>
@@ -134,20 +141,33 @@ async function send() {
 
     const data = await resp.json();
 
-    // Blocked requests (403) still carry a useful verdict in data.error;
-    // allowed/transformed/escalated requests carry it under data.aegis.input_verdict.
-    let action, fusedScore, reasoning = [], reply = null;
+    // Blocked requests (403) carry a verdict in data.error, including which
+    // layer blocked it (input_defense vs output_defense). Allowed/transformed/
+    // escalated requests carry both stages under data.aegis — we show
+    // whichever layer actually produced the decision, and note the other
+    // stage's findings too when it ran.
+    let action, fusedScore, layer, reasoning = [], reply = null;
 
     if (resp.status === 403 && data.error) {
       action = data.error.action || 'BLOCK';
       fusedScore = data.error.fused_score;
+      layer = data.error.layer;
     } else if (data.aegis && data.aegis.input_verdict) {
-      const v = data.aegis.input_verdict;
-      action = v.action;
-      fusedScore = v.fused_score;
-      reasoning = (v.detector_scores || [])
+      const iv = data.aegis.input_verdict;
+      const ov = data.aegis.output_verdict;
+      action = iv.action;
+      fusedScore = iv.fused_score;
+      layer = 'input_defense';
+      reasoning = (iv.detector_scores || [])
         .filter((d) => d.score > 0.15)
-        .map((d) => `${d.detector_id}: ${d.reasoning} (score ${Number(d.score).toFixed(2)})`);
+        .map((d) => `input: ${d.detector_id} — ${d.reasoning} (score ${Number(d.score).toFixed(2)})`);
+      if (ov) {
+        reasoning = reasoning.concat(
+          (ov.detector_scores || [])
+            .filter((d) => d.score > 0.15)
+            .map((d) => `output: ${d.detector_id} — ${d.reasoning} (score ${Number(d.score).toFixed(2)})`)
+        );
+      }
       reply = data.choices && data.choices[0] && data.choices[0].message
         ? data.choices[0].message.content
         : null;
@@ -158,7 +178,10 @@ async function send() {
 
     verdictEl.textContent = action || 'UNKNOWN';
     verdictEl.className = 'verdict ' + (action || '');
-    scoreEl.textContent = fusedScore != null ? `fused score: ${Number(fusedScore).toFixed(3)}` : '';
+    const parts = [];
+    if (fusedScore != null) parts.push(`fused score: ${Number(fusedScore).toFixed(3)}`);
+    if (layer) parts.push(`layer: ${layer}`);
+    scoreEl.textContent = parts.join(' \u00b7 ');
 
     reasoningEl.innerHTML = '';
     reasoning.forEach((r) => {
