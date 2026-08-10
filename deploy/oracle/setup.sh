@@ -10,6 +10,28 @@
 # Idempotent: safe to re-run (e.g. after `git pull`) to redeploy.
 set -euo pipefail
 
+if [ "$(uname -s)" != "Linux" ]; then
+  cat >&2 <<'MSG'
+This script installs system packages with apt-get and manages systemd
+services — it only makes sense on the actual Oracle Cloud VM (Linux),
+not on your local machine.
+
+If you're seeing this after running it on your laptop: no harm done,
+nothing was installed. SSH into the VM first, then run this there:
+
+  ssh ubuntu@<your-vm-public-ip>
+  git clone https://github.com/hamidmatiny/aegis.git
+  cd aegis
+  ./deploy/oracle/setup.sh
+MSG
+  exit 1
+fi
+
+if ! command -v apt-get >/dev/null 2>&1; then
+  echo "This script assumes a Debian/Ubuntu VM (apt-get). If you're on Oracle Linux instead of Ubuntu, install Docker per https://docs.docker.com/engine/install/ and re-run from the 'Generating credentials' step." >&2
+  exit 1
+fi
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && cd .. && pwd)"
 cd "$ROOT"
 
