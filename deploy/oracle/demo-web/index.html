@@ -62,16 +62,21 @@
 <main>
   <h1>AEGIS</h1>
   <p class="sub">
-    Type a message and watch the real defense pipeline decide what happens to it —
-    same detectors, same policy engine, no LLM API keys required (runs on a mock model).
+    Try to get something past it. That's the point of this page — type a message
+    and watch the real defense pipeline decide what happens to it (same detectors,
+    same policy engine, no LLM API keys required; runs on a mock model).
     <a href="https://github.com/hamidmatiny/aegis" target="_blank" rel="noopener">Source on GitHub</a>.
   </p>
   <p class="sub" style="font-size:0.82rem">
-    This instance runs on a free-tier 1GB server, so detectors use lightweight
-    pattern-based backends rather than the full trained models benchmarked in
+    Be upfront about what this demo is: this instance runs on a free-tier
+    1GB server, so detectors use lightweight pattern-based backends, not the
+    full trained models. And even the hardened, full-model version doesn't
+    catch everything — our own adaptive red-team testing found real-model
+    detectors converge to roughly the same ~48% bypass rate as these
+    lightweight ones by round 3 of an adapting attacker. We publish that
+    number so you find out from us, not from a bypass. Full methodology
+    and numbers:
     <a href="https://github.com/hamidmatiny/aegis/blob/main/RESULTS.md" target="_blank" rel="noopener">RESULTS.md</a>.
-    It's a real pipeline with real (if simpler) detection logic, not a mockup —
-    but self-host the full stack for the hardened detection those benchmarks cover.
   </p>
 
   <div class="examples">
