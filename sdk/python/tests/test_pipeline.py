@@ -125,3 +125,37 @@ async def test_tool_approval_required(pipeline: DefensePipeline) -> None:
             tool_call={"tool_name": "delete_db", "risk_level": "IRREVERSIBLE", "arguments": []},
         )
     assert exc.value.approval_id == "appr-123"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_evaluate_tool_sends_service_key_when_configured() -> None:
+    pipeline = DefensePipeline(
+        input_defense_url="http://input.test",
+        output_defense_url="http://output.test",
+        policy_engine_url="http://policy.test",
+        model_router_url="http://router.test",
+        agent_gate_url="http://gate.test",
+        agent_gate_api_key="svc-secret",
+    )
+    route = respx.post("http://gate.test/v1/evaluate").mock(
+        return_value=httpx.Response(200, json={"decision": {"status": "APPROVED"}})
+    )
+    await pipeline.evaluate_tool(
+        tool_call={"tool_name": "search_docs", "risk_level": "LOW", "arguments": []}
+    )
+    assert route.calls.last.request.headers["authorization"] == "Bearer svc-secret"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_evaluate_tool_omits_auth_header_when_no_key_configured(
+    pipeline: DefensePipeline,
+) -> None:
+    route = respx.post("http://gate.test/v1/evaluate").mock(
+        return_value=httpx.Response(200, json={"decision": {"status": "APPROVED"}})
+    )
+    await pipeline.evaluate_tool(
+        tool_call={"tool_name": "search_docs", "risk_level": "LOW", "arguments": []}
+    )
+    assert "authorization" not in route.calls.last.request.headers

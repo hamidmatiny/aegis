@@ -56,6 +56,34 @@
   #error { margin-top: 16px; color: var(--block); font-size: 0.9rem; }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.8rem; text-align: center; }
   footer a { color: var(--accent); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0 24px; }
+  h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  .gate-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  .gate-actions button {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 8px; font-size: 0.88rem; cursor: pointer; text-align: left;
+  }
+  .gate-actions button:hover { border-color: var(--accent); }
+  .gate-actions button:disabled { opacity: 0.5; cursor: default; }
+  #gateResult { margin-top: 16px; display: none; }
+  .status-badge {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em;
+  }
+  .status-badge.APPROVED { background: rgba(47,191,113,0.15); color: var(--allow); }
+  .status-badge.DENIED { background: rgba(226,85,85,0.15); color: var(--block); }
+  .status-badge.AWAITING_HUMAN_APPROVAL { background: rgba(226,121,59,0.15); color: var(--escalate); }
+  #gateDetail { margin-top: 10px; color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+  #gateDetail b { color: var(--text); }
+  .review-actions { margin-top: 12px; display: none; gap: 8px; }
+  .review-actions button {
+    border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.88rem;
+    cursor: pointer; font-weight: 600; color: white;
+  }
+  #approveBtn { background: var(--allow); }
+  #denyBtn { background: var(--block); }
+  #gateError { margin-top: 12px; color: var(--block); font-size: 0.9rem; }
 </style>
 </head>
 <body>
@@ -68,14 +96,15 @@
     <a href="https://github.com/hamidmatiny/aegis" target="_blank" rel="noopener">Source on GitHub</a>.
   </p>
   <p class="sub" style="font-size:0.82rem">
-    Be upfront about what this demo is: this instance runs on a free-tier
-    1GB server, so detectors use lightweight pattern-based backends, not the
-    full trained models. And even the hardened, full-model version doesn't
-    catch everything — our own adaptive red-team testing found real-model
-    detectors converge to roughly the same ~48% bypass rate as these
-    lightweight ones by round 3 of an adapting attacker. We publish that
-    number so you find out from us, not from a bypass. Full methodology
-    and numbers:
+    Be upfront about what this demo is: depending on the VM this instance
+    happens to be running on, detectors may use lightweight pattern-based
+    backends instead of full trained models (each detector's reasoning
+    below names its own <code>backend=</code>, so you can always check).
+    And even the hardened, full-model version doesn't catch everything —
+    our own adaptive red-team testing found real-model detectors converge
+    to roughly the same ~48% bypass rate as the lightweight ones by round 3
+    of an adapting attacker. We publish that number so you find out from
+    us, not from a bypass. Full methodology and numbers:
     <a href="https://github.com/hamidmatiny/aegis/blob/main/RESULTS.md" target="_blank" rel="noopener">RESULTS.md</a>.
   </p>
 
@@ -99,8 +128,40 @@
   </div>
   <div id="error"></div>
 
+  <hr class="divider">
+
+  <h2>Agent actions — a second, independent layer</h2>
+  <p class="sub">
+    The box above is text-level detection, and it will get bypassed sometimes
+    (that's the whole point of the honesty above). This is different: it
+    tests <a href="https://github.com/hamidmatiny/aegis/tree/main/agent-gate" target="_blank" rel="noopener">agent-gate</a>,
+    the layer that decides whether a <em>tool call</em> is allowed to execute
+    — independent of whether the text that triggered it was caught. An
+    irreversible action waits for a human, and critically, not the same
+    credential the calling agent itself holds — a compromised or
+    prompt-injected agent can submit a tool call, but it cannot approve its
+    own irreversible action.
+  </p>
+
+  <div class="gate-actions">
+    <button data-scenario="safe">Read-only tool call — should be allowed</button>
+    <button data-scenario="delete">Delete a database — should need human approval</button>
+    <button data-scenario="leak">Email tainted credentials — should be denied</button>
+    <button data-scenario="spoof">Delete a database, claim it's low-risk — should still need approval</button>
+  </div>
+
+  <div id="gateResult">
+    <span id="gateStatus" class="status-badge"></span>
+    <div id="gateDetail"></div>
+    <div id="reviewActions" class="review-actions">
+      <button id="approveBtn">Approve (as reviewer)</button>
+      <button id="denyBtn">Deny (as reviewer)</button>
+    </div>
+  </div>
+  <div id="gateError"></div>
+
   <footer>
-    Public demo instance &middot; runs the real AEGIS gateway, input-defense, policy-engine, and model-router &middot;
+    Public demo instance &middot; runs the real AEGIS gateway, input-defense, output-defense, policy-engine, agent-gate, and model-router &middot;
     <a href="https://github.com/hamidmatiny/aegis/blob/main/RESULTS.md" target="_blank" rel="noopener">published benchmark results</a>
   </footer>
 </main>
@@ -215,6 +276,144 @@ sendBtn.addEventListener('click', send);
 msgEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
 });
+
+// --- Agent actions (agent-gate) ---
+const gateButtons = document.querySelectorAll('.gate-actions button');
+const gateResultEl = $('#gateResult');
+const gateStatusEl = $('#gateStatus');
+const gateDetailEl = $('#gateDetail');
+const gateErrorEl = $('#gateError');
+const reviewActionsEl = $('#reviewActions');
+const approveBtn = $('#approveBtn');
+const denyBtn = $('#denyBtn');
+
+const GATE_SCENARIOS = {
+  safe: {
+    tool_name: 'search_docs',
+    risk_level: 'LOW',
+    arguments: [{ name: 'query', value: 'deployment runbook', taint_level: 'TRUSTED' }],
+  },
+  delete: {
+    tool_name: 'delete_database',
+    risk_level: 'IRREVERSIBLE',
+    arguments: [{ name: 'db_id', value: 'prod-analytics', taint_level: 'TRUSTED' }],
+  },
+  leak: {
+    tool_name: 'send_email',
+    risk_level: 'MEDIUM',
+    arguments: [{
+      name: 'body',
+      value: 'password: hunter2 api_key=sk-secret-leak-123',
+      taint_level: 'TAINTED',
+      contains_credentials: true,
+    }],
+  },
+  // Same tool as "delete", but the caller understates the risk. agent-gate's
+  // tool_catalog (policy-engine/policies/default.yaml) registers
+  // delete_database as IRREVERSIBLE regardless of what the caller claims —
+  // see policy-engine/internal/engine/risk.go.
+  spoof: {
+    tool_name: 'delete_database',
+    risk_level: 'LOW',
+    arguments: [{ name: 'db_id', value: 'prod-analytics', taint_level: 'TRUSTED' }],
+  },
+};
+
+let pendingApprovalId = null;
+
+function renderGateDecision(decision, toolName) {
+  const status = decision.status || 'UNKNOWN';
+  gateStatusEl.textContent = status.replace(/_/g, ' ');
+  gateStatusEl.className = 'status-badge ' + status;
+
+  const lines = [`<b>tool:</b> ${toolName}`];
+  if (decision.risk_level_overridden) {
+    lines.push(
+      `<b>risk_level:</b> caller declared "${decision.declared_risk_level}" — ` +
+      `overridden to "${decision.effective_risk_level}" by the registered tool_catalog entry`
+    );
+  }
+  if (decision.denial_reason) lines.push(`<b>reason:</b> ${decision.denial_reason}`);
+  if (decision.approval_request_id) lines.push(`<b>approval_id:</b> ${decision.approval_request_id}`);
+  gateDetailEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
+
+  pendingApprovalId = decision.status === 'AWAITING_HUMAN_APPROVAL' ? decision.approval_request_id : null;
+  reviewActionsEl.style.display = pendingApprovalId ? 'flex' : 'none';
+  gateResultEl.style.display = 'block';
+}
+
+async function runGateScenario(key) {
+  const toolCall = GATE_SCENARIOS[key];
+  if (!toolCall) return;
+
+  gateButtons.forEach((b) => (b.disabled = true));
+  gateErrorEl.textContent = '';
+  reviewActionsEl.style.display = 'none';
+  gateResultEl.style.display = 'none';
+
+  try {
+    const resp = await fetch('/agent-gate/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: 'default', mode: 'enforce', tool_call: toolCall }),
+    });
+    if (resp.status === 429) {
+      gateErrorEl.textContent = "You've hit the demo's rate limit. Try again shortly.";
+      return;
+    }
+    const data = await resp.json();
+    if (!data.decision) {
+      gateErrorEl.textContent = 'Unexpected response from the demo.';
+      return;
+    }
+    renderGateDecision(data.decision, toolCall.tool_name);
+  } catch (e) {
+    gateErrorEl.textContent = 'Could not reach the demo (network error). Try again in a moment.';
+  } finally {
+    gateButtons.forEach((b) => (b.disabled = false));
+  }
+}
+
+async function decideApproval(approved) {
+  if (!pendingApprovalId) return;
+  approveBtn.disabled = true;
+  denyBtn.disabled = true;
+  gateErrorEl.textContent = '';
+
+  try {
+    const resp = await fetch(`/agent-gate/decide/${pendingApprovalId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        approved,
+        reviewer_id: 'demo-visitor',
+        comment: approved ? 'approved from the public demo' : 'denied from the public demo',
+      }),
+    });
+    if (resp.status === 429) {
+      gateErrorEl.textContent = "You've hit the demo's rate limit. Try again shortly.";
+      return;
+    }
+    const data = await resp.json();
+    const decision = data.decision || data;
+    gateStatusEl.textContent = (decision.status || 'UNKNOWN').replace(/_/g, ' ');
+    gateStatusEl.className = 'status-badge ' + (decision.status || '');
+    gateDetailEl.innerHTML = `<div><b>decided by:</b> the reviewer key — a separate credential from the one that submitted the call</div>`;
+    reviewActionsEl.style.display = 'none';
+    pendingApprovalId = null;
+  } catch (e) {
+    gateErrorEl.textContent = 'Could not reach the demo (network error). Try again in a moment.';
+  } finally {
+    approveBtn.disabled = false;
+    denyBtn.disabled = false;
+  }
+}
+
+gateButtons.forEach((btn) => {
+  btn.addEventListener('click', () => runGateScenario(btn.dataset.scenario));
+});
+approveBtn.addEventListener('click', () => decideApproval(true));
+denyBtn.addEventListener('click', () => decideApproval(false));
 </script>
 </body>
 </html>

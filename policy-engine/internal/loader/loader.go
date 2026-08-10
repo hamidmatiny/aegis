@@ -179,6 +179,7 @@ func clonePack(p models.PolicyPack) models.PolicyPack {
 	out.InputRules = append([]models.PolicyRule(nil), p.InputRules...)
 	out.OutputRules = append([]models.PolicyRule(nil), p.OutputRules...)
 	out.ToolRules = append([]models.PolicyRule(nil), p.ToolRules...)
+	out.ToolCatalog = append([]models.ToolCatalogEntry(nil), p.ToolCatalog...)
 	out.Overrides = append([]models.RuleOverride(nil), p.Overrides...)
 	return out
 }
@@ -200,6 +201,7 @@ func mergePacks(base, override models.PolicyPack) models.PolicyPack {
 	result.InputRules = mergeRules(result.InputRules, override.InputRules)
 	result.OutputRules = mergeRules(result.OutputRules, override.OutputRules)
 	result.ToolRules = mergeRules(result.ToolRules, override.ToolRules)
+	result.ToolCatalog = mergeToolCatalog(result.ToolCatalog, override.ToolCatalog)
 
 	if override.Settings.DefaultAction != "" {
 		result.Settings.DefaultAction = override.Settings.DefaultAction
@@ -240,6 +242,29 @@ func mergeRules(base []models.PolicyRule, extra []models.PolicyRule) []models.Po
 		} else {
 			out = append(out, rule)
 			idx[rule.ID] = len(out) - 1
+		}
+	}
+	return out
+}
+
+// mergeToolCatalog appends or replaces tenant-specific catalog entries by
+// tool_name (case-insensitive), same replace-by-key semantics as mergeRules.
+func mergeToolCatalog(base, extra []models.ToolCatalogEntry) []models.ToolCatalogEntry {
+	if len(extra) == 0 {
+		return base
+	}
+	idx := make(map[string]int, len(base))
+	for i, e := range base {
+		idx[strings.ToLower(e.ToolName)] = i
+	}
+	out := append([]models.ToolCatalogEntry(nil), base...)
+	for _, entry := range extra {
+		key := strings.ToLower(entry.ToolName)
+		if i, ok := idx[key]; ok {
+			out[i] = entry
+		} else {
+			out = append(out, entry)
+			idx[key] = len(out) - 1
 		}
 	}
 	return out

@@ -129,6 +129,46 @@ func TestSubmitApprovalApproves(t *testing.T) {
 	}
 }
 
+func TestEvaluateSurfacesRiskCatalogOverride(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"decision": map[string]any{
+				"action":                "escalate_to_judge",
+				"declared_risk_level":   "LOW",
+				"effective_risk_level":  "IRREVERSIBLE",
+				"risk_level_overridden": true,
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	g := gate.New(policy.NewClient(srv.URL), approval.NewStore(0))
+
+	resp, err := g.Evaluate(context.Background(), models.EvaluateRequest{
+		TenantID: "default",
+		ToolCall: models.ToolCallRequest{
+			ToolName:  "delete_database",
+			RiskLevel: "LOW",
+			Arguments: []models.ToolArgument{{Name: "db_id", Value: "prod-1"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.Decision.Status != models.StatusAwaitingHumanApproval {
+		t.Fatalf("expected AWAITING_HUMAN_APPROVAL despite declared LOW risk, got %s", resp.Decision.Status)
+	}
+	if !resp.Decision.RiskLevelOverridden {
+		t.Fatal("expected RiskLevelOverridden=true to be surfaced from policy-engine")
+	}
+	if resp.Decision.DeclaredRiskLevel != "LOW" || resp.Decision.EffectiveRiskLevel != "IRREVERSIBLE" {
+		t.Fatalf("expected declared=LOW effective=IRREVERSIBLE, got declared=%s effective=%s",
+			resp.Decision.DeclaredRiskLevel, resp.Decision.EffectiveRiskLevel)
+	}
+	if resp.Decision.DenialReason == "human approval required for irreversible or high-risk action" {
+		t.Fatal("expected DenialReason to be annotated with the catalog override explanation")
+	}
+}
+
 func TestSanitizedToolCallMasksCredentials(t *testing.T) {
 	g := newTestGate(t, "allow", "")
 	resp, err := g.Evaluate(context.Background(), models.EvaluateRequest{

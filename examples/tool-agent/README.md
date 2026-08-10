@@ -8,14 +8,20 @@ From the **repository root**:
 
 ```bash
 cp .env.example .env
+./scripts/generate-credentials.sh   # fills in AEGIS_AGENT_GATE_API_KEYS / _REVIEWER_KEYS, among others
 docker compose up -d agent-gate policy-engine
 curl -sf http://localhost:8083/health
 curl -sf http://localhost:8081/health
 ```
 
-Optional (for embedded SDK mode — calls services directly):
+agent-gate requires two separate API keys (see `agent-gate/internal/auth`):
+a **service key** (`AEGIS_AGENT_GATE_API_KEYS`) for submitting tool calls, and
+a **reviewer key** (`AEGIS_AGENT_GATE_REVIEWER_KEYS`) for deciding an
+approval — deliberately different, so this script's own service key can
+never approve its own irreversible action. Export both from `.env`:
 
 ```bash
+export $(grep -E '^AEGIS_AGENT_GATE_(API_KEYS|REVIEWER_KEYS)=' .env | xargs)
 export AEGIS_AGENT_GATE_URL=http://localhost:8083
 export AEGIS_POLICY_ENGINE_URL=http://localhost:8081
 ```
@@ -62,6 +68,12 @@ python tool_agent.py --scenario irreversible-delete
 python tool_agent.py --scenario credential-leak
 ```
 
+**4. Caller understates risk_level for a registered tool (still escalated):**
+
+```bash
+python tool_agent.py --scenario risk-spoof-blocked
+```
+
 Use raw HTTP to agent-gate instead of embedded SDK:
 
 ```bash
@@ -70,15 +82,18 @@ python tool_agent.py --scenario safe-search --http
 
 ### After `irreversible-delete`: approve in the dashboard or curl
 
-The script prints an `approval_id`. Example:
+The script prints an `approval_id`. Approving requires the **reviewer key**,
+not the service key used to submit the call:
 
 ```bash
 curl -X POST "http://localhost:8083/v1/approvals/appr-XXXXXXXX/decide" \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $AEGIS_AGENT_GATE_REVIEWER_KEYS" \
   -d '{"approved": true, "reviewer_id": "demo-operator", "comment": "Emergency maintenance"}'
 ```
 
-Or open the dashboard at http://localhost:3000 → **Approvals**.
+Or open the dashboard at http://localhost:3000 → **Approvals** (the dashboard
+holds the reviewer key server-side, behind its own login).
 
 ## What attacks does this demonstrate?
 
@@ -176,6 +191,28 @@ RESULT: DENIED
 ```
 
 If credentials appear in arguments, agent-gate may also return a **sanitized** tool call with `[REDACTED-*]` placeholders in the HTTP response (see `--http` mode JSON).
+
+---
+
+### Scenario D — `risk-spoof-blocked`: **a caller can't talk its way out of approval**
+
+**Attack / risk:** `tool_call.risk_level` is set by whatever assembles the call — in a real
+integration, that can ultimately be influenced by the LLM's own output. Before this fix,
+declaring `risk_level: "LOW"` on a `delete_database` call skipped approval entirely and the
+call was `APPROVED` outright. That's the gap our own agent-gate red-teaming found.
+
+| Field | Value |
+|-------|--------|
+| **Tool** | `delete_database` (registered in `policy-engine/policies/default.yaml` `tool_catalog` as `IRREVERSIBLE`) |
+| **Declared risk_level** | `LOW` |
+| **Effective risk_level** | `IRREVERSIBLE` (catalog wins — see `policy-engine/internal/engine/risk.go`) |
+| **Expected** | `RESULT: AWAITING_HUMAN_APPROVAL`, with `risk_level_overridden: true` in the response |
+
+The response's `denial_reason` spells out exactly what happened: the declared risk was
+overridden by the registered catalog entry. Register any tool whose misuse would be
+destructive, irreversible, or high-blast-radius in `tool_catalog` — an unregistered tool
+still falls back to trusting the caller's declared `risk_level`, which is a documented trust
+boundary, not a bug: agent-gate can't know about tools it's never been told exist.
 
 ## Troubleshooting
 

@@ -37,18 +37,33 @@ docker run --rm -v "$(pwd)/agent-gate:/app" -w /app golang:1.22-alpine go test .
 | `AEGIS_AGENT_GATE_PORT` | `8083` | HTTP port |
 | `AEGIS_POLICY_ENGINE_URL` | `http://localhost:8081` | Policy-engine base URL |
 | `AEGIS_APPROVAL_TTL_HOURS` | `24` | Pending approval expiry (in-memory store) |
+| `AEGIS_AGENT_GATE_API_KEYS` | ephemeral (generated + logged) | Comma-separated **service** keys — required to call `POST /v1/evaluate` and read approvals |
+| `AEGIS_AGENT_GATE_REVIEWER_KEYS` | ephemeral (generated + logged) | Comma-separated **reviewer** keys — required to call `POST /v1/approvals/{id}/decide`. Deliberately a different credential from the service key: a calling agent's own key must never be able to approve its own irreversible action. |
 | `DATABASE_URL` | — | Reserved for Postgres approval persistence (not wired yet) |
+
+Like every other AEGIS service, there is no static default credential. If
+either key set is left unset, agent-gate generates a random one for that
+process's lifetime and logs it once at startup — set both explicitly (see
+`scripts/generate-credentials.sh`) to persist them across restarts and to
+let the dashboard's proxy pick up the same values.
 
 ## API
 
+`/health` and `/ready` are unauthenticated. Every other route requires an
+API key as `Authorization: Bearer <key>` or `X-API-Key: <key>` — the
+**service key** (`AEGIS_AGENT_GATE_API_KEYS`) for everything except
+deciding an approval, which requires the **reviewer key**
+(`AEGIS_AGENT_GATE_REVIEWER_KEYS`) instead.
+
 ```bash
-# Health
+# Health (no key required)
 curl localhost:8083/health
 curl localhost:8083/ready
 
-# Evaluate a tool/MCP call (sanitize → policy → decision)
+# Evaluate a tool/MCP call (sanitize → policy → decision) — service key
 curl -X POST localhost:8083/v1/evaluate \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $AEGIS_AGENT_GATE_API_KEYS" \
   -d '{
     "tenant_id": "default",
     "mode": "enforce",
@@ -59,9 +74,14 @@ curl -X POST localhost:8083/v1/evaluate \
     }
   }'
 
-# Irreversible action — returns AWAITING_HUMAN_APPROVAL + approval_request_id
+# Irreversible action — returns AWAITING_HUMAN_APPROVAL + approval_request_id.
+# Note: this also fires for a tool registered in policy-engine's tool_catalog
+# even if the caller declares a lower risk_level — see
+# policy-engine/internal/engine/risk.go. The catalog, not the caller, is
+# authoritative for registered tools.
 curl -X POST localhost:8083/v1/evaluate \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $AEGIS_AGENT_GATE_API_KEYS" \
   -d '{
     "tenant_id": "default",
     "tool_call": {
@@ -71,18 +91,21 @@ curl -X POST localhost:8083/v1/evaluate \
     }
   }'
 
-# List pending approvals (dashboard inbox)
-curl localhost:8083/v1/approvals
+# List pending approvals (dashboard inbox) — service key
+curl -H "Authorization: Bearer $AEGIS_AGENT_GATE_API_KEYS" localhost:8083/v1/approvals
 
-# List all non-expired approvals including decided
-curl 'localhost:8083/v1/approvals?status=all'
+# List all non-expired approvals including decided — service key
+curl -H "Authorization: Bearer $AEGIS_AGENT_GATE_API_KEYS" 'localhost:8083/v1/approvals?status=all'
 
-# Get pending approval
-curl localhost:8083/v1/approvals/appr-123456789
+# Get pending approval — service key
+curl -H "Authorization: Bearer $AEGIS_AGENT_GATE_API_KEYS" localhost:8083/v1/approvals/appr-123456789
 
-# Submit human approval decision
+# Submit human approval decision — REVIEWER key, not the service key above.
+# A request authenticated with only the service key gets 401 here on purpose:
+# the agent that submitted the call must not be able to approve it.
 curl -X POST localhost:8083/v1/approvals/appr-123456789/decide \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $AEGIS_AGENT_GATE_REVIEWER_KEYS" \
   -d '{
     "approved": true,
     "reviewer_id": "admin@example.com",

@@ -29,6 +29,9 @@ _pipeline = DefensePipeline(
     policy_engine_url=settings.policy_engine_url,
     model_router_url=settings.model_router_url,
     agent_gate_url=settings.agent_gate_url,
+    agent_gate_api_key=settings.agent_gate_api_keys.split(",")[0].strip()
+    if settings.agent_gate_api_keys
+    else "",
     tenant_id=settings.default_tenant_id,
 )
 

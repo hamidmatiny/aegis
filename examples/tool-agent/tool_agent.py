@@ -19,9 +19,12 @@ def evaluate_tool_embedded(tool_call: dict) -> dict:
 
 def evaluate_tool_http(tool_call: dict) -> dict:
     gate_url = os.environ.get("AEGIS_AGENT_GATE_URL", "http://localhost:8083")
+    service_key = os.environ.get("AEGIS_AGENT_GATE_API_KEYS", "").split(",")[0].strip()
+    headers = {"Authorization": f"Bearer {service_key}"} if service_key else {}
     resp = httpx.post(
         f"{gate_url}/v1/evaluate",
         json={"tenant_id": "default", "mode": "enforce", "tool_call": tool_call},
+        headers=headers,
         timeout=30.0,
     )
     resp.raise_for_status()
@@ -34,12 +37,15 @@ def print_decision(data: dict) -> None:
     print(f"RESULT: {status}")
     if decision.get("approval_request_id"):
         print(f"  approval_id: {decision['approval_request_id']}")
-        print("  Next: approve via dashboard or:")
+        print(
+            "  Next: approve via dashboard, or with the REVIEWER key (not the service key above):"
+        )
         print(
             f"    curl -X POST localhost:8083/v1/approvals/"
             f"{decision['approval_request_id']}/decide "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"approved\": true, \"reviewer_id\": \"demo\", \"comment\": \"ok\"}}'"
+            f'-H "Authorization: Bearer $AEGIS_AGENT_GATE_REVIEWER_KEYS" '
+            f'-d \'{{"approved": true, "reviewer_id": "demo", "comment": "ok"}}\''
         )
     if decision.get("denial_reason"):
         print(f"  reason: {decision['denial_reason']}")
@@ -52,7 +58,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS tool-using agent example")
     parser.add_argument(
         "--scenario",
-        choices=["safe-search", "irreversible-delete", "credential-leak"],
+        choices=[
+            "safe-search",
+            "irreversible-delete",
+            "credential-leak",
+            "risk-spoof-blocked",
+        ],
         required=True,
     )
     parser.add_argument(
@@ -68,7 +79,13 @@ def main() -> int:
             "tool_call": {
                 "tool_name": "search_docs",
                 "risk_level": "LOW",
-                "arguments": [{"name": "query", "value": "deployment runbook", "taint_level": "TRUSTED"}],
+                "arguments": [
+                    {
+                        "name": "query",
+                        "value": "deployment runbook",
+                        "taint_level": "TRUSTED",
+                    }
+                ],
             },
         },
         "irreversible-delete": {
@@ -76,7 +93,13 @@ def main() -> int:
             "tool_call": {
                 "tool_name": "delete_database",
                 "risk_level": "IRREVERSIBLE",
-                "arguments": [{"name": "db_id", "value": "prod-analytics", "taint_level": "TRUSTED"}],
+                "arguments": [
+                    {
+                        "name": "db_id",
+                        "value": "prod-analytics",
+                        "taint_level": "TRUSTED",
+                    }
+                ],
             },
         },
         "credential-leak": {
@@ -91,6 +114,25 @@ def main() -> int:
                         "taint_level": "TAINTED",
                         "contains_credentials": True,
                     },
+                ],
+            },
+        },
+        "risk-spoof-blocked": {
+            "title": "Caller understates risk_level for a catalogued tool — still escalated",
+            "tool_call": {
+                # Whatever assembled this call claims LOW risk for a tool
+                # that policy-engine's tool_catalog registers as
+                # IRREVERSIBLE (policy-engine/policies/default.yaml). The
+                # engine takes the higher of the two, so this still
+                # requires human approval even though risk_level says LOW.
+                "tool_name": "delete_database",
+                "risk_level": "LOW",
+                "arguments": [
+                    {
+                        "name": "db_id",
+                        "value": "prod-analytics",
+                        "taint_level": "TRUSTED",
+                    }
                 ],
             },
         },
@@ -113,11 +155,12 @@ def main() -> int:
         print("RESULT: AWAITING_HUMAN_APPROVAL")
         print(f"  approval_id: {exc.approval_id}")
         print(f"  tool:        {exc.tool_name}")
-        print("\nApprove with:")
+        print("\nApprove with the REVIEWER key (not the service key used above):")
         print(
             f"  curl -X POST localhost:8083/v1/approvals/{exc.approval_id}/decide "
             "-H 'Content-Type: application/json' "
-            "-d '{\"approved\": true, \"reviewer_id\": \"demo\", \"comment\": \"approved in demo\"}'"
+            '-H "Authorization: Bearer $AEGIS_AGENT_GATE_REVIEWER_KEYS" '
+            '-d \'{"approved": true, "reviewer_id": "demo", "comment": "approved in demo"}\''
         )
         return 0
     except AegisPolicyBlockedError as exc:

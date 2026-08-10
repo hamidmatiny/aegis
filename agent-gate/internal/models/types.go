@@ -67,6 +67,12 @@ type ToolCallDecision struct {
 	ApprovalRequestID   string         `json:"approval_request_id,omitempty"`
 	DecidedAt           time.Time      `json:"decided_at"`
 	EvaluationLatencyMS int64          `json:"evaluation_latency_ms"`
+	// Surfaces policy-engine's tool_catalog resolution so callers (and the
+	// audit trail) can see when a caller's declared risk_level was
+	// overridden by the operator-registered catalog value.
+	DeclaredRiskLevel   string `json:"declared_risk_level,omitempty"`
+	EffectiveRiskLevel  string `json:"effective_risk_level,omitempty"`
+	RiskLevelOverridden bool   `json:"risk_level_overridden,omitempty"`
 }
 
 // EvaluateRequest is the HTTP body for POST /v1/evaluate.
@@ -135,8 +141,11 @@ type PolicyToolArgument struct {
 
 // PolicyDecision mirrors policy-engine response (subset used by gate).
 type PolicyDecision struct {
-	Action      string `json:"action"`
-	BlockReason string `json:"block_reason,omitempty"`
+	Action              string `json:"action"`
+	BlockReason         string `json:"block_reason,omitempty"`
+	DeclaredRiskLevel   string `json:"declared_risk_level,omitempty"`
+	EffectiveRiskLevel  string `json:"effective_risk_level,omitempty"`
+	RiskLevelOverridden bool   `json:"risk_level_overridden,omitempty"`
 }
 
 // PolicyEvaluateResponse wraps policy-engine HTTP response.

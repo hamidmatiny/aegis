@@ -43,6 +43,14 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 sudo systemctl enable --now docker
 
+# Three tiers, based on the model footprint documented in
+# input-defense/README.md and output-defense/README.md: the real ML
+# backends need roughly 2GB headroom for input-defense and 1.5GB for
+# output-defense on top of everything else, so they only get turned on
+# above ~6GB. Below 2GB, every ML-capable detector is forced onto its
+# lightweight stub/regex backend so the box doesn't OOM at all. In
+# between, the full stack runs but detectors stay on stub backends
+# (safe default — no real model, no real memory risk).
 if [ "$TOTAL_MEM_MB" -lt 2048 ]; then
   echo "==> Low-memory box detected — adding a 2GB swap file as a safety net"
   echo "    (without this, a memory spike OOM-kills the whole VM instead of"
@@ -57,13 +65,28 @@ if [ "$TOTAL_MEM_MB" -lt 2048 ]; then
     echo "    Swap already configured, skipping."
   fi
   COMPOSE_FILES=(-f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml -f deploy/oracle/docker-compose.demo-lite.yml)
+  ML_PROFILE_NOTE="Detectors are forced onto stub/regex backends and every container is memory-capped (1GB box)."
   echo "==> Using the trimmed, memory-capped profile (deploy/oracle/docker-compose.demo-lite.yml):"
   echo "    every ML-capable detector forced to its stub/regex backend (same"
   echo "    ones CI uses — no transformer models loaded into memory), and"
   echo "    every container memory-capped so Docker OOM-kills one container"
   echo "    instead of the whole box."
+elif [ "$TOTAL_MEM_MB" -ge 6144 ]; then
+  COMPOSE_FILES=(-f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml -f deploy/oracle/docker-compose.demo-ml.yml)
+  ML_PROFILE_NOTE="Real ML backends are ON (Llama-Prompt-Guard-2 + perplexity LM + Toxic-BERT + spaCy NER). First build downloads ~1.5GB of model weights."
+  echo "==> Enough RAM detected — using the real ML detector backends"
+  echo "    (deploy/oracle/docker-compose.demo-ml.yml): Llama-Prompt-Guard-2"
+  echo "    + a perplexity LM for input-defense, Toxic-BERT + spaCy NER for"
+  echo "    output-defense, instead of the stub/regex backends. First build"
+  echo "    downloads ~1.5GB of model weights — expect the first 'up' to"
+  echo "    take several minutes longer than a redeploy."
 else
   COMPOSE_FILES=(-f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml)
+  ML_PROFILE_NOTE="Detectors are on stub/regex backends (${TOTAL_MEM_MB}MB RAM isn't comfortably enough for real ML models — see deploy/oracle/README.md to size up to >= 6GB)."
+  echo "==> ${TOTAL_MEM_MB}MB RAM is enough to run the full stack but not"
+  echo "    comfortably enough for real ML models (want >= 6GB) — detectors"
+  echo "    stay on their stub/regex backends. See deploy/oracle/README.md"
+  echo "    if you want to size up for the real-model profile."
 fi
 
 echo "==> Opening the local firewall for port 80 (Oracle Linux/Ubuntu images"
@@ -93,9 +116,12 @@ if ! command -v envsubst >/dev/null 2>&1; then
   (sudo apt-get install -y gettext-base 2>/dev/null) || (sudo dnf install -y gettext 2>/dev/null) || true
 fi
 
-echo "==> Rendering the demo nginx config with the real API key injected server-side..."
+echo "==> Rendering the demo nginx config with the real API keys injected server-side..."
 export AEGIS_DEMO_API_KEY="${AEGIS_API_KEYS%%,*}"
-envsubst '${AEGIS_DEMO_API_KEY}' < deploy/oracle/nginx-demo.conf.template > deploy/oracle/nginx-demo.conf
+export AEGIS_DEMO_AGENT_GATE_SERVICE_KEY="${AEGIS_AGENT_GATE_API_KEYS%%,*}"
+export AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY="${AEGIS_AGENT_GATE_REVIEWER_KEYS%%,*}"
+envsubst '${AEGIS_DEMO_API_KEY} ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY} ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY}' \
+  < deploy/oracle/nginx-demo.conf.template > deploy/oracle/nginx-demo.conf
 
 echo "==> Starting the stack (gateway + dependencies + rate-limited public proxy)..."
 sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy
@@ -122,9 +148,10 @@ Demo is up. From any machine:
 No API key needed — the proxy injects it server-side and rate-limits
 by IP (6 requests/minute). The real gateway key never leaves this VM.
 
-If a request hangs or errors on a 1GB box, check memory with 'free -h'
-and 'docker stats' — the trimmed profile is tight but should hold for
-light demo traffic.
+Detector profile: ${ML_PROFILE_NOTE}
+
+If a request hangs or errors, check memory with 'free -h' and 'docker
+stats'.
 
 Redeploy after a git pull with:
   ./deploy/oracle/setup.sh

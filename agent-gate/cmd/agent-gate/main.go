@@ -13,6 +13,7 @@ import (
 	"github.com/aegis-platform/aegis/agent-gate/internal/api"
 	"github.com/aegis-platform/aegis/agent-gate/internal/approval"
 	"github.com/aegis-platform/aegis/agent-gate/internal/audit"
+	"github.com/aegis-platform/aegis/agent-gate/internal/auth"
 	"github.com/aegis-platform/aegis/agent-gate/internal/gate"
 	"github.com/aegis-platform/aegis/agent-gate/internal/policy"
 )
@@ -30,12 +31,24 @@ func main() {
 	g := gate.New(policyClient, approvalStore)
 	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""))
 
+	authCfg := auth.Load()
+	if authCfg.Service.Source == auth.SourceGenerated {
+		logger.Warn("AEGIS_AGENT_GATE_API_KEYS not set — generated an ephemeral service key for this process",
+			"service_key", authCfg.Service.GeneratedKey)
+	}
+	if authCfg.Reviewer.Source == auth.SourceGenerated {
+		logger.Warn("AEGIS_AGENT_GATE_REVIEWER_KEYS not set — generated an ephemeral reviewer key for this "+
+			"process; this key, not the service key, is required to approve or deny a pending action",
+			"reviewer_key", authCfg.Reviewer.GeneratedKey)
+	}
+
 	mux := http.NewServeMux()
 	api.NewServer(g, auditClient).Register(mux)
+	handler := auth.Middleware(authCfg)(mux)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

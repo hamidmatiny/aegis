@@ -51,6 +51,9 @@ func (g *Gate) Evaluate(ctx context.Context, req models.EvaluateRequest) (*model
 		FlaggedTaint:        taint.FlaggedTaint(sanitized.Arguments),
 		DecidedAt:           time.Now().UTC(),
 		EvaluationLatencyMS: time.Since(start).Milliseconds(),
+		DeclaredRiskLevel:   policyDecision.DeclaredRiskLevel,
+		EffectiveRiskLevel:  policyDecision.EffectiveRiskLevel,
+		RiskLevelOverridden: policyDecision.RiskLevelOverridden,
 	}
 
 	switch policyDecision.Action {
@@ -70,6 +73,12 @@ func (g *Gate) Evaluate(ctx context.Context, req models.EvaluateRequest) (*model
 		decision.Status = models.StatusAwaitingHumanApproval
 		decision.ApprovalRequestID = appr.ApprovalID
 		decision.DenialReason = "human approval required for irreversible or high-risk action"
+		if policyDecision.RiskLevelOverridden {
+			decision.DenialReason = fmt.Sprintf(
+				"%s (declared risk_level %q was overridden to %q by the registered tool_catalog entry for %q)",
+				decision.DenialReason, policyDecision.DeclaredRiskLevel, policyDecision.EffectiveRiskLevel, sanitized.ToolName,
+			)
+		}
 
 	case "allow":
 		decision.Status = models.StatusApproved

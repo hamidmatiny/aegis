@@ -95,16 +95,32 @@ type PolicySettings struct {
 
 // PolicyPack is a versioned, tenant-scoped set of CEL rules.
 type PolicyPack struct {
-	ID          string         `yaml:"id" json:"id"`
-	Version     string         `yaml:"version" json:"version"`
-	TenantID    string         `yaml:"tenant_id" json:"tenant_id"`
-	Description string         `yaml:"description,omitempty" json:"description,omitempty"`
-	Extends     string         `yaml:"extends,omitempty" json:"extends,omitempty"`
-	InputRules  []PolicyRule   `yaml:"input_rules,omitempty" json:"input_rules,omitempty"`
-	OutputRules []PolicyRule   `yaml:"output_rules,omitempty" json:"output_rules,omitempty"`
-	ToolRules   []PolicyRule   `yaml:"tool_rules,omitempty" json:"tool_rules,omitempty"`
-	Overrides   []RuleOverride `yaml:"overrides,omitempty" json:"overrides,omitempty"`
-	Settings    PolicySettings `yaml:"settings" json:"settings"`
+	ID          string            `yaml:"id" json:"id"`
+	Version     string            `yaml:"version" json:"version"`
+	TenantID    string            `yaml:"tenant_id" json:"tenant_id"`
+	Description string            `yaml:"description,omitempty" json:"description,omitempty"`
+	Extends     string            `yaml:"extends,omitempty" json:"extends,omitempty"`
+	InputRules  []PolicyRule      `yaml:"input_rules,omitempty" json:"input_rules,omitempty"`
+	OutputRules []PolicyRule      `yaml:"output_rules,omitempty" json:"output_rules,omitempty"`
+	ToolRules   []PolicyRule      `yaml:"tool_rules,omitempty" json:"tool_rules,omitempty"`
+	// ToolCatalog maps a tool_name to its canonical, operator-registered risk
+	// level. A caller's self-declared tool_call.risk_level is never trusted
+	// on its own for a catalogued tool: the engine takes the higher of the
+	// two (see engine.resolveToolRisk), so a compromised or hallucinating
+	// caller cannot downgrade an irreversible action to skip approval just
+	// by claiming a lower risk_level.
+	ToolCatalog []ToolCatalogEntry `yaml:"tool_catalog,omitempty" json:"tool_catalog,omitempty"`
+	Overrides   []RuleOverride    `yaml:"overrides,omitempty" json:"overrides,omitempty"`
+	Settings    PolicySettings    `yaml:"settings" json:"settings"`
+}
+
+// ToolCatalogEntry registers the operator-defined, authoritative risk level
+// for a named tool. This is the trust boundary: it is set by whoever owns
+// the policy pack (the operator), not by whatever assembles a tool_call at
+// request time (which may be influenced by an LLM's own output).
+type ToolCatalogEntry struct {
+	ToolName  string `yaml:"tool_name" json:"tool_name"`
+	RiskLevel string `yaml:"risk_level" json:"risk_level"`
 }
 
 // RuleOverride disables or replaces a rule from a base pack (per-tenant).
@@ -135,6 +151,13 @@ type PolicyDecision struct {
 	TenantID            string            `json:"tenant_id,omitempty"`
 	EvaluatedAt         time.Time         `json:"evaluated_at"`
 	EvaluationLatencyMS int64             `json:"evaluation_latency_ms"`
+	// Tool-call risk resolution (empty for input/output decisions).
+	// DeclaredRiskLevel is what the caller sent. EffectiveRiskLevel is what
+	// was actually evaluated after checking the tool_catalog. When they
+	// differ, RiskLevelOverridden is true and the catalog value won.
+	DeclaredRiskLevel   string `json:"declared_risk_level,omitempty"`
+	EffectiveRiskLevel  string `json:"effective_risk_level,omitempty"`
+	RiskLevelOverridden bool   `json:"risk_level_overridden,omitempty"`
 }
 
 // DryRunRequest evaluates draft policy YAML against a sample verdict without persisting.

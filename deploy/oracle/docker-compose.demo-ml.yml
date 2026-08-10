@@ -1,0 +1,39 @@
+# Overlay that turns on the real ML detector backends instead of the
+# stub/regex ones CI and the low-memory profile use. Layer this on top of
+# docker-compose.yml + docker-compose.demo.yml on a box with enough RAM —
+# see deploy/oracle/README.md for the memory guidance. Do NOT combine this
+# with docker-compose.demo-lite.yml; they push the same knobs in opposite
+# directions.
+#
+#   docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml \
+#     -f deploy/oracle/docker-compose.demo-ml.yml up -d --build gateway demo-proxy
+#
+# Model footprint (see input-defense/README.md and output-defense/README.md
+# for the up-to-date table): input-defense downloads and loads ~1.05GB of
+# weights (DeBERTa-v3-base classifier + distilgpt2 perplexity), output-defense
+# ~440MB (Toxic-BERT) + ~12MB (spaCy NER). Add PyTorch/transformers runtime
+# overhead on top of the raw weight size — budget at least ~2GB headroom for
+# the input-defense container and ~1.5GB for output-defense, plus whatever
+# the rest of the stack needs. This is why VM.Standard.E2.1.Micro's 1GB
+# cannot run this overlay no matter how much swap you add — swap would
+# technically avoid an OOM kill but inference would thrash into
+# multi-second-plus latency per request, which breaks the "5 minute demo"
+# experience. Use VM.Standard.A1.Flex instead (see deploy/oracle/README.md).
+services:
+  input-defense:
+    build:
+      args:
+        INSTALL_ML: "true"
+    environment:
+      AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: prompt-guard
+      AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: lm
+    mem_limit: 3g
+
+  output-defense:
+    build:
+      args:
+        INSTALL_ML: "true"
+    environment:
+      AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND: toxic-bert
+      AEGIS_OUTPUT_DEFENSE_PII_BACKEND: ner
+    mem_limit: 2g

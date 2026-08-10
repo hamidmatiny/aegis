@@ -74,14 +74,44 @@ func (e *Engine) EvaluateTool(
 	if err != nil {
 		return models.PolicyDecision{}, err
 	}
-	return e.evaluate(
+
+	declared := call.RiskLevel
+	if declared == "" {
+		declared = "LOW"
+	}
+	effective, overridden := resolveToolRisk(pack, call)
+
+	evalCall := call
+	evalCall.RiskLevel = effective
+
+	decision, err := e.evaluate(
 		pack,
 		tenantID,
 		mode,
 		pack.ToolRules,
 		env,
-		toolActivation(tenantID, call),
+		toolActivation(tenantID, evalCall),
 	)
+	if err != nil {
+		return decision, err
+	}
+
+	decision.DeclaredRiskLevel = declared
+	decision.EffectiveRiskLevel = effective
+	decision.RiskLevelOverridden = overridden
+	if overridden {
+		reason := fmt.Sprintf(
+			"tool_catalog overrode declared risk_level %q with registered risk %q for tool %q",
+			declared, effective, call.ToolName,
+		)
+		if decision.BlockReason == "" {
+			decision.BlockReason = reason
+		} else {
+			decision.BlockReason = reason + "; " + decision.BlockReason
+		}
+	}
+
+	return decision, nil
 }
 
 func (e *Engine) evaluate(

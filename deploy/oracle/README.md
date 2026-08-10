@@ -23,6 +23,23 @@ container memory-capped, plus a 2GB swap file as a safety net. You don't
 need to do anything differently — same `./deploy/oracle/setup.sh` command
 either way.
 
+`setup.sh` actually picks between three profiles based on detected RAM:
+
+| Total RAM | Profile | Detectors |
+|---|---|---|
+| < 2GB (`E2.1.Micro`) | `docker-compose.demo-lite.yml` | stub/regex — real transformer models can't fit |
+| 2GB – <6GB | none (base compose) | stub/regex — the *default*, even though there'd be room to run the full stack; real models still don't comfortably fit alongside everything else |
+| ≥ 6GB (`A1.Flex`, sized up) | `docker-compose.demo-ml.yml` | **real models**: Llama-Prompt-Guard-2 + a perplexity LM (input-defense), Toxic-BERT + spaCy NER (output-defense) |
+
+If you want the real-model profile, request at least **2 OCPU / 8GB** (not
+the minimal 12GB default suggested below — 8GB clears the 6GB bar with
+headroom) when creating the `A1.Flex` instance. The first `up` after
+switching profiles downloads ~1.5GB of model weights, so expect it to take
+several minutes longer than a normal redeploy. See
+[`input-defense/README.md`](../../input-defense/README.md#model-footprint)
+and [`output-defense/README.md`](../../output-defense/README.md) for the
+exact per-model footprint this budget is based on.
+
 ## 1. Provision the VM (you do this — account creation isn't something I do on your behalf)
 
 1. Create an Oracle Cloud account at [cloud.oracle.com](https://cloud.oracle.com) (requires a credit card for identity verification; the Always Free resources below never bill).

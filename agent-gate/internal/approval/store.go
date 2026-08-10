@@ -1,6 +1,8 @@
 package approval
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -30,8 +32,12 @@ func (s *Store) Create(call models.ToolCallRequest, tenantID string) (*models.Ap
 	defer s.mu.Unlock()
 
 	now := time.Now().UTC()
+	id, err := newApprovalID()
+	if err != nil {
+		return nil, err
+	}
 	req := &models.ApprovalRequest{
-		ApprovalID: fmt.Sprintf("appr-%d", now.UnixNano()),
+		ApprovalID: id,
 		ToolCall:   call,
 		TenantID:   tenantID,
 		CreatedAt:  now,
@@ -40,6 +46,20 @@ func (s *Store) Create(call models.ToolCallRequest, tenantID string) (*models.Ap
 	}
 	s.approvals[req.ApprovalID] = req
 	return req, nil
+}
+
+// newApprovalID returns a cryptographically random approval ID. A
+// predictable ID (e.g. a timestamp) would let an attacker who knows
+// roughly when a call was submitted guess or enumerate pending approval
+// IDs; that matters far less now that /decide is reviewer-key-gated, but
+// there is no reason to keep a guessable identifier for something a
+// human approval decision hinges on.
+func newApprovalID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate approval id: %w", err)
+	}
+	return "appr-" + hex.EncodeToString(b), nil
 }
 
 func (s *Store) Get(id string) (*models.ApprovalRequest, error) {

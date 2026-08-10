@@ -35,6 +35,7 @@ class DefensePipeline:
         policy_engine_url: str,
         model_router_url: str,
         agent_gate_url: str,
+        agent_gate_api_key: str = "",
         tenant_id: str = "default",
         timeout: float = 60.0,
     ) -> None:
@@ -43,6 +44,10 @@ class DefensePipeline:
         self.policy_engine_url = policy_engine_url.rstrip("/")
         self.model_router_url = model_router_url.rstrip("/")
         self.agent_gate_url = agent_gate_url.rstrip("/")
+        # Service key only — sent on POST /v1/evaluate. Deciding an
+        # approval requires a distinct reviewer key that this SDK
+        # deliberately never holds; see agent-gate/internal/auth.
+        self.agent_gate_api_key = agent_gate_api_key
         self.tenant_id = tenant_id
         self.timeout = timeout
 
@@ -159,6 +164,11 @@ class DefensePipeline:
         trace: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         trace_ctx = trace or _trace()
+        headers = (
+            {"Authorization": f"Bearer {self.agent_gate_api_key}"}
+            if self.agent_gate_api_key
+            else None
+        )
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await self._post(
                 client,
@@ -169,6 +179,7 @@ class DefensePipeline:
                     "trace": trace_ctx,
                     "tool_call": tool_call,
                 },
+                headers=headers,
             )
             decision = resp.get("decision", {})
             status = str(decision.get("status", ""))
@@ -198,8 +209,9 @@ class DefensePipeline:
         payload: dict[str, Any],
         *,
         provider_errors: bool = False,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        resp = await client.post(url, json=payload)
+        resp = await client.post(url, json=payload, headers=headers)
         if resp.status_code >= 400:
             body: dict[str, Any] = {}
             try:

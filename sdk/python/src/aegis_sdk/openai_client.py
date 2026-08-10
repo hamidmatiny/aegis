@@ -66,6 +66,7 @@ class OpenAI:
         policy_engine_url: str | None = None,
         model_router_url: str | None = None,
         agent_gate_url: str | None = None,
+        agent_gate_api_key: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/") if base_url else None
         self.api_key = api_key
@@ -73,12 +74,16 @@ class OpenAI:
         self.timeout = timeout
         self._pipeline: DefensePipeline | None = None
         if self.base_url is None:
+            resolved_gate_key = agent_gate_api_key
+            if resolved_gate_key is None and settings.agent_gate_api_keys:
+                resolved_gate_key = settings.agent_gate_api_keys.split(",")[0].strip()
             self._pipeline = DefensePipeline(
                 input_defense_url=input_defense_url or settings.input_defense_url,
                 output_defense_url=output_defense_url or settings.output_defense_url,
                 policy_engine_url=policy_engine_url or settings.policy_engine_url,
                 model_router_url=model_router_url or settings.model_router_url,
                 agent_gate_url=agent_gate_url or settings.agent_gate_url,
+                agent_gate_api_key=resolved_gate_key or "",
                 tenant_id=self.tenant_id,
                 timeout=timeout,
             )

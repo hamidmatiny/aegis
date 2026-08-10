@@ -40,17 +40,26 @@ upsert_env() {
 
 DASHBOARD_PASSWORD="$(random_hex 16)"
 API_KEY="aegis_$(random_hex 32)"
+AGENT_GATE_SERVICE_KEY="aegis_$(random_hex 32)"
+AGENT_GATE_REVIEWER_KEY="aegis_$(random_hex 32)"
 
 upsert_env "AEGIS_DASHBOARD_USER" "admin"
 upsert_env "AEGIS_DASHBOARD_PASSWORD" "$DASHBOARD_PASSWORD"
 upsert_env "AEGIS_API_KEYS" "$API_KEY"
+upsert_env "AEGIS_AGENT_GATE_API_KEYS" "$AGENT_GATE_SERVICE_KEY"
+upsert_env "AEGIS_AGENT_GATE_REVIEWER_KEYS" "$AGENT_GATE_REVIEWER_KEY"
 
 cat <<MSG
 
 Generated fresh credentials and wrote them to .env:
 
-  Dashboard login:   admin / $DASHBOARD_PASSWORD
-  Gateway API key:   $API_KEY
+  Dashboard login:        admin / $DASHBOARD_PASSWORD
+  Gateway API key:        $API_KEY
+  Agent-gate service key: $AGENT_GATE_SERVICE_KEY   (calling agents use this)
+  Agent-gate reviewer key: $AGENT_GATE_REVIEWER_KEY  (approve/deny only — deliberately
+                                                       different from the service key so
+                                                       an agent can never approve its own
+                                                       irreversible action)
 
 Keep these secret — .env is gitignored. Re-run this script any time to
 rotate both. Use the API key against the gateway as:

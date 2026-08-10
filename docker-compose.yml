@@ -95,6 +95,12 @@ services:
       AEGIS_AUDIT_URL: http://audit:8084
       AEGIS_APPROVAL_TTL_HOURS: ${AEGIS_APPROVAL_TTL_HOURS:-24}
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      # Service key: lets a calling agent submit tool calls (POST /v1/evaluate).
+      AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
+      # Reviewer key: required to decide a pending approval. Deliberately a
+      # different credential from the service key above — a calling agent
+      # cannot approve its own irreversible action just by holding its own key.
+      AEGIS_AGENT_GATE_REVIEWER_KEYS: ${AEGIS_AGENT_GATE_REVIEWER_KEYS:-}
     depends_on:
       policy-engine:
         condition: service_started
@@ -189,6 +195,11 @@ services:
     environment:
       AEGIS_DASHBOARD_USER: ${AEGIS_DASHBOARD_USER:-admin}
       AEGIS_DASHBOARD_PASSWORD: ${AEGIS_DASHBOARD_PASSWORD:-}
+      # The dashboard's nginx proxy injects these server-side so the browser
+      # never sees them; the Approval Inbox is the intended reviewer surface,
+      # gated behind dashboard basic auth above. Must match agent-gate's keys.
+      AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
+      AEGIS_AGENT_GATE_REVIEWER_KEYS: ${AEGIS_AGENT_GATE_REVIEWER_KEYS:-}
     depends_on:
       audit:
         condition: service_started

@@ -56,6 +56,32 @@ tool_rules:
     action: block
     enabled: true
 
+# tool_catalog is the operator-registered, authoritative risk level per
+# tool_name. The engine takes the higher of (caller-declared risk_level,
+# catalog risk_level) — see policy-engine/internal/engine/risk.go — so a
+# caller cannot bypass the human-approval rule above just by claiming a
+# lower risk_level for a tool that's registered here. Register any tool
+# whose misuse would be destructive, irreversible, or high-blast-radius.
+tool_catalog:
+  - tool_name: delete_database
+    risk_level: IRREVERSIBLE
+  - tool_name: drop_database
+    risk_level: IRREVERSIBLE
+  - tool_name: drop_table
+    risk_level: IRREVERSIBLE
+  - tool_name: delete_user
+    risk_level: IRREVERSIBLE
+  - tool_name: revoke_all_access
+    risk_level: IRREVERSIBLE
+  - tool_name: wire_transfer
+    risk_level: IRREVERSIBLE
+  - tool_name: send_email
+    risk_level: MEDIUM
+  - tool_name: post_message
+    risk_level: MEDIUM
+  - tool_name: search_docs
+    risk_level: LOW
+
 settings:
   shadow_mode: false
   default_action: allow

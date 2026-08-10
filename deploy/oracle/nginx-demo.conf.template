@@ -1,13 +1,25 @@
-# Public demo reverse proxy. Sits in front of the gateway and:
-#  1. Injects the real AEGIS_API_KEYS server-side, so public visitors never
-#     see or need a key — the demo "just works" with plain curl/browser.
+# Public demo reverse proxy. Sits in front of the gateway and agent-gate and:
+#  1. Injects the real API keys server-side, so public visitors never see or
+#     need a key — the demo "just works" with plain curl/browser.
 #  2. Rate-limits per source IP so the free-tier demo can't be hammered.
-#  3. Only exposes /health and the defended chat endpoint — nothing else.
+#  3. Only exposes /health, the defended chat endpoint, and a narrow slice
+#     of agent-gate (evaluate + decide) — nothing else.
 #
-# ${AEGIS_DEMO_API_KEY} is substituted by deploy/oracle/setup.sh via envsubst
-# at container start; it is never committed to the repo.
+# ${AEGIS_DEMO_API_KEY}, ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY}, and
+# ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY} are substituted by
+# deploy/oracle/setup.sh via envsubst at container start; none are ever
+# committed to the repo.
+#
+# The service key and reviewer key are deliberately different (see
+# agent-gate/internal/auth): this proxy holds both server-side so a visitor
+# can click through the whole "submit -> pending -> approve" flow without
+# needing an account, but the two routes below are still separate requests
+# hitting separate agent-gate auth scopes — the same separation a real
+# deployment relies on to stop a calling agent from approving its own
+# irreversible action.
 
 limit_req_zone $binary_remote_addr zone=aegis_demo:10m rate=6r/m;
+limit_req_zone $binary_remote_addr zone=aegis_demo_gate:10m rate=10r/m;
 
 server {
     listen 80;
@@ -28,9 +40,32 @@ server {
         proxy_pass http://gateway:8080/v1/chat/completions;
     }
 
+    # Submit a tool/MCP call — service key only. Never sufficient to also
+    # decide the resulting approval (see /agent-gate/decide below).
+    location = /agent-gate/evaluate {
+        limit_req zone=aegis_demo_gate burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_set_header Authorization "Bearer ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY}";
+        proxy_set_header Content-Type "application/json";
+        proxy_pass http://agent-gate:8083/v1/evaluate;
+    }
+
+    # Decide a pending approval — reviewer key only, matched by regex ahead
+    # of any prefix location so it can never fall through to the service
+    # key above.
+    location ~ ^/agent-gate/decide/([^/]+)$ {
+        limit_req zone=aegis_demo_gate burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_set_header Authorization "Bearer ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY}";
+        proxy_set_header Content-Type "application/json";
+        proxy_pass http://agent-gate:8083/v1/approvals/$1/decide;
+    }
+
     # Static demo webpage (deploy/oracle/demo-web/index.html) — everything
     # else 404s, this proxy intentionally exposes nothing beyond the page
-    # and the two routes above.
+    # and the routes above.
     location / {
         try_files $uri $uri/ =404;
     }

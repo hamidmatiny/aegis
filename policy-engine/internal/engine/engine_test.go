@@ -170,3 +170,75 @@ func TestEvaluateToolIrreversible(t *testing.T) {
 		t.Fatalf("expected escalate, got %s", decision.Action)
 	}
 }
+
+// TestEvaluateToolCatalogOverridesUnderstatedRisk guards against a caller
+// (or an LLM-influenced tool-call assembler) claiming a lower risk_level
+// than the operator registered for a known-dangerous tool. Without the
+// catalog override, this exact call would evaluate as ALLOW instead of
+// escalating for human approval.
+func TestEvaluateToolCatalogOverridesUnderstatedRisk(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "irreversible", Name: "Irreversible",
+				CEL: "tool_call.risk_level == 'IRREVERSIBLE'", Action: models.ActionEscalateToJudge, Enabled: true,
+			},
+		},
+		ToolCatalog: []models.ToolCatalogEntry{
+			{ToolName: "delete_database", RiskLevel: "IRREVERSIBLE"},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	call := models.ToolCallRequest{ToolName: "delete_database", RiskLevel: "LOW"}
+	decision, err := eng.EvaluateTool(pack, "default", call, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool: %v", err)
+	}
+	if decision.Action != models.ActionEscalateToJudge {
+		t.Fatalf("expected escalate despite understated risk_level, got %s", decision.Action)
+	}
+	if !decision.RiskLevelOverridden {
+		t.Fatalf("expected RiskLevelOverridden=true")
+	}
+	if decision.DeclaredRiskLevel != "LOW" || decision.EffectiveRiskLevel != "IRREVERSIBLE" {
+		t.Fatalf("expected declared=LOW effective=IRREVERSIBLE, got declared=%s effective=%s",
+			decision.DeclaredRiskLevel, decision.EffectiveRiskLevel)
+	}
+}
+
+// TestEvaluateToolCatalogUnknownToolUsesDeclaredRisk documents the trust
+// boundary for tools that aren't registered: they fall back to whatever
+// risk_level the caller declared, unchanged.
+func TestEvaluateToolCatalogUnknownToolUsesDeclaredRisk(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "irreversible", Name: "Irreversible",
+				CEL: "tool_call.risk_level == 'IRREVERSIBLE'", Action: models.ActionEscalateToJudge, Enabled: true,
+			},
+		},
+		ToolCatalog: []models.ToolCatalogEntry{
+			{ToolName: "delete_database", RiskLevel: "IRREVERSIBLE"},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	call := models.ToolCallRequest{ToolName: "search_docs", RiskLevel: "LOW"}
+	decision, err := eng.EvaluateTool(pack, "default", call, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool: %v", err)
+	}
+	if decision.Action != models.ActionAllow {
+		t.Fatalf("expected allow for unregistered low-risk tool, got %s", decision.Action)
+	}
+	if decision.RiskLevelOverridden {
+		t.Fatalf("expected no override for unregistered tool")
+	}
+}

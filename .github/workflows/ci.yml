@@ -126,12 +126,16 @@ jobs:
           AEGIS_DASHBOARD_USER: ci-admin
           AEGIS_DASHBOARD_PASSWORD: ci-test-password-not-a-secret
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
+          AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+          AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
         run: docker compose up -d --build --wait
       - name: Run smoke tests
         env:
           AEGIS_DASHBOARD_USER: ci-admin
           AEGIS_DASHBOARD_PASSWORD: ci-test-password-not-a-secret
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
+          AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+          AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
         run: |
           chmod +x scripts/integration
           ./scripts/integration
