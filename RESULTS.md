@@ -4,6 +4,31 @@ This document reports **adaptive red-team evidence** and **detector ablation** a
 
 ---
 
+## TL;DR
+
+We publish this because most guardrail vendors only report round-1 catch
+rates against a fixed test corpus — a number that looks good in a demo and
+tells you almost nothing about a real, adaptive attacker. We ran our own
+detectors through adaptive red-team campaigns that breed new attacks from
+whatever got through the previous round, and reported the result honestly
+even though it isn't flattering:
+
+| Metric | Stub detectors | Hardened (real-model) detectors |
+|---|---|---|
+| Round 1 bypass rate | 10.8% | 9.2% |
+| Round 3 bypass rate | 72.8% | 75.0% |
+| Overall bypass rate | 47.4% | 48.3% |
+
+**Real-model hardening barely moves the number that matters.** Full
+methodology, root-cause analysis, and reproduction commands below — see
+[Headline finding](#headline-finding-read-this-first) for the details and
+[Implications for fixes](#implications-for-fixes-by-root-cause) for what
+we're doing about it: continuous adversarial monitoring (the `redteam/`
+engine that produced these numbers) rather than a one-time install that
+claims the problem is solved.
+
+---
+
 ## H4 root-cause fixes (2026-06-27)
 
 Stage H4 closes the two architectural gaps from Phase 2 planning:
