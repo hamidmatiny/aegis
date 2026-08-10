@@ -12,6 +12,8 @@ limit_req_zone $binary_remote_addr zone=aegis_demo:10m rate=6r/m;
 server {
     listen 80;
     server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
 
     location = /health {
         proxy_pass http://gateway:8080/health;
@@ -26,8 +28,10 @@ server {
         proxy_pass http://gateway:8080/v1/chat/completions;
     }
 
+    # Static demo webpage (deploy/oracle/demo-web/index.html) — everything
+    # else 404s, this proxy intentionally exposes nothing beyond the page
+    # and the two routes above.
     location / {
-        return 404 '{"error":"this demo only exposes /health and /v1/chat/completions"}';
-        default_type application/json;
+        try_files $uri $uri/ =404;
     }
 }

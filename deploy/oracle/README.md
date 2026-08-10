@@ -64,8 +64,19 @@ Safe to re-run — it reuses your existing `.env` credentials and just rebuilds/
 
 ## What's exposed vs. what isn't
 
-- Public (port 80, rate-limited to 6 req/min/IP): `/health` and `/v1/chat/completions` only, via `demo-proxy` (nginx).
+- Public (port 80, rate-limited to 6 req/min/IP): a browser demo page at `/` (`deploy/oracle/demo-web/index.html` — a text box, a few example prompts, and a live verdict/score display), plus the underlying `/health` and `/v1/chat/completions` routes it calls, via `demo-proxy` (nginx).
 - Not public: the dashboard, the real gateway port 8080, Postgres, and every other service — they're only reachable inside the Docker network. The real `AEGIS_API_KEYS` value never leaves the VM; nginx injects it server-side.
+
+## Updating just the webpage
+
+Edit `deploy/oracle/demo-web/index.html`, commit, push, then on the VM:
+
+```bash
+cd aegis && git pull && ./deploy/oracle/setup.sh
+```
+
+`setup.sh` remounts the volume and restarts `demo-proxy`, so page-only
+changes redeploy in seconds even though the full script re-runs.
 
 ## Optional: put a domain + HTTPS in front later
 

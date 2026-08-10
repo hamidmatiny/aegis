@@ -10,6 +10,7 @@ services:
       - "80:80"
     volumes:
       - ./deploy/oracle/nginx-demo.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/oracle/demo-web:/usr/share/nginx/html:ro
     depends_on:
       gateway:
         condition: service_started
