@@ -86,8 +86,26 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
     ),
     (
         "violence_instruction",
-        re.compile(r"\b(kill|murder|harm|attack)\s+(yourself|them|him|her)\b", re.I),
+        re.compile(
+            r"\b(kill|murder|harm|attack)\s+"
+            r"(yourself|them|him|her|someone|somebody|a person|people)\b",
+            re.I,
+        ),
         0.85,
+    ),
+    (
+        "violence_facilitation_request",
+        re.compile(r"help\s+(?:me|you)\s+(?:kill|murder|hurt|attack|assault)\s+\w+", re.I),
+        0.88,
+    ),
+    (
+        "theft_instruction",
+        re.compile(
+            r"(?:step[- ]by[- ]step|how to|teach(?:ing)? (?:me|you|someone) to).{0,60}"
+            r"(?:steal(?:ing)?|rob(?:bing)?|break(?:ing)? into|hotwire|hot-wire)",
+            re.I,
+        ),
+        0.82,
     ),
     (
         "weapon_recipe",
