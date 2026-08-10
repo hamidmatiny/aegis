@@ -1,0 +1,59 @@
+# Overlay for undersized free-tier boxes (e.g. Oracle's VM.Standard.E2.1.Micro,
+# 1 OCPU / 1GB RAM) where the full stack doesn't comfortably fit. Layer this
+# on top of docker-compose.yml + docker-compose.demo.yml:
+#
+#   docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml \
+#     -f deploy/oracle/docker-compose.demo-lite.yml up -d --build gateway demo-proxy
+#
+# What this does, on top of the demo overlay:
+#  1. Forces every ML-capable detector onto its lightweight stub/regex
+#     backend (the same ones CI uses) so no service ever loads a real
+#     transformer/embedding model into memory — that alone can be
+#     several hundred MB to multiple GB per model, which a 1GB box
+#     cannot survive. Detection logic still runs and still produces
+#     real block/allow/escalate decisions; it just isn't using a
+#     downloaded ML model to score toxicity/PII/backtranslation.
+#  2. Caps every container's memory so one runaway process gets OOM-killed
+#     by Docker instead of taking down the whole VM (paired with the swap
+#     file setup.sh adds as a second safety net).
+#  3. Tunes Postgres down from its ~128MB+ default footprint.
+services:
+  input-defense:
+    environment:
+      AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: stub
+      AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: stub
+    mem_limit: 200m
+
+  output-defense:
+    environment:
+      AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND: stub
+      AEGIS_OUTPUT_DEFENSE_PII_BACKEND: regex
+      AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND: stub
+      AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND: stub
+    mem_limit: 200m
+
+  gateway:
+    mem_limit: 64m
+  policy-engine:
+    mem_limit: 64m
+  model-router:
+    mem_limit: 64m
+  agent-gate:
+    mem_limit: 64m
+  audit:
+    mem_limit: 64m
+  demo-proxy:
+    mem_limit: 32m
+
+  postgres:
+    mem_limit: 200m
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=32MB"
+      - "-c"
+      - "max_connections=20"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "maintenance_work_mem=32MB"

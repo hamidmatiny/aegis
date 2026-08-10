@@ -6,16 +6,30 @@ policy-engine + model-router + agent-gate + audit + postgres, all on
 public proxy, so anyone can watch AEGIS block a prompt injection without
 installing anything.
 
-Oracle's Always Free tier (not a trial) comfortably fits the whole stack:
-up to 4 ARM OCPUs / 24GB RAM, 10TB egress, free forever.
+## Which shape you'll actually get
+
+**`VM.Standard.A1.Flex`** (Ampere, up to 4 OCPU / 24GB RAM) is the shape to
+prefer — comfortably fits the whole stack with no trimming. In practice,
+Oracle frequently reports **"Out of capacity"** for this shape depending on
+region and timing; it's a known, common Always Free limitation, not
+anything wrong with your account. Retrying occasionally (it can clear in
+minutes or take days) is the only real fix short of a scripted retry loop.
+
+**`VM.Standard.E2.1.Micro`** (AMD, 1 OCPU / 1GB RAM) is reliably available
+and works fine as a fallback — `setup.sh` **auto-detects** low memory and
+switches to a trimmed profile (`docker-compose.demo-lite.yml`): every
+ML-capable detector forced onto its lightweight stub backend, every
+container memory-capped, plus a 2GB swap file as a safety net. You don't
+need to do anything differently — same `./deploy/oracle/setup.sh` command
+either way.
 
 ## 1. Provision the VM (you do this — account creation isn't something I do on your behalf)
 
 1. Create an Oracle Cloud account at [cloud.oracle.com](https://cloud.oracle.com) (requires a credit card for identity verification; the Always Free resources below never bill).
 2. Console → **Compute → Instances → Create Instance**.
-3. Image: **Ubuntu 22.04** (or 24.04). Shape: **VM.Standard.A1.Flex** (Ampere) — 2 OCPU / 12GB RAM is plenty for this demo; you can use up to 4/24 if you want headroom.
-4. Under **Networking**, use a new VCN with internet access (the wizard's default is fine).
-5. Add your SSH public key (or let Oracle generate a keypair for you to download).
+3. Image: **Ubuntu 22.04** (or 24.04). Shape: try **VM.Standard.A1.Flex** first (Ampere tab in the shape browser — it won't show under "Specialty and previous generation"), 2 OCPU / 12GB RAM. If you hit "Out of capacity," fall back to **VM.Standard.E2.1.Micro** — same deploy script handles both.
+4. Under **Networking**, use a new VCN with internet access (the wizard's default is fine) — or reuse an existing VCN if you already opened port 80 on one.
+5. Add your SSH public key (generate one first if needed: `ssh-keygen -t ed25519 -f ~/.ssh/aegis_oracle`), or let Oracle generate a keypair for you to download.
 6. Create the instance and note its **public IP**.
 
 ## 2. Open port 80
