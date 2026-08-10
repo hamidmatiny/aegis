@@ -18,7 +18,7 @@ Application → [SDK / Reverse Proxy] → Gateway (Go)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 
-**Phase 2 evidence:** Adaptive red-team campaigns and detector ablation results are summarized in [RESULTS.md](./RESULTS.md) (Stage H3).
+**Phase 2 evidence:** Adaptive red-team campaigns and detector ablation results are summarized in [RESULTS.md](./RESULTS.md) (Stage H3) — including the honest headline finding, up top. See [COMPARISON.md](./COMPARISON.md) for how AEGIS differs from NeMo Guardrails, Guardrails AI, and LLM Guard.
 
 ## Monorepo layout
 
