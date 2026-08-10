@@ -103,10 +103,12 @@ fi
 echo "    Also confirm ingress for TCP/80 (and 22 for SSH) is open in the"
 echo "    OCI Console: your VCN's subnet -> Security List -> Ingress Rules."
 
-echo "==> Generating credentials (idempotent — reuses .env if it already exists)..."
-if [ ! -f .env ]; then
-  ./scripts/generate-credentials.sh
-fi
+echo "==> Filling in any missing credentials (existing values in .env are never"
+echo "    touched — this only backfills variables that are unset, so re-running"
+echo "    after a git pull that adds a new required credential, like the"
+echo "    agent-gate service/reviewer key split, won't rotate anything already"
+echo "    in use)..."
+./scripts/generate-credentials.sh
 set -a
 # shellcheck disable=SC1091
 source .env
@@ -117,6 +119,12 @@ if ! command -v envsubst >/dev/null 2>&1; then
 fi
 
 echo "==> Rendering the demo nginx config with the real API keys injected server-side..."
+# Defensive defaults: generate-credentials.sh above guarantees these are
+# set, but don't let a `set -u` unbound-variable error take down the whole
+# script if something upstream ever changes.
+: "${AEGIS_API_KEYS:=}"
+: "${AEGIS_AGENT_GATE_API_KEYS:=}"
+: "${AEGIS_AGENT_GATE_REVIEWER_KEYS:=}"
 export AEGIS_DEMO_API_KEY="${AEGIS_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_SERVICE_KEY="${AEGIS_AGENT_GATE_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY="${AEGIS_AGENT_GATE_REVIEWER_KEYS%%,*}"
