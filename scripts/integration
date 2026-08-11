@@ -120,4 +120,14 @@ curl -sf -X POST "http://localhost:8083/v1/approvals/${approval_id}/decide" \
   -d '{"approved":true,"reviewer_id":"integration-test"}' \
   | grep -q '"status":"APPROVED"' || { echo "FAIL: agent-gate did not approve with a valid reviewer key"; exit 1; }
 
+echo "==> Verifying custom services run as non-root (container hardening)..."
+hardened_services=(gateway policy-engine model-router agent-gate audit input-defense output-defense redteam dashboard)
+for svc in "${hardened_services[@]}"; do
+  uid="$($COMPOSE exec -T "$svc" id -u 2>/dev/null || true)"
+  if [[ -z "$uid" || "$uid" == "0" ]]; then
+    echo "FAIL: $svc is running as root (uid=${uid:-unknown}) — container hardening regression"
+    exit 1
+  fi
+done
+
 echo "==> All integration smoke tests passed"
