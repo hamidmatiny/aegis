@@ -83,7 +83,11 @@ func (p *Pipeline) ChatCompletions(ctx context.Context, req ChatRequest, trace m
 		return nil, err
 	}
 	if decision, ok := policyIn["decision"].(map[string]any); ok {
-		if err := checkPolicyDecision(decision, "input"); err != nil {
+		// Pass the already-computed input_verdict along too: if policy
+		// blocks here, the caller still gets to see why input-defense
+		// itself passed the request through (detector scores included)
+		// instead of only seeing the policy rule that stopped it.
+		if err := checkPolicyDecision(decision, "input", map[string]any{"input_verdict": inputVerdict}); err != nil {
 			return nil, err
 		}
 	}
@@ -125,7 +129,12 @@ func (p *Pipeline) ChatCompletions(ctx context.Context, req ChatRequest, trace m
 		return nil, err
 	}
 	outputVerdict, _ := outputResp["verdict"].(map[string]any)
-	if err := checkOutputVerdict(outputVerdict); err != nil {
+	if err := checkOutputVerdict(outputVerdict, map[string]any{
+		"input_verdict": inputVerdict,
+		"input_policy":  policyIn["decision"],
+		"model":         llmResp["model"],
+		"provider":      llmResp["provider"],
+	}); err != nil {
 		return nil, err
 	}
 
@@ -139,7 +148,13 @@ func (p *Pipeline) ChatCompletions(ctx context.Context, req ChatRequest, trace m
 		return nil, err
 	}
 	if decision, ok := policyOut["decision"].(map[string]any); ok {
-		if err := checkPolicyDecision(decision, "output"); err != nil {
+		if err := checkPolicyDecision(decision, "output", map[string]any{
+			"input_verdict":  inputVerdict,
+			"output_verdict": outputVerdict,
+			"input_policy":   policyIn["decision"],
+			"model":          llmResp["model"],
+			"provider":       llmResp["provider"],
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -150,10 +165,13 @@ func (p *Pipeline) ChatCompletions(ctx context.Context, req ChatRequest, trace m
 	}
 	setAssistantContent(llmResp, finalContent)
 
+	// model-router already sets llmResp["aegis"] to its own
+	// {fallback_used, attempted_providers} — preserve those instead of
+	// clobbering them, so the demo can show whether this response actually
+	// came from the requested provider or fell back to another one.
 	aegis, _ := llmResp["aegis"].(map[string]any)
 	if aegis == nil {
 		aegis = map[string]any{}
-		llmResp["aegis"] = aegis
 	}
 	aegis["trace_id"] = trace["trace_id"]
 	aegis["request_id"] = trace["request_id"]
@@ -161,6 +179,7 @@ func (p *Pipeline) ChatCompletions(ctx context.Context, req ChatRequest, trace m
 	aegis["output_verdict"] = outputVerdict
 	aegis["input_policy"] = policyIn["decision"]
 	aegis["output_policy"] = policyOut["decision"]
+	llmResp["aegis"] = aegis
 
 	return llmResp, nil
 }
@@ -360,33 +379,41 @@ func checkInputVerdict(verdict map[string]any) error {
 	return nil
 }
 
-func checkOutputVerdict(verdict map[string]any) error {
+func checkOutputVerdict(verdict map[string]any, upstream map[string]any) error {
 	action, _ := verdict["action"].(string)
 	if action == "BLOCK" {
 		score, _ := verdict["fused_score"].(float64)
+		details := map[string]any{"output_verdict": verdict}
+		for k, v := range upstream {
+			details[k] = v
+		}
 		return &PolicyBlockedError{
 			Message:    "Output blocked by output-defense",
 			Layer:      "output_defense",
 			Action:     action,
 			FusedScore: score,
-			Details:    map[string]any{"output_verdict": verdict},
+			Details:    details,
 		}
 	}
 	return nil
 }
 
-func checkPolicyDecision(decision map[string]any, layer string) error {
+func checkPolicyDecision(decision map[string]any, layer string, upstream map[string]any) error {
 	action, _ := decision["action"].(string)
 	if action == "block" {
 		reason, _ := decision["block_reason"].(string)
 		if reason == "" {
 			reason = fmt.Sprintf("Blocked by policy (%s)", layer)
 		}
+		details := map[string]any{"policy_decision": decision}
+		for k, v := range upstream {
+			details[k] = v
+		}
 		return &PolicyBlockedError{
 			Message:      reason,
 			Layer:        "policy_" + layer,
 			PolicyAction: action,
-			Details:      map[string]any{"policy_decision": decision},
+			Details:      details,
 		}
 	}
 	return nil

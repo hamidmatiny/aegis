@@ -84,6 +84,13 @@ func writePipelineError(w http.ResponseWriter, err error) {
 				"policy_action": blocked.PolicyAction,
 				"action":        blocked.Action,
 				"fused_score":   blocked.FusedScore,
+				// Details carries the full per-detector / per-rule breakdown
+				// (input_verdict, output_verdict, or policy_decision) that
+				// produced this block. Previously dropped here, which meant
+				// a blocked request showed *less* diagnostic detail than an
+				// allowed one — the demo UI's trace panel needs this to show
+				// why a stage stopped the request, not just that it did.
+				"details": blocked.Details,
 			},
 		})
 		return
