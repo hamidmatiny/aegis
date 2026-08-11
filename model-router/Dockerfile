@@ -12,4 +12,7 @@ COPY --from=builder /model-router /usr/local/bin/model-router
 COPY model-router/config /etc/aegis/model-router
 ENV AEGIS_MODEL_ROUTER_CONFIG=/etc/aegis/model-router/providers.yaml
 EXPOSE 8082
+RUN addgroup -g 10001 -S aegis && adduser -S -u 10001 -G aegis aegis
+USER aegis
+
 ENTRYPOINT ["model-router"]

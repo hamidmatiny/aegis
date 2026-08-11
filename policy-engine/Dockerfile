@@ -12,4 +12,7 @@ COPY --from=builder /policy-engine /usr/local/bin/policy-engine
 COPY policy-engine/policies /etc/aegis/policies
 ENV AEGIS_POLICY_DIR=/etc/aegis/policies
 EXPOSE 8081
+RUN addgroup -g 10001 -S aegis && adduser -S -u 10001 -G aegis aegis
+USER aegis
+
 ENTRYPOINT ["policy-engine"]
