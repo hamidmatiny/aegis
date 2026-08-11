@@ -9,6 +9,19 @@
 # service-level authentication of their own -- they were designed to be
 # internal-only, reachable through the gateway/agent-gate's own auth, not
 # exposed directly.
+#
+# Every custom-built service below has both a `build:` block and an
+# `image:` tag pointing at ghcr.io. `docker compose up -d --build` (what
+# local development uses) still builds from source and tags the result
+# with that same image name -- nothing changes there. But on a
+# resource-constrained box (the free-tier Oracle VM this demo runs on
+# has 1 vCPU / 1GB RAM and cannot reliably compile 5 Go services plus an
+# npm build without heavy swap thrashing), `docker compose pull` fetches
+# the already-built, signed image from GHCR instead of compiling
+# anything locally -- those images are built on GitHub's runners by
+# .github/workflows/release.yml whenever a version tag is pushed. Set
+# AEGIS_IMAGE_TAG to pin a specific release (e.g. v0.3.0) instead of
+# always tracking :latest.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -42,6 +55,7 @@ services:
     build:
       context: .
       dockerfile: gateway/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-gateway:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -76,6 +90,7 @@ services:
     build:
       context: .
       dockerfile: policy-engine/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-policy-engine:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -99,6 +114,7 @@ services:
     build:
       context: .
       dockerfile: model-router/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-model-router:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -120,6 +136,7 @@ services:
     build:
       context: .
       dockerfile: agent-gate/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-agent-gate:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -153,6 +170,7 @@ services:
     build:
       context: .
       dockerfile: audit/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-audit:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -178,6 +196,7 @@ services:
       dockerfile: input-defense/Dockerfile
       args:
         INSTALL_ML: ${AEGIS_INPUT_DEFENSE_INSTALL_ML:-false}
+    image: ghcr.io/hamidmatiny/aegis-input-defense:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -201,6 +220,7 @@ services:
       dockerfile: output-defense/Dockerfile
       args:
         INSTALL_ML: ${AEGIS_OUTPUT_DEFENSE_INSTALL_ML:-false}
+    image: ghcr.io/hamidmatiny/aegis-output-defense:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -232,6 +252,7 @@ services:
     build:
       context: .
       dockerfile: redteam/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-redteam:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
@@ -258,6 +279,7 @@ services:
     build:
       context: .
       dockerfile: dashboard/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-dashboard:${AEGIS_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
     security_opt:
