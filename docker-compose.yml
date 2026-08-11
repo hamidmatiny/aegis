@@ -1,3 +1,14 @@
+# All published ports below are bound to 127.0.0.1 only (not 0.0.0.0), so
+# these services are reachable from the host machine itself (SSH in and
+# curl localhost:PORT works fine) but never from another machine on the
+# network or the internet -- regardless of any cloud-provider firewall
+# config. Only the reverse proxy in front of this stack (see
+# deploy/oracle/docker-compose.demo.yml's demo-proxy, or your own ingress)
+# should ever be reachable from outside the box. This matters because
+# policy-engine, input-defense, output-defense, and audit have no
+# service-level authentication of their own -- they were designed to be
+# internal-only, reachable through the gateway/agent-gate's own auth, not
+# exposed directly.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -6,7 +17,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_dev}
       POSTGRES_DB: ${POSTGRES_DB:-aegis}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -18,10 +29,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-aegis_redis_dev}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-aegis_redis_dev}", "--no-auth-warning", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -31,7 +43,7 @@ services:
       context: .
       dockerfile: gateway/Dockerfile
     ports:
-      - "${GATEWAY_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${GATEWAY_HTTP_PORT:-8080}:8080"
     environment:
       AEGIS_GATEWAY_HTTP_PORT: "8080"
       AEGIS_INPUT_DEFENSE_URL: http://input-defense:8090
@@ -58,7 +70,7 @@ services:
       context: .
       dockerfile: policy-engine/Dockerfile
     ports:
-      - "${POLICY_ENGINE_PORT:-8081}:8081"
+      - "127.0.0.1:${POLICY_ENGINE_PORT:-8081}:8081"
     environment:
       AEGIS_POLICY_ENGINE_PORT: "8081"
       AEGIS_POLICY_DIR: ${AEGIS_POLICY_DIR:-/etc/aegis/policies}
@@ -74,7 +86,7 @@ services:
       context: .
       dockerfile: model-router/Dockerfile
     ports:
-      - "${MODEL_ROUTER_PORT:-8082}:8082"
+      - "127.0.0.1:${MODEL_ROUTER_PORT:-8082}:8082"
     env_file:
       - path: .env
         required: false
@@ -88,7 +100,7 @@ services:
       context: .
       dockerfile: agent-gate/Dockerfile
     ports:
-      - "${AGENT_GATE_PORT:-8083}:8083"
+      - "127.0.0.1:${AGENT_GATE_PORT:-8083}:8083"
     environment:
       AEGIS_AGENT_GATE_PORT: "8083"
       AEGIS_POLICY_ENGINE_URL: http://policy-engine:8081
@@ -114,7 +126,7 @@ services:
       context: .
       dockerfile: audit/Dockerfile
     ports:
-      - "${AUDIT_PORT:-8084}:8084"
+      - "127.0.0.1:${AUDIT_PORT:-8084}:8084"
     environment:
       AEGIS_AUDIT_PORT: "8084"
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
@@ -132,7 +144,7 @@ services:
       args:
         INSTALL_ML: ${AEGIS_INPUT_DEFENSE_INSTALL_ML:-false}
     ports:
-      - "${INPUT_DEFENSE_PORT:-8090}:8090"
+      - "127.0.0.1:${INPUT_DEFENSE_PORT:-8090}:8090"
     environment:
       AEGIS_AUDIT_URL: http://audit:8084
       AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: ${AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND:-stub}
@@ -148,7 +160,7 @@ services:
       args:
         INSTALL_ML: ${AEGIS_OUTPUT_DEFENSE_INSTALL_ML:-false}
     ports:
-      - "${OUTPUT_DEFENSE_PORT:-8091}:8091"
+      - "127.0.0.1:${OUTPUT_DEFENSE_PORT:-8091}:8091"
     environment:
       AEGIS_OUTPUT_DEFENSE_PORT: "8091"
       AEGIS_AUDIT_URL: http://audit:8084
@@ -172,7 +184,7 @@ services:
       context: .
       dockerfile: redteam/Dockerfile
     ports:
-      - "${REDTEAM_PORT:-8092}:8092"
+      - "127.0.0.1:${REDTEAM_PORT:-8092}:8092"
     environment:
       AEGIS_REDTEAM_PORT: "8092"
       AEGIS_REDTEAM_INPUT_DEFENSE_URL: http://input-defense:8090
@@ -191,7 +203,7 @@ services:
       context: .
       dockerfile: dashboard/Dockerfile
     ports:
-      - "${DASHBOARD_PORT:-3000}:3000"
+      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
     environment:
       AEGIS_DASHBOARD_USER: ${AEGIS_DASHBOARD_USER:-admin}
       AEGIS_DASHBOARD_PASSWORD: ${AEGIS_DASHBOARD_PASSWORD:-}
