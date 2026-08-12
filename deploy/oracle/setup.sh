@@ -128,8 +128,18 @@ echo "==> Rendering the demo nginx config with the real API keys injected server
 export AEGIS_DEMO_API_KEY="${AEGIS_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_SERVICE_KEY="${AEGIS_AGENT_GATE_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY="${AEGIS_AGENT_GATE_REVIEWER_KEYS%%,*}"
+
+./deploy/oracle/generate-canary-nginx.sh
 envsubst '${AEGIS_DEMO_API_KEY} ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY} ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY}' \
-  < deploy/oracle/nginx-demo.conf.template > deploy/oracle/nginx-demo.conf
+  < deploy/oracle/nginx-demo.conf.template > deploy/oracle/nginx-demo.conf.tmp
+python3 <<'PY'
+from pathlib import Path
+root = Path('deploy/oracle')
+text = root.joinpath('nginx-demo.conf.tmp').read_text()
+canary = root.joinpath('nginx-demo-canary.conf').read_text()
+Path('deploy/oracle/nginx-demo.conf').write_text(text.replace('###CANARY_BLOCK###', canary))
+PY
+rm -f deploy/oracle/nginx-demo.conf.tmp
 
 echo "==> Starting the stack (gateway + dependencies + rate-limited public proxy)..."
 sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy
