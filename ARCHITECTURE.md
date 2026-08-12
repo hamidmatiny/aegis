@@ -217,6 +217,14 @@ See `scripts/e2e-output-defense.sh`, `scripts/e2e-agent-gate.sh`, `scripts/e2e-r
 6. **Adaptive defense:** Red-team loop feeds new attacks back into detectors
 7. **Loud model errors:** Retired/invalid LLM model IDs surface as explicit errors, not silent fallback
 
+## Failure behavior (ASI08)
+
+The enforced request path fails closed when a security decision dependency is
+unavailable: no model output or tool authorization is returned. Audit delivery
+is intentionally best-effort, and selected detector backends have explicit
+degraded-mode fallbacks. See [FAILURE_MODES.md](./FAILURE_MODES.md) for the
+authoritative matrix, operator actions, and residual risks.
+
 ## Residual risk
 
 Each service README documents known limitations and tracked gaps for its detectors. A formal threat model document is planned for a future stage.

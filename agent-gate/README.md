@@ -179,7 +179,7 @@ make test-go   # from repo root
 |-----------|--------|-----------|
 | **Approval store** | In-memory only | Persist to Postgres (`DATABASE_URL` already in compose) |
 | **gRPC `AgentGateService`** | Proto defined; HTTP only today | Implement gRPC alongside REST |
-| **Audit receipts** | Not emitted yet | Wire to audit service (Stage 8) |
+| **Audit receipts** | Emitted best-effort when `AEGIS_AUDIT_URL` is set | Delivery failure is logged and does not block a gate decision; see [failure behavior](../FAILURE_MODES.md) |
 | **Dashboard approval inbox** | `GET /v1/approvals` + dashboard UI | Done (Stage 9) |
 | **Tool permission matrix** | Policy CEL only | Per-tool/per-tenant YAML matrix (future) |
 | **Credential detection** | Regex patterns | NER / secret scanners for contextual PII |
