@@ -14,7 +14,22 @@ env:
   GO_VERSION: "1.22"
   PYTHON_VERSION: "3.12"
 
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
 jobs:
+  osv-scanner:
+    name: OSV dependency scan
+    # Google-maintained reusable workflow: scans all supported manifests and
+    # lockfiles recursively, then uploads SARIF to GitHub Code Scanning.
+    # Keep this report-only until findings across the monorepo are triaged,
+    # matching govulncheck, pip-audit, and npm-audit below.
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.5.0
+    with:
+      fail-on-vuln: false
+
   govulncheck:
     name: Go vulnerability scan
     runs-on: ubuntu-latest
@@ -84,10 +99,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install syft
-        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Generate CycloneDX SBOM for the repo
-        run: syft dir:. -o cyclonedx-json=sbom.cyclonedx.json
+        # Use Anchore's maintained action, as release.yml does. The removed
+        # curl|sh installer performs an unauthenticated latest-release lookup
+        # that flakes under GitHub Actions network load.
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          upload-artifact: false
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:

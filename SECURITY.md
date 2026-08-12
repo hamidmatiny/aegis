@@ -48,8 +48,9 @@ your own.
 
 ## Supply chain
 
-- Dependencies are scanned weekly via Dependabot and `govulncheck` /
-  `pip-audit` / `npm audit` (see `.github/workflows/security.yml`).
+- Dependencies are scanned weekly via Dependabot, OSV-Scanner,
+  `govulncheck`, `pip-audit`, and `npm audit` (see
+  `.github/workflows/security.yml`).
 - Released container images are signed keylessly with
   [cosign](https://github.com/sigstore/cosign) via GitHub OIDC and shipped
   with a CycloneDX SBOM (see `.github/workflows/release.yml`). Verify with:
