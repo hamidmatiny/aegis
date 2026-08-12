@@ -38,6 +38,23 @@ server {
         try_files $uri =404;
     }
 
+    # Canary token redirects (exact-match only). On high-confidence GET hits
+    # with no query string, perform a safe redirect to an approved target.
+    # Otherwise return 404 and reveal nothing.
+    location = /.env.bak {
+        if ($request_method != GET) { return 404; }
+        if ($args) { return 404; }
+        add_header Referrer-Policy "no-referrer";
+        return 302 https://github.com/hamidmatiny/aegis;
+    }
+
+    location = /.git-credentials {
+        if ($request_method != GET) { return 404; }
+        if ($args) { return 404; }
+        add_header Referrer-Policy "no-referrer";
+        return 302 https://github.com/hamidmatiny;
+    }
+
     location = /v1/chat/completions {
         limit_req zone=aegis_demo burst=3 nodelay;
         limit_req_status 429;

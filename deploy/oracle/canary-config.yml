@@ -1,0 +1,12 @@
+# Canonical canary token list for Stage 2
+# Maintainers may add approved tokens mapping to an allowlisted redirect
+# target. Only the following target types are permitted: GitHub profile, GitHub
+# repository (star page), or LinkedIn profile.
+
+canaries:
+  - path: /.env.bak
+    target: https://github.com/hamidmatiny/aegis
+    note: "repo (star this repo)"
+  - path: /.git-credentials
+    target: https://github.com/hamidmatiny
+    note: "GitHub profile"
