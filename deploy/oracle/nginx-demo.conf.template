@@ -31,6 +31,13 @@ server {
         proxy_pass http://gateway:8080/health;
     }
 
+    # RFC 9116 security contact for the public demo. This is static and
+    # deliberately receives no gateway or agent-gate credentials.
+    location = /.well-known/security.txt {
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
     location = /v1/chat/completions {
         limit_req zone=aegis_demo burst=3 nodelay;
         limit_req_status 429;
