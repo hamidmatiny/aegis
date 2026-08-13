@@ -147,6 +147,76 @@ func TestDetectorScoreCELExists(t *testing.T) {
 	}
 }
 
+func sampleOutputVerdict(fusedScore, piiScore float64, action string) models.OutputVerdict {
+	return models.OutputVerdict{
+		Action:     action,
+		FusedScore: fusedScore,
+		DetectorScores: []models.DetectorScore{
+			{DetectorID: "pii", Score: piiScore, Reasoning: "test"},
+			{DetectorID: "toxicity", Score: 0.0, Reasoning: "test"},
+			{DetectorID: "backtranslation", Score: 0.0, Reasoning: "test"},
+		},
+	}
+}
+
+// TestEvaluateOutputBlockCriticalPII covers Phase 5.3 (N23): a single
+// highly-confident pii/secret detection must block even when the blended
+// fused_score stays under block-high-output-score's 0.80 gate. pii is only
+// one of three weighted detectors in output-defense's fusion.py
+// (_FUSION_WEIGHTS: toxicity 0.35, pii 0.35, backtranslation 0.30), so a
+// live credential leak that scores 0.90 on pii alone but 0.0 on the other
+// two only produces fused_score=0.315 -- well under 0.80. Without this
+// rule, that leak would sail through. Mirrors the input-side
+// block-heuristic-critical rule and TestDetectorScoreCELExists above.
+func TestEvaluateOutputBlockCriticalPII(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		OutputRules: []models.PolicyRule{
+			{
+				ID: "block-high-output-score", Name: "Block high output score",
+				CEL: "output_verdict.fused_score >= 0.80", Action: models.ActionBlock, Enabled: true,
+			},
+			{
+				ID: "block-critical-pii-leak", Name: "Block critical PII leak",
+				CEL:    "output_verdict.detector_scores.exists(d, d.detector_id == 'pii' && d.score >= 0.85)",
+				Action: models.ActionBlock, Enabled: true,
+			},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	// No PII, low fused score -> allow.
+	decision, err := eng.EvaluateOutput(pack, "default", sampleOutputVerdict(0.05, 0.05, "ALLOW"), models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateOutput: %v", err)
+	}
+	if decision.Action != models.ActionAllow {
+		t.Fatalf("expected allow for pii 0.05, got %s", decision.Action)
+	}
+
+	// pii=0.90 (confident credential/PII leak), fused_score=0.315 -- below
+	// block-high-output-score's 0.80 threshold. block-critical-pii-leak
+	// must be the rule that fires.
+	decision, err = eng.EvaluateOutput(pack, "default", sampleOutputVerdict(0.315, 0.90, "ALLOW"), models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateOutput: %v", err)
+	}
+	if decision.Action != models.ActionBlock {
+		t.Fatalf("expected block for pii 0.90 despite fused_score 0.315 (below block-high-output-score), got %s", decision.Action)
+	}
+	found := false
+	for _, m := range decision.MatchedRules {
+		if m.RuleID == "block-critical-pii-leak" && m.Matched {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected block-critical-pii-leak to be the matched rule, not just block-high-output-score")
+	}
+}
+
 func TestEvaluateToolIrreversible(t *testing.T) {
 	eng := engine.New()
 	pack := models.PolicyPack{

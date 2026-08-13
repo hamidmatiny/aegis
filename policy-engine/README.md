@@ -142,6 +142,7 @@ Default output rules (`policies/default.yaml`):
 |------|-----|--------|
 | `block-high-output-score` | `fused_score >= 0.80` | `block` |
 | `escalate-ambiguous-output` | `fused_score >= 0.50 && fused_score < 0.80` | `escalate_to_judge` |
+| `block-critical-pii-leak` | `detector_scores.exists(d, d.detector_id == 'pii' && d.score >= 0.85)` | `block` |
 
 ### Tool evaluation
 

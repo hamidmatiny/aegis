@@ -43,6 +43,12 @@ output_rules:
     action: escalate_to_judge
     enabled: true
 
+  - id: block-critical-pii-leak
+    name: Block when the PII/secret detector is highly confident
+    cel: "output_verdict.detector_scores.exists(d, d.detector_id == 'pii' && d.score >= 0.85)"
+    action: block
+    enabled: true
+
 tool_rules:
   - id: require-approval-irreversible
     name: Require human approval for irreversible actions
