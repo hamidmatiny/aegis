@@ -79,6 +79,7 @@ def main() -> int:
             "tool_call": {
                 "tool_name": "search_docs",
                 "risk_level": "LOW",
+                "agent_id": "example-tool-agent",
                 "arguments": [
                     {
                         "name": "query",
@@ -93,6 +94,7 @@ def main() -> int:
             "tool_call": {
                 "tool_name": "delete_database",
                 "risk_level": "IRREVERSIBLE",
+                "agent_id": "example-tool-agent",
                 "arguments": [
                     {
                         "name": "db_id",
@@ -107,6 +109,7 @@ def main() -> int:
             "tool_call": {
                 "tool_name": "send_email",
                 "risk_level": "MEDIUM",
+                "agent_id": "example-tool-agent",
                 "arguments": [
                     {
                         "name": "body",
@@ -127,6 +130,7 @@ def main() -> int:
                 # requires human approval even though risk_level says LOW.
                 "tool_name": "delete_database",
                 "risk_level": "LOW",
+                "agent_id": "example-tool-agent",
                 "arguments": [
                     {
                         "name": "db_id",

@@ -73,6 +73,7 @@ def run_taint_exfil() -> int:
         "tool_call": {
             "tool_name": "send_email",
             "risk_level": "MEDIUM",
+            "agent_id": "example-rag-agent",
             "arguments": [
                 {
                     "name": "body",
