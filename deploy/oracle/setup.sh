@@ -145,6 +145,19 @@ rm -f deploy/oracle/nginx-demo.conf.tmp
 echo "==> Starting the stack (gateway + dependencies + rate-limited public proxy)..."
 sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy
 
+# demo-proxy is a vendor nginx:1.27-alpine image with a read-only bind-mounted
+# config (deploy/oracle/nginx-demo.conf) -- its own service definition never
+# changes between runs, so `up -d` above is a no-op for it on any redeploy
+# where the container already exists: Compose only recreates on a service
+# *definition* change, not on the mounted file's *content* changing underneath
+# an already-running container. nginx itself doesn't watch the file for
+# changes either, so a redeploy would keep serving whatever config it read at
+# its last actual start -- silently stale until something else restarts it.
+# Force a fresh read of the config every run, unconditionally, so this can
+# never again require a manual `restart demo-proxy` after a git pull.
+echo "==> Restarting demo-proxy so it picks up the config just rendered above..."
+sudo docker compose "${COMPOSE_FILES[@]}" restart demo-proxy
+
 echo ""
 echo "==> Waiting for the public endpoint to come up (can take longer on a small box)..."
 for _ in $(seq 1 90); do
