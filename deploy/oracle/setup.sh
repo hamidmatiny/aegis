@@ -129,6 +129,7 @@ export AEGIS_DEMO_API_KEY="${AEGIS_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_SERVICE_KEY="${AEGIS_AGENT_GATE_API_KEYS%%,*}"
 export AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY="${AEGIS_AGENT_GATE_REVIEWER_KEYS%%,*}"
 
+chmod +x ./deploy/oracle/generate-canary-nginx.sh
 ./deploy/oracle/generate-canary-nginx.sh
 envsubst '${AEGIS_DEMO_API_KEY} ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY} ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY}' \
   < deploy/oracle/nginx-demo.conf.template > deploy/oracle/nginx-demo.conf.tmp
