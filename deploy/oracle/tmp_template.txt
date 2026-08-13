@@ -1,0 +1,3 @@
+prefix
+${CANARY_BLOCK}
+postfix

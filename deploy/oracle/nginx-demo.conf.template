@@ -38,22 +38,10 @@ server {
         try_files $uri =404;
     }
 
-    # Canary token redirects (exact-match only). On high-confidence GET hits
-    # with no query string, perform a safe redirect to an approved target.
-    # Otherwise return 404 and reveal nothing.
-    location = /.env.bak {
-        if ($request_method != GET) { return 404; }
-        if ($args) { return 404; }
-        add_header Referrer-Policy "no-referrer";
-        return 302 https://github.com/hamidmatiny/aegis;
-    }
-
-    location = /.git-credentials {
-        if ($request_method != GET) { return 404; }
-        if ($args) { return 404; }
-        add_header Referrer-Policy "no-referrer";
-        return 302 https://github.com/hamidmatiny;
-    }
+    # Canary token redirects are generated from deploy/oracle/canary-config.yml.
+    # They are exact-match only and only allowed when the request is a clean GET
+    # with no query string.
+    ###CANARY_BLOCK###
 
     location = /v1/chat/completions {
         limit_req zone=aegis_demo burst=3 nodelay;
