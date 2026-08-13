@@ -65,7 +65,7 @@ func (s *Server) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.audit != nil {
-		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), resp.Decision, resp.PolicyAction)
+		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), req.ToolCall.ToolName, req.ToolCall.AgentID, resp.Decision, resp.PolicyAction)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

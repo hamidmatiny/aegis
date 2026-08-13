@@ -39,13 +39,22 @@ func (c *Client) Enabled() bool {
 func (c *Client) EmitToolGate(
 	tenantID string,
 	trace *TraceContext,
+	toolName string,
+	agentID string,
 	decision models.ToolCallDecision,
 	policyAction string,
 ) {
 	if !c.enabled {
 		return
 	}
+	// tool_name and agent_id are required for any pattern-over-time analysis
+	// of a single agent's tool-call history (ASI10, OWASP Agentic Top 10) --
+	// without them the audit trail records *that* a call happened but not
+	// *what* was called or *by whom*, which makes "an agent that suddenly
+	// starts calling delete_* tools it never called before" unqueryable.
 	toolPayload := map[string]any{
+		"tool_name":             toolName,
+		"agent_id":              agentID,
 		"status":                decision.Status,
 		"denial_reason":         decision.DenialReason,
 		"violated_policies":     decision.ViolatedPolicies,
