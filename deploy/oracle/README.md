@@ -84,6 +84,32 @@ Safe to re-run — it reuses your existing `.env` credentials and just rebuilds/
 - Public (port 80, rate-limited to 6 req/min/IP): a browser demo page at `/` (`deploy/oracle/demo-web/index.html` — a text box, a few example prompts, and a live verdict/score display), plus the underlying `/health` and `/v1/chat/completions` routes it calls, via `demo-proxy` (nginx).
 - Not public: the dashboard, the real gateway port 8080, Postgres, and every other service — they're only reachable inside the Docker network. The real `AEGIS_API_KEYS` value never leaves the VM; nginx injects it server-side.
 
+## Detecting rogue-agent tool use (ASI10)
+
+Every `TOOL_GATE` decision agent-gate makes gets an audit receipt carrying
+`tool_name` and `agent_id` (added in Phase 3.1). `audit` doesn't expose a
+query filter for either field, and it's bound to `127.0.0.1` only (see
+above), so detection runs on the box itself:
+
+```bash
+cd aegis
+python3 scripts/asi10-rogue-agent-query.py
+```
+
+It fetches TOOL_GATE receipts and flags, per `agent_id`, the first time it
+calls a `tool_name` outside tools it's already used before -- a simple
+"this agent just reached for something new" signal. Exit code is `1` if
+it found anything, `0` if clean, so it's cron-friendly:
+
+```bash
+# Daily at 07:00, mail on any anomaly (crontab -e on the VM)
+0 7 * * * cd ~/aegis && python3 scripts/asi10-rogue-agent-query.py --since 24h
+```
+
+Run `python3 scripts/asi10-rogue-agent-query.py --help` for `--tenant-id`,
+`--agent-id`, `--json`, and other flags. See the script's own docstring for
+a known caveat around audit's cursor pagination on very large histories.
+
 ## Updating just the webpage
 
 Edit `deploy/oracle/demo-web/index.html`, commit, push, then on the VM:
