@@ -115,6 +115,14 @@ jobs:
     needs: [go, python]
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Oracle demo canary config (Stage 2 safe-redirect rule)
+        # Docker-independent, so it runs before the stack comes up. Neither
+        # script was wired into any test runner before this -- they existed
+        # in the repo but nothing ever executed them.
+        run: |
+          chmod +x deploy/oracle/tests/test_canary.sh deploy/oracle/tests/test_canary_render.sh
+          ./deploy/oracle/tests/test_canary.sh
+          ./deploy/oracle/tests/test_canary_render.sh
       - name: Start stack
         env:
           # Keep integration fast: no live LLM calls on container startup paths.

@@ -68,4 +68,9 @@ deploy/helm/charts/*.tgz
 # Rendered demo nginx config contains a real API key (see deploy/oracle/setup.sh)
 deploy/oracle/nginx-demo.conf
 deploy/oracle/nginx-demo-canary.conf
-deploy/oracle/nginx-demo.conf
+
+# Stray debug/temp artifacts from local script runs (e.g. generate-canary-nginx.sh
+# iteration) that should never be committed -- see the leftover-files cleanup
+# after the Stage 2 Phase 2 canary generator work.
+deploy/oracle/tmp_*
+deploy/oracle/sh-thd-*
