@@ -118,8 +118,7 @@ func TestParseBase64Seed(t *testing.T) {
 	}
 }
 
-
-func TestVerifySucceedsAfterRotationWithHistory(t *testing.T) {
+func TestVerifySucceedsAfterRotationWithHistory(t *testing.T){
 	sgOld, err := signer.GenerateDev("key-v1")
 	if err != nil {
 		t.Fatal(err)
