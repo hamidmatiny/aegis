@@ -32,7 +32,9 @@ app.add_middleware(InternalTokenMiddleware, token=settings.internal_token)
 
 _service = InputDefenseService()
 _audit = (
-    AuditClient(settings.audit_url, settings.internal_token) if settings.emit_audit else AuditClient("")
+    AuditClient(settings.audit_url, settings.internal_token)
+    if settings.emit_audit
+    else AuditClient("")
 )
 
 

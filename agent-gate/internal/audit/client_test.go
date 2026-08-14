@@ -32,7 +32,7 @@ func TestEmitToolGate_IncludesToolNameAndAgentID(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(srv.URL)
+	c := NewClient(srv.URL, "test-token")
 	if !c.Enabled() {
 		t.Fatal("client should be enabled when baseURL is set")
 	}
@@ -65,7 +65,7 @@ func TestEmitToolGate_IncludesToolNameAndAgentID(t *testing.T) {
 }
 
 func TestEmitToolGate_DisabledClientDoesNotPanic(t *testing.T) {
-	c := NewClient("")
+	c := NewClient("", "")
 	if c.Enabled() {
 		t.Fatal("client with empty baseURL should be disabled")
 	}

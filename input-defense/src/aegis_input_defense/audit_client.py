@@ -51,7 +51,11 @@ class AuditClient:
         headers = {"Authorization": f"Bearer {self._token}"}
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(f"{self._base_url}/v1/receipts", json=payload, headers=headers)
+                resp = await client.post(
+                    f"{self._base_url}/v1/receipts",
+                    json=payload,
+                    headers=headers,
+                )
                 resp.raise_for_status()
         except Exception as exc:
             logger.warning("audit emit failed: %s", exc)
