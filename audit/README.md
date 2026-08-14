@@ -26,9 +26,11 @@ AEGIS_AUDIT_SIGNING_KEY_ID=dev-key-1 \
 go run ./cmd/audit
 ```
 
-If `AEGIS_AUDIT_SIGNING_KEY` is unset when running locally, the service generates an **ephemeral** dev key at each startup. Receipts signed before a restart will fail verification with `invalid Ed25519 signature` even when untouched — the payload hash still matches, but the signature was produced with a different key.
+If `AEGIS_AUDIT_SIGNING_KEY` is unset when running locally, the service generates an **ephemeral** dev key at each startup. Receipts signed before a restart will fail verification with `unknown signing key id "..."` even when untouched — the payload hash still matches, but a fresh ephemeral key has no way to know about the ID a previous ephemeral run signed under, since it isn't in `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` (there's nothing to put there for a key nobody saved).
 
 Docker Compose sets a **stable dev-only seed** by default so receipts survive container restarts. Override `AEGIS_AUDIT_SIGNING_KEY` in production with a real secret (PEM or base64 32-byte seed).
+
+Rotating a real (non-ephemeral) key no longer breaks verification of old receipts: `scripts/generate-credentials.sh --rotate` snapshots the outgoing key's public half into `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` before generating a new key, and `Signer.VerifyReceipt` checks a receipt's `signer_key_id` against either the current key or that history. A receipt whose key id is genuinely unknown (never the current key, never in history) fails closed with the same `unknown signing key id` message — this is also what happens if `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` is misconfigured or lost.
 
 ### Tests without local Go
 
@@ -44,6 +46,7 @@ docker run --rm -v "$(pwd)/audit:/app" -w /app golang:1.22-alpine go test ./...
 | `DATABASE_URL` | — | Postgres connection (required in production) |
 | `AEGIS_AUDIT_SIGNING_KEY` | — | Ed25519 key: PEM `PRIVATE KEY` or base64-encoded 32-byte seed |
 | `AEGIS_AUDIT_SIGNING_KEY_ID` | `dev-key-1` | Key identifier stored on each receipt |
+| `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` | — | Retired keys' public halves: `keyID:base64PublicKey`, comma-separated. Maintained automatically by `scripts/generate-credentials.sh` on rotation |
 
 Generate a production key:
 

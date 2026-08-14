@@ -19,11 +19,20 @@ type Signer struct {
 	keyID      string
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
+	// historicalKeys holds the public keys of retired signing keys, keyed
+	// by their key ID, so receipts signed before a rotation can still be
+	// verified. Only public keys are ever needed here -- once a key is
+	// retired, its private half is discarded and never required again.
+	// See ParseHistoricalKeys (AEGIS_AUDIT_SIGNING_KEYS_HISTORY).
+	historicalKeys map[string]ed25519.PublicKey
 }
 
-func New(keyID, keyMaterial string) (*Signer, error) {
+func New(keyID, keyMaterial string, historicalKeys map[string]ed25519.PublicKey) (*Signer, error) {
 	if keyID == "" {
 		keyID = "dev-key-1"
+	}
+	if _, current := historicalKeys[keyID]; current {
+		return nil, fmt.Errorf("key id %q is both the current signing key and listed in AEGIS_AUDIT_SIGNING_KEYS_HISTORY -- a retired key's id must not be reused for the active key", keyID)
 	}
 
 	priv, pub, err := parseKeyMaterial(keyMaterial)
@@ -31,9 +40,10 @@ func New(keyID, keyMaterial string) (*Signer, error) {
 		return nil, err
 	}
 	return &Signer{
-		keyID:      keyID,
-		privateKey: priv,
-		publicKey:  pub,
+		keyID:          keyID,
+		privateKey:     priv,
+		publicKey:      pub,
+		historicalKeys: historicalKeys,
 	}, nil
 }
 
@@ -87,10 +97,69 @@ func (s *Signer) VerifyReceipt(receipt *models.Receipt) (bool, string) {
 	if !bytesEqual(hash, receipt.PayloadHash) {
 		return false, "payload hash mismatch (tampered)"
 	}
-	if !ed25519.Verify(s.publicKey, hash, receipt.Signature) {
-		return false, "invalid Ed25519 signature (payload hash matches; signing key may have rotated since receipt was created)"
+	pubKey, ok := s.publicKeyForVerification(receipt.SignerKeyID)
+	if !ok {
+		return false, fmt.Sprintf(
+			"unknown signing key id %q -- not the current signer's key (%q) and not present in AEGIS_AUDIT_SIGNING_KEYS_HISTORY; this receipt cannot be verified",
+			receipt.SignerKeyID, s.keyID,
+		)
+	}
+	if !ed25519.Verify(pubKey, hash, receipt.Signature) {
+		return false, fmt.Sprintf("invalid Ed25519 signature for key id %q", receipt.SignerKeyID)
 	}
 	return true, ""
+}
+
+// publicKeyForVerification returns the public key that should verify a
+// receipt signed by keyID: the current signer's own key if it matches,
+// otherwise a lookup in historicalKeys for a retired key of that id.
+func (s *Signer) publicKeyForVerification(keyID string) (ed25519.PublicKey, bool) {
+	if keyID == s.keyID {
+		return s.publicKey, true
+	}
+	pub, ok := s.historicalKeys[keyID]
+	return pub, ok
+}
+
+// ParseHistoricalKeys parses AEGIS_AUDIT_SIGNING_KEYS_HISTORY: a
+// comma-separated list of "keyID:base64PublicKey" pairs holding the
+// public keys of retired signing keys. Returns (nil, nil) for an empty
+// input -- no keys have been rotated yet, which is the common case.
+func ParseHistoricalKeys(raw string) (map[string]ed25519.PublicKey, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	keys := make(map[string]ed25519.PublicKey)
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid AEGIS_AUDIT_SIGNING_KEYS_HISTORY entry %q: expected keyID:base64PublicKey", entry)
+		}
+		keyID, encoded := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if keyID == "" {
+			return nil, fmt.Errorf("invalid AEGIS_AUDIT_SIGNING_KEYS_HISTORY entry %q: empty key id", entry)
+		}
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("invalid AEGIS_AUDIT_SIGNING_KEYS_HISTORY entry for key id %q: %w", keyID, err)
+		}
+		if len(decoded) != ed25519.PublicKeySize {
+			return nil, fmt.Errorf(
+				"invalid AEGIS_AUDIT_SIGNING_KEYS_HISTORY entry for key id %q: expected a %d-byte Ed25519 public key, got %d bytes",
+				keyID, ed25519.PublicKeySize, len(decoded),
+			)
+		}
+		if existing, dup := keys[keyID]; dup && !bytesEqual(existing, decoded) {
+			return nil, fmt.Errorf("invalid AEGIS_AUDIT_SIGNING_KEYS_HISTORY: key id %q appears twice with different public keys", keyID)
+		}
+		keys[keyID] = ed25519.PublicKey(decoded)
+	}
+	return keys, nil
 }
 
 func canonicalBody(receipt *models.Receipt) ([]byte, error) {

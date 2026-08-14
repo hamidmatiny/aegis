@@ -160,10 +160,25 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 | `AEGIS_REDTEAM_OUTPUT_DEFENSE_URL` | redteam | Output defense base URL for campaigns |
 | `AEGIS_AUDIT_SIGNING_KEY` | audit | Ed25519 signing key (PEM or base64 seed) |
 | `AEGIS_AUDIT_SIGNING_KEY_ID` | audit | Signer key identifier on receipts |
+| `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` | audit | Retired keys' public halves (`keyID:base64pub`, comma-separated), so receipts signed before a rotation stay verifiable. Maintained automatically by `scripts/generate-credentials.sh` on rotation — see "Rotating the audit signing key" below |
 | `AEGIS_INPUT_DEFENSE_URL` | sdk-proxy / gateway | Input defense URL for SDK pipeline |
 | `AEGIS_MODEL_ROUTER_URL` | sdk-proxy / gateway | Model router URL for SDK pipeline |
 | `OPENAI_BASE_URL` | your app | Set to `http://localhost:8080/v1` for reverse-proxy mode |
 | `DATABASE_URL` | redteam, audit | Postgres connection |
+
+### Rotating the audit signing key
+
+Every audit receipt is signed and records which key signed it
+(`AEGIS_AUDIT_SIGNING_KEY_ID`). Rotating `AEGIS_AUDIT_SIGNING_KEY` used to
+break verification of every receipt signed under the old key — the audit
+service only ever held one public key to check against. It no longer does:
+`scripts/generate-credentials.sh --rotate` (or a backfill run that happens
+to catch the key still on its public dev default) now derives the outgoing
+key's public half and appends it to `AEGIS_AUDIT_SIGNING_KEYS_HISTORY`
+before generating a new key and a new `AEGIS_AUDIT_SIGNING_KEY_ID` — old
+receipts keep verifying, new receipts sign under the new key. This is
+automatic; you don't need to do anything beyond running the script.
+Redeploy afterward so the audit service picks up the new environment.
 
 ### Backing up credentials
 

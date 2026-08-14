@@ -105,6 +105,45 @@ fill_if_default() {
   fi
 }
 
+# derive_ed25519_pubkey_from_seed_b64 SEED_B64: prints the base64-encoded
+# 32-byte Ed25519 public key derived from a base64-encoded 32-byte seed
+# (the format AEGIS_AUDIT_SIGNING_KEY is stored in). Used only when
+# rotating the audit signing key, to snapshot the outgoing key's public
+# half into AEGIS_AUDIT_SIGNING_KEYS_HISTORY before it's overwritten --
+# only the public key is ever needed to verify old receipts, so the
+# private half is safely discarded once we have this.
+#
+# Works by wrapping the raw seed in the fixed, well-known 16-byte DER
+# prefix for an unencrypted PKCS8 Ed25519 private key (RFC 8410 -- every
+# such key has this exact prefix, since nothing about it varies except
+# the seed), letting openssl derive the public key from that, then
+# stripping openssl's own fixed 12-byte SubjectPublicKeyInfo prefix to
+# recover the raw 32-byte public key. Deliberately avoids xxd (not
+# guaranteed present on a minimal cloud image) -- the DER prefix is
+# written directly via printf octal escapes, and the seed/output are
+# handled as raw bytes via base64/tail, both already used elsewhere in
+# this script.
+derive_ed25519_pubkey_from_seed_b64() {
+  local seed_b64="$1" tmp_der tmp_pub result
+  tmp_der="$(mktemp)"
+  tmp_pub="$(mktemp)"
+  { printf '\060\056\002\001\000\060\005\006\003\053\145\160\004\042\004\040'
+    printf '%s' "$seed_b64" | base64 -d; } > "$tmp_der" 2>/dev/null
+  if [ "$(wc -c < "$tmp_der")" -ne 48 ]; then
+    rm -f "$tmp_der" "$tmp_pub"
+    echo "ERROR: AEGIS_AUDIT_SIGNING_KEY is not a 32-byte base64 seed -- cannot derive its public key" >&2
+    return 1
+  fi
+  if ! openssl pkey -inform DER -in "$tmp_der" -pubout -outform DER -out "$tmp_pub" 2>/dev/null; then
+    rm -f "$tmp_der" "$tmp_pub"
+    echo "ERROR: openssl could not derive the Ed25519 public key from AEGIS_AUDIT_SIGNING_KEY" >&2
+    return 1
+  fi
+  result="$(tail -c 32 "$tmp_pub" | base64)"
+  rm -f "$tmp_der" "$tmp_pub"
+  printf '%s' "$result"
+}
+
 fill "AEGIS_DASHBOARD_USER" "echo admin"
 fill "AEGIS_DASHBOARD_PASSWORD" "random_hex 16"
 fill "AEGIS_API_KEYS" "echo aegis_\$(random_hex 32)"
@@ -131,8 +170,47 @@ fill "REDIS_PASSWORD" "random_hex 20"
 
 # The audit signing key ships with a real-looking default
 # (base64 of the literal string "aegis-dev-audit-signing-key-v1!!") that
-# a plain fill() would never touch since it's never empty.
-fill_if_default "AEGIS_AUDIT_SIGNING_KEY" "random_b64 32" "YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE="
+# a plain fill() would never touch since it's never empty. Rotating this
+# key is more delicate than the others: every already-signed audit
+# receipt records which key id signed it, and verification fails for any
+# receipt whose key id the audit service doesn't recognize (see
+# audit/internal/signer/signer.go). So before overwriting a REAL,
+# already-in-use key (not the known public dev default below -- that
+# one's public key was never secret to begin with, nothing to preserve),
+# snapshot its public key into AEGIS_AUDIT_SIGNING_KEYS_HISTORY and roll
+# AEGIS_AUDIT_SIGNING_KEY_ID to a fresh value, so old receipts stay
+# verifiable after rotation.
+AUDIT_KEY_DEFAULT="YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE="
+CURRENT_AUDIT_KEY="$(current_value AEGIS_AUDIT_SIGNING_KEY)"
+AUDIT_KEY_ROTATION_BLOCKED=false
+if [ "$ROTATE" = true ] || [ -z "$CURRENT_AUDIT_KEY" ] || [ "$CURRENT_AUDIT_KEY" = "$AUDIT_KEY_DEFAULT" ]; then
+  if [ -n "$CURRENT_AUDIT_KEY" ] && [ "$CURRENT_AUDIT_KEY" != "$AUDIT_KEY_DEFAULT" ]; then
+    OUTGOING_KEY_ID="$(current_value AEGIS_AUDIT_SIGNING_KEY_ID)"
+    OUTGOING_KEY_ID="${OUTGOING_KEY_ID:-dev-key-1}"
+    if OUTGOING_PUB="$(derive_ed25519_pubkey_from_seed_b64 "$CURRENT_AUDIT_KEY")"; then
+      CURRENT_HISTORY="$(current_value AEGIS_AUDIT_SIGNING_KEYS_HISTORY)"
+      NEW_HISTORY_ENTRY="${OUTGOING_KEY_ID}:${OUTGOING_PUB}"
+      if [ -z "$CURRENT_HISTORY" ]; then
+        upsert_env "AEGIS_AUDIT_SIGNING_KEYS_HISTORY" "$NEW_HISTORY_ENTRY"
+      else
+        upsert_env "AEGIS_AUDIT_SIGNING_KEYS_HISTORY" "${CURRENT_HISTORY},${NEW_HISTORY_ENTRY}"
+      fi
+      upsert_env "AEGIS_AUDIT_SIGNING_KEY_ID" "audit-key-$(date +%Y%m%d)-$(random_hex 4)"
+      echo "NOTE: AEGIS_AUDIT_SIGNING_KEY is being rotated. The outgoing key" >&2
+      echo "      (id: ${OUTGOING_KEY_ID}) was preserved in AEGIS_AUDIT_SIGNING_KEYS_HISTORY" >&2
+      echo "      so previously-signed audit receipts stay verifiable." >&2
+    else
+      echo "ERROR: could not derive the outgoing audit signing key's public key -- refusing" >&2
+      echo "       to rotate it, since that would break verification of every receipt" >&2
+      echo "       already signed with it. Leaving AEGIS_AUDIT_SIGNING_KEY and" >&2
+      echo "       AEGIS_AUDIT_SIGNING_KEY_ID untouched; everything else was still updated." >&2
+      AUDIT_KEY_ROTATION_BLOCKED=true
+    fi
+  fi
+  if [ "$AUDIT_KEY_ROTATION_BLOCKED" != true ]; then
+    upsert_env "AEGIS_AUDIT_SIGNING_KEY" "$(random_b64 32)"
+  fi
+fi
 
 # Postgres is the trickiest of the three: POSTGRES_PASSWORD and
 # DATABASE_URL both ship with the same public default (aegis_dev) baked

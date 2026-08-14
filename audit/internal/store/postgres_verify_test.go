@@ -34,7 +34,7 @@ func openPostgresStore(t *testing.T) *store.PostgresStore {
 
 func TestPostgresWriteGetVerifyUntouched(t *testing.T) {
 	st := openPostgresStore(t)
-	sg, err := signer.New("postgres-verify-test", testDevSigningSeed)
+	sg, err := signer.New("postgres-verify-test", testDevSigningSeed, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestPostgresWriteGetVerifyUntouched(t *testing.T) {
 
 func TestPostgresVerifyDetectsTamperedPayload(t *testing.T) {
 	st := openPostgresStore(t)
-	sg, err := signer.New("postgres-tamper-test", testDevSigningSeed)
+	sg, err := signer.New("postgres-tamper-test", testDevSigningSeed, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

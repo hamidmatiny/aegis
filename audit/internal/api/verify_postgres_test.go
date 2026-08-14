@@ -29,7 +29,7 @@ func newPostgresTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	sg, err := signer.New("api-postgres-test", testDevSigningSeed)
+	sg, err := signer.New("api-postgres-test", testDevSigningSeed, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

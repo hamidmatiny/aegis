@@ -191,6 +191,10 @@ services:
       # Dev-only stable seed (32 bytes base64). Override in production.
       AEGIS_AUDIT_SIGNING_KEY: ${AEGIS_AUDIT_SIGNING_KEY:-YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE=}
       AEGIS_AUDIT_SIGNING_KEY_ID: ${AEGIS_AUDIT_SIGNING_KEY_ID:-dev-key-1}
+      # Retired signing keys' public halves, so receipts signed before a
+      # rotation stay verifiable -- empty until the first rotation. See
+      # scripts/generate-credentials.sh, which maintains this on rotation.
+      AEGIS_AUDIT_SIGNING_KEYS_HISTORY: ${AEGIS_AUDIT_SIGNING_KEYS_HISTORY:-}
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       postgres:

@@ -24,6 +24,11 @@ func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	keyID := envOr("AEGIS_AUDIT_SIGNING_KEY_ID", "dev-key-1")
 	keyMaterial := os.Getenv("AEGIS_AUDIT_SIGNING_KEY")
+	historicalKeys, err := signer.ParseHistoricalKeys(os.Getenv("AEGIS_AUDIT_SIGNING_KEYS_HISTORY"))
+	if err != nil {
+		logger.Error("failed to parse AEGIS_AUDIT_SIGNING_KEYS_HISTORY", "error", err)
+		os.Exit(1)
+	}
 
 	// audit holds the tamper-evident record of everything else this
 	// platform does — it had no auth of its own beyond Docker network
@@ -38,12 +43,11 @@ func main() {
 	}
 
 	var sg *signer.Signer
-	var err error
 	if keyMaterial == "" {
 		logger.Warn("AEGIS_AUDIT_SIGNING_KEY not set; generating ephemeral dev key")
 		sg, err = signer.GenerateDev(keyID)
 	} else {
-		sg, err = signer.New(keyID, keyMaterial)
+		sg, err = signer.New(keyID, keyMaterial, historicalKeys)
 	}
 	if err != nil {
 		logger.Error("failed to initialize signer", "error", err)
