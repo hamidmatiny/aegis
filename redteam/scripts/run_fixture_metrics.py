@@ -21,7 +21,11 @@ from aegis_redteam.settings import settings
 async def main() -> int:
     fixtures = load_fixtures()
     attacks = [f for f in fixtures if f.is_attack]
-    client = DefenseClient(settings.input_defense_url, settings.output_defense_url, token=settings.internal_token)
+    client = DefenseClient(
+        settings.input_defense_url,
+        settings.output_defense_url,
+        token=settings.internal_token,
+    )
     service = RedTeamService(
         client,
         threshold=settings.detection_threshold,

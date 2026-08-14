@@ -6,6 +6,7 @@ from aegis_output_defense.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-internal-token"})
 
+
 def test_health() -> None:
     resp = client.get("/health")
     assert resp.status_code == 200

@@ -28,7 +28,11 @@ _client: DefenseClient | None = None
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     global _service, _client
-    _client = DefenseClient(settings.input_defense_url, settings.output_defense_url, token=settings.internal_token)
+    _client = DefenseClient(
+        settings.input_defense_url,
+        settings.output_defense_url,
+        token=settings.internal_token,
+    )
     router_client = None
     if settings.use_router_mutations:
         router_client = ModelRouterClient(

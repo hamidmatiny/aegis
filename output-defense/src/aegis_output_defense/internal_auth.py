@@ -15,6 +15,7 @@ import hmac
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 from starlette.types import ASGIApp
 
 # Liveness/readiness probes must stay reachable for container
@@ -50,7 +51,7 @@ class InternalTokenMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._token = token
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in EXEMPT_PATHS:
             return await call_next(request)
         if not _valid(self._token, _extract_token(request)):
@@ -60,7 +61,7 @@ class InternalTokenMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "type": "aegis_unauthorized",
                         "message": (
-                            'missing or invalid internal service token. Send it as '
+                            "missing or invalid internal service token. Send it as "
                             '"Authorization: Bearer <token>" or "X-Aegis-Internal-Token: <token>".'
                         ),
                     }
