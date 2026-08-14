@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aegis-platform/aegis/model-router/internal/api"
+	"github.com/aegis-platform/aegis/model-router/internal/auth"
 	"github.com/aegis-platform/aegis/model-router/internal/config"
 	"github.com/aegis-platform/aegis/model-router/internal/provider"
 	"github.com/aegis-platform/aegis/model-router/internal/router"
@@ -21,6 +22,21 @@ func main() {
 
 	port := envOr("AEGIS_MODEL_ROUTER_PORT", "8082")
 	cfgPath := config.ConfigPath()
+
+	// model-router has no auth of its own beyond this shared internal
+	// token -- it was previously reachable, unauthenticated, by anything
+	// that could reach it on the Docker network. Same no-ephemeral-fallback
+	// rationale as policy-engine/audit/input-defense/output-defense: this
+	// token is shared by every internal service and the handful of
+	// processes that call them, so a per-process generated value would
+	// just desync from everyone else's copy. Refuse to start instead of
+	// running open or broken.
+	internalToken := os.Getenv(auth.EnvToken)
+	if internalToken == "" {
+		logger.Error(auth.EnvToken + " is not set -- model-router refuses to start unauthenticated. " +
+			"Run scripts/generate-credentials.sh, or set it explicitly (see .env.example).")
+		os.Exit(1)
+	}
 
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
@@ -42,9 +58,12 @@ func main() {
 	mux := http.NewServeMux()
 	srv.Register(mux)
 
+	var handler http.Handler = mux
+	handler = auth.Middleware(internalToken)(handler)
+
 	httpServer := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

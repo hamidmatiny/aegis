@@ -36,6 +36,7 @@ class DefensePipeline:
         model_router_url: str,
         agent_gate_url: str,
         agent_gate_api_key: str = "",
+        internal_token: str = "",
         tenant_id: str = "default",
         timeout: float = 60.0,
     ) -> None:
@@ -48,6 +49,12 @@ class DefensePipeline:
         # approval requires a distinct reviewer key that this SDK
         # deliberately never holds; see agent-gate/internal/auth.
         self.agent_gate_api_key = agent_gate_api_key
+        # AEGIS_INTERNAL_TOKEN -- input-defense, policy-engine,
+        # model-router, and output-defense all enforce this shared
+        # internal token (see each service's internal/auth or
+        # internal_auth.py). Distinct from agent_gate_api_key, which is
+        # agent-gate's own separate service/reviewer credential.
+        self.internal_token = internal_token
         self.tenant_id = tenant_id
         self.timeout = timeout
 
@@ -71,6 +78,9 @@ class DefensePipeline:
 
         trace_ctx = trace or _trace()
         user_text = _user_text(messages)
+        internal_headers = (
+            {"Authorization": f"Bearer {self.internal_token}"} if self.internal_token else None
+        )
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             input_resp = await self._post(
@@ -81,6 +91,7 @@ class DefensePipeline:
                     "trace": trace_ctx,
                     "text": user_text,
                 },
+                headers=internal_headers,
             )
             input_verdict = input_resp["verdict"]
             self._check_input_verdict(input_verdict)
@@ -94,6 +105,7 @@ class DefensePipeline:
                     "trace": trace_ctx,
                     "input_verdict": input_verdict,
                 },
+                headers=internal_headers,
             )
             self._check_policy_decision(policy_in["decision"], layer="input")
 
@@ -113,6 +125,7 @@ class DefensePipeline:
                 f"{self.model_router_url}/v1/chat/completions",
                 router_body,
                 provider_errors=True,
+                headers=internal_headers,
             )
 
             content = llm_resp["choices"][0]["message"]["content"]
@@ -126,6 +139,7 @@ class DefensePipeline:
                     "content": content,
                     "original_prompt": user_text,
                 },
+                headers=internal_headers,
             )
             output_verdict = output_resp["verdict"]
             self._check_output_verdict(output_verdict)
@@ -139,6 +153,7 @@ class DefensePipeline:
                     "trace": trace_ctx,
                     "output_verdict": output_verdict,
                 },
+                headers=internal_headers,
             )
             self._check_policy_decision(policy_out["decision"], layer="output")
 

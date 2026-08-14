@@ -49,6 +49,7 @@ def build_backtranslation_backend(
         timeout=settings.router_timeout,
         max_retries=settings.router_max_retries,
         retry_backoff_seconds=settings.router_retry_backoff_seconds,
+        token=settings.internal_token,
     )
     return RouterBacktranslationBackend(client)
 
@@ -69,6 +70,7 @@ def build_judge_backend(
         timeout=settings.router_timeout,
         max_retries=settings.router_max_retries,
         retry_backoff_seconds=settings.router_retry_backoff_seconds,
+        token=settings.internal_token,
     )
     return RouterJudgeBackend(client)
 

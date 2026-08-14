@@ -67,6 +67,7 @@ class OpenAI:
         model_router_url: str | None = None,
         agent_gate_url: str | None = None,
         agent_gate_api_key: str | None = None,
+        internal_token: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/") if base_url else None
         self.api_key = api_key
@@ -84,6 +85,7 @@ class OpenAI:
                 model_router_url=model_router_url or settings.model_router_url,
                 agent_gate_url=agent_gate_url or settings.agent_gate_url,
                 agent_gate_api_key=resolved_gate_key or "",
+                internal_token=internal_token or settings.internal_token,
                 tenant_id=self.tenant_id,
                 timeout=timeout,
             )

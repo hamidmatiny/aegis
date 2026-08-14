@@ -134,6 +134,7 @@ services:
       AEGIS_MODEL_ROUTER_PORT: "8082"
       AEGIS_MODEL_ROUTER_CONFIG: /etc/aegis/model-router/providers.yaml
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
 
   agent-gate:
     build:

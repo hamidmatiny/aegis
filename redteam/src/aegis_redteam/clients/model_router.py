@@ -28,6 +28,7 @@ class ModelRouterClient:
         timeout: float = 60.0,
         max_retries: int = 3,
         retry_backoff_seconds: float = 1.0,
+        token: str = "",
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
@@ -35,6 +36,9 @@ class ModelRouterClient:
         self._timeout = timeout
         self._max_retries = max(0, max_retries)
         self._retry_backoff_seconds = max(0.0, retry_backoff_seconds)
+        # AEGIS_INTERNAL_TOKEN -- model-router now enforces the same shared
+        # internal auth as policy-engine/input-defense/output-defense/audit.
+        self._token = token
 
     @staticmethod
     def _is_retryable_status(status_code: int) -> bool:
@@ -72,12 +76,14 @@ class ModelRouterClient:
         timeout = httpx.Timeout(connect=10.0, read=self._timeout, write=10.0, pool=10.0)
         payload: dict[str, Any] = {}
 
+        headers = {"Authorization": f"Bearer {self._token}"} if self._token else None
         for attempt in range(self._max_retries + 1):
             try:
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.post(
                         f"{self._base_url}/v1/chat/completions",
                         json=body,
+                        headers=headers,
                     )
                     response.raise_for_status()
                     payload = response.json()

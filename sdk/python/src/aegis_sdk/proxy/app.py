@@ -32,6 +32,7 @@ _pipeline = DefensePipeline(
     agent_gate_api_key=settings.agent_gate_api_keys.split(",")[0].strip()
     if settings.agent_gate_api_keys
     else "",
+    internal_token=settings.internal_token,
     tenant_id=settings.default_tenant_id,
 )
 

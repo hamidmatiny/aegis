@@ -41,6 +41,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             provider=settings.router_provider,
             timeout=settings.router_timeout,
             max_retries=settings.router_max_retries,
+            token=settings.internal_token,
         )
     _service = RedTeamService(
         _client,

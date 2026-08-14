@@ -159,3 +159,136 @@ async def test_evaluate_tool_omits_auth_header_when_no_key_configured(
         tool_call={"tool_name": "search_docs", "risk_level": "LOW", "arguments": []}
     )
     assert "authorization" not in route.calls.last.request.headers
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_chat_completions_sends_internal_token_to_every_internal_call() -> None:
+    pipeline = DefensePipeline(
+        input_defense_url="http://input.test",
+        output_defense_url="http://output.test",
+        policy_engine_url="http://policy.test",
+        model_router_url="http://router.test",
+        agent_gate_url="http://gate.test",
+        internal_token="internal-secret",
+    )
+    input_route = respx.post("http://input.test/analyze").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "verdict": {
+                    "action": "ALLOW",
+                    "fused_score": 0.1,
+                    "detector_scores": [],
+                    "total_latency_ms": 1,
+                }
+            },
+        )
+    )
+    allow_decision = {
+        "action": "allow",
+        "policy_pack_id": "default",
+        "policy_pack_version": "0.2.0",
+    }
+    policy_in_route = respx.post("http://policy.test/v1/evaluate/input").mock(
+        return_value=httpx.Response(200, json={"decision": allow_decision})
+    )
+    router_route = respx.post("http://router.test/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-1",
+                "object": "chat.completion",
+                "model": "mock-model",
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi!"}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+    )
+    output_route = respx.post("http://output.test/analyze").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "verdict": {
+                    "action": "ALLOW",
+                    "fused_score": 0.05,
+                    "detector_scores": [],
+                    "total_latency_ms": 1,
+                }
+            },
+        )
+    )
+    policy_out_route = respx.post("http://policy.test/v1/evaluate/output").mock(
+        return_value=httpx.Response(200, json={"decision": allow_decision})
+    )
+
+    await pipeline.chat_completions(
+        model="mock-model",
+        messages=[{"role": "user", "content": "Hi"}],
+    )
+
+    for route in (input_route, policy_in_route, router_route, output_route, policy_out_route):
+        assert route.calls.last.request.headers["authorization"] == "Bearer internal-secret"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_chat_completions_omits_internal_token_when_not_configured(
+    pipeline: DefensePipeline,
+) -> None:
+    input_route = respx.post("http://input.test/analyze").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "verdict": {
+                    "action": "ALLOW",
+                    "fused_score": 0.1,
+                    "detector_scores": [],
+                    "total_latency_ms": 1,
+                }
+            },
+        )
+    )
+    allow_decision = {
+        "action": "allow",
+        "policy_pack_id": "default",
+        "policy_pack_version": "0.2.0",
+    }
+    respx.post("http://policy.test/v1/evaluate/input").mock(
+        return_value=httpx.Response(200, json={"decision": allow_decision})
+    )
+    respx.post("http://router.test/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-1",
+                "object": "chat.completion",
+                "model": "mock-model",
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi!"}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+    )
+    respx.post("http://output.test/analyze").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "verdict": {
+                    "action": "ALLOW",
+                    "fused_score": 0.05,
+                    "detector_scores": [],
+                    "total_latency_ms": 1,
+                }
+            },
+        )
+    )
+    respx.post("http://policy.test/v1/evaluate/output").mock(
+        return_value=httpx.Response(200, json={"decision": allow_decision})
+    )
+
+    await pipeline.chat_completions(
+        model="mock-model",
+        messages=[{"role": "user", "content": "Hi"}],
+    )
+
+    assert "authorization" not in input_route.calls.last.request.headers

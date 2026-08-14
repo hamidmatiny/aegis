@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # an approval — that requires a separate reviewer key, held by an
     # actual human via the dashboard, not by SDK/agent code.
     agent_gate_api_keys: str = ""
+    # AEGIS_INTERNAL_TOKEN -- required in embedded/direct mode (base_url
+    # unset) since input-defense/output-defense/policy-engine/model-router
+    # all enforce this shared internal token; unused in proxy mode (the
+    # gateway handles its own auth, this SDK just forwards api_key to it).
+    internal_token: str = ""
     sdk_proxy_host: str = "0.0.0.0"
     sdk_proxy_port: int = 8080
     default_tenant_id: str = "default"

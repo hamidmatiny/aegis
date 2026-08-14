@@ -148,7 +148,7 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 | `XAI_API_KEY` | model-router | xAI Grok API key (not `GROK_API_KEY`) — set **only** in `.env`; never `export` in shell |
 | `AEGIS_DASHBOARD_USER` / `AEGIS_DASHBOARD_PASSWORD` | dashboard | HTTP basic auth. No static default — generated at container startup if unset; use `scripts/generate-credentials.sh` to persist one |
 | `AEGIS_API_KEYS` | gateway | Comma-separated API keys accepted by the gateway. No static default — generated at container startup if unset; use `scripts/generate-credentials.sh` to persist one |
-| `AEGIS_INTERNAL_TOKEN` | policy-engine, audit, input-defense, output-defense (enforce) + gateway, agent-gate, redteam, dashboard (send) | Shared internal service-to-service token. The four "enforce" services refuse to start without it — no default, no ephemeral fallback (it's shared across processes, so a per-process generated value would just disagree with everyone else's copy). Set via `scripts/generate-credentials.sh` |
+| `AEGIS_INTERNAL_TOKEN` | policy-engine, audit, input-defense, output-defense, model-router (enforce) + gateway, agent-gate, redteam, dashboard, SDK embedded mode (send) | Shared internal service-to-service token. The five "enforce" services refuse to start without it — no default, no ephemeral fallback (it's shared across processes, so a per-process generated value would just disagree with everyone else's copy). Set via `scripts/generate-credentials.sh` |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | model-router | Cloud LLM providers |
 | `AEGIS_MODEL_ROUTER_CONFIG` | model-router | Path to `providers.yaml` |
 | `AEGIS_POLICY_DIR` | policy-engine | YAML policy pack directory |

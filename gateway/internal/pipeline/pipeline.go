@@ -241,10 +241,10 @@ func (p *Pipeline) postJSON(ctx context.Context, url string, payload map[string]
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	// input-defense, output-defense, and policy-engine all reject
-	// unauthenticated requests now. Sending this to agent-gate/model-router
-	// too is harmless -- they don't check it, they enforce their own
-	// separate credentials.
+	// input-defense, output-defense, policy-engine, and model-router all
+	// reject unauthenticated requests now. Sending this to agent-gate too
+	// is harmless -- it enforces its own separate service/reviewer
+	// credentials and ignores this header.
 	if p.cfg.InternalToken != "" {
 		req.Header.Set("Authorization", "Bearer "+p.cfg.InternalToken)
 	}

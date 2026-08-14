@@ -214,6 +214,7 @@ async def main() -> int:
             timeout=settings.router_timeout,
             max_retries=settings.router_max_retries,
             retry_backoff_seconds=settings.router_retry_backoff_seconds,
+            token=settings.internal_token,
         )
         try:
             completion = await client.chat_completion(
