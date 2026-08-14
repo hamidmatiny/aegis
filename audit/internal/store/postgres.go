@@ -107,8 +107,16 @@ func (s *PostgresStore) Query(ctx context.Context, req models.QueryRequest) (mod
 		fmt.Fprintf(&b, " AND created_at <= $%d", len(args))
 	}
 	if req.Cursor != "" {
-		args = append(args, req.Cursor)
-		fmt.Fprintf(&b, " AND receipt_id > $%d", len(args))
+		cursorCreatedAt, cursorReceiptID, err := decodeCursor(req.Cursor)
+		if err != nil {
+			return models.QueryResponse{}, fmt.Errorf("query: %w", err)
+		}
+		// Composite keyset pagination matching the ORDER BY below exactly
+		// (Postgres row-wise comparison): everything strictly after this
+		// (created_at, receipt_id) pair in that order. See cursor.go for
+		// why a plain "receipt_id > cursor" doesn't work.
+		args = append(args, cursorCreatedAt, cursorReceiptID)
+		fmt.Fprintf(&b, " AND (created_at, receipt_id) > ($%d, $%d)", len(args)-1, len(args))
 	}
 	args = append(args, limit+1)
 	fmt.Fprintf(&b, " ORDER BY created_at ASC, receipt_id ASC LIMIT $%d", len(args))
@@ -131,10 +139,20 @@ func (s *PostgresStore) Query(ctx context.Context, req models.QueryRequest) (mod
 		return models.QueryResponse{}, err
 	}
 
+	// The query fetched limit+1 rows so we can tell whether a next page
+	// exists. The cursor must be the LAST row actually being returned in
+	// THIS page (receipts[limit-1] after truncating), not the peeked-ahead
+	// extra row (receipts[limit]) -- using the peeked row here was a real,
+	// separate bug: it silently dropped exactly one row at every page
+	// boundary, since that row would be excluded from this page (past the
+	// truncation) and then excluded again from the next page (the next
+	// query's filter is strictly-greater-than its own cursor). Verified
+	// against a 25-row/limit-4 simulation before trusting this.
 	var nextCursor string
 	if len(receipts) > limit {
-		nextCursor = receipts[limit].ReceiptID
 		receipts = receipts[:limit]
+		last := receipts[len(receipts)-1]
+		nextCursor = encodeCursor(last.CreatedAt, last.ReceiptID)
 	}
 	return models.QueryResponse{Receipts: receipts, NextCursor: nextCursor}, nil
 }

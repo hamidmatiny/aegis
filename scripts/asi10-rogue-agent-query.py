@@ -23,22 +23,19 @@ The audit service is bound to 127.0.0.1 only in every AEGIS compose file
 is meant to run on the same box as the stack (manually or via cron), not
 against a remote audit endpoint.
 
-KNOWN CAVEAT -- audit's cursor pagination is not reliable across pages.
-audit/internal/store/postgres.go's Query() sorts by
-`created_at ASC, receipt_id ASC` but paginates with `WHERE receipt_id >
-$cursor`, and receipt_id is a random uuid.NewString() (see
-audit/internal/service/service.go) with no relationship to created_at.
-Once results span more than one page, cursor continuation can silently
-skip or duplicate rows -- this is a pre-existing bug in the audit service
-itself, not something this script can correct from the outside. To avoid
-depending on it in the common case, this script defaults to a large
-single-page limit so most windows are fetched in one request; if the
-service still hands back a next_cursor (meaning the true row count
-exceeded --page-limit), this script prints a warning to stderr because
-completeness is no longer guaranteed from that point on. Treat that
-warning as a signal to narrow --since/--tenant-id, or as a reason to fix
-the cursor to a composite (created_at, receipt_id) keyset in a future
-phase.
+RESOLVED CAVEAT (Stage B.3) -- audit's cursor pagination used to be
+unreliable across pages: Query() sorts by `created_at ASC, receipt_id
+ASC` but paginated with `WHERE receipt_id > $cursor`, and receipt_id is a
+random uuid.NewString() (see audit/internal/service/service.go) with no
+relationship to created_at -- once results spanned more than one page,
+cursor continuation could silently skip or duplicate rows. Fixed in
+audit/internal/store/{postgres,memory}.go with a composite
+(created_at, receipt_id) keyset cursor (see cursor.go), including a
+separate off-by-one in which row the cursor was derived from. This
+script still defaults to a large single-page limit for the common case
+(most windows fit in one request), but multi-page cursor continuation is
+now just as reliable as a single page -- no longer something to warn
+about or work around.
 
 Usage:
     python3 scripts/asi10-rogue-agent-query.py
@@ -63,10 +60,10 @@ import requests
 
 EVENT_TYPE_TOOL_GATE = "TOOL_GATE"
 DEFAULT_BASE_URL = "http://localhost:8084"
-# Large on purpose: audit's cursor pagination is not safe to rely on across
-# pages (see the KNOWN CAVEAT in the module docstring), so the default is
-# sized to fetch a typical early-stage demo box's whole TOOL_GATE history in
-# one request rather than triggering cursor continuation at all.
+# Large on purpose: sized to fetch a typical early-stage demo box's whole
+# TOOL_GATE history in one request in the common case. Multi-page cursor
+# continuation is reliable now too (see the module docstring's RESOLVED
+# CAVEAT), this is just an efficiency default, not a correctness one.
 DEFAULT_PAGE_LIMIT = 5000
 
 
@@ -117,15 +114,13 @@ def fetch_tool_gate_receipts(
 ) -> Iterator[dict[str, Any]]:
     """Yield every TOOL_GATE receipt in the window, paginating via cursor.
 
-    See the module docstring's KNOWN CAVEAT: audit's cursor is a random
-    UUID with no relationship to the created_at ordering it paginates, so
-    if the service ever hands back a next_cursor here, completeness from
-    that point on is not guaranteed. We still follow it (best effort is
-    better than silently truncating), but warn once so it's visible.
+    audit's cursor pagination is a reliable composite (created_at,
+    receipt_id) keyset as of Stage B.3 (see the module docstring's
+    RESOLVED CAVEAT) -- following next_cursor across as many pages as it
+    takes is safe, no completeness caveat needed anymore.
     """
     http = session or requests.Session()
     cursor = ""
-    warned = False
     while True:
         params: dict[str, Any] = {"event_type": EVENT_TYPE_TOOL_GATE, "limit": page_limit}
         if tenant_id:
@@ -145,15 +140,6 @@ def fetch_tool_gate_receipts(
             yield receipt
 
         cursor = body.get("next_cursor") or ""
-        if cursor and not warned:
-            print(
-                "warning: audit returned a next_cursor -- more TOOL_GATE receipts exist than "
-                "--page-limit. audit's cursor pagination is not guaranteed complete/gap-free "
-                "(see KNOWN CAVEAT in this script's docstring); consider narrowing --since or "
-                "raising --page-limit instead of trusting cursor continuation here.",
-                file=sys.stderr,
-            )
-            warned = True
         if not cursor or not receipts:
             break
 

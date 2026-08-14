@@ -109,8 +109,7 @@ it found anything, `0` if clean, so it's cron-friendly:
 ```
 
 Run `python3 scripts/asi10-rogue-agent-query.py --help` for `--tenant-id`,
-`--agent-id`, `--json`, and other flags. See the script's own docstring for
-a known caveat around audit's cursor pagination on very large histories.
+`--agent-id`, `--json`, and other flags.
 
 ## Recovering credentials if this box is lost
 

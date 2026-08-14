@@ -64,6 +64,18 @@ func (s *MemoryStore) Query(_ context.Context, req models.QueryRequest) (models.
 		limit = 50
 	}
 
+	// Decode once, up front, so a malformed cursor fails clearly instead
+	// of silently comparing against a zero-value time.Time for every row.
+	var cursorCreatedAt time.Time
+	var cursorReceiptID string
+	if req.Cursor != "" {
+		var err error
+		cursorCreatedAt, cursorReceiptID, err = decodeCursor(req.Cursor)
+		if err != nil {
+			return models.QueryResponse{}, fmt.Errorf("query: %w", err)
+		}
+	}
+
 	type item struct {
 		id        string
 		createdAt time.Time
@@ -92,8 +104,15 @@ func (s *MemoryStore) Query(_ context.Context, req models.QueryRequest) (models.
 		if req.EndTime != nil && receipt.CreatedAt.After(*req.EndTime) {
 			continue
 		}
-		if req.Cursor != "" && id <= req.Cursor {
-			continue
+		if req.Cursor != "" {
+			// Composite keyset comparison matching the (createdAt, id)
+			// sort below: skip anything not strictly after the cursor.
+			if receipt.CreatedAt.Before(cursorCreatedAt) {
+				continue
+			}
+			if receipt.CreatedAt.Equal(cursorCreatedAt) && id <= cursorReceiptID {
+				continue
+			}
 		}
 		items = append(items, item{id: id, createdAt: receipt.CreatedAt, receipt: receipt})
 	}
@@ -105,14 +124,22 @@ func (s *MemoryStore) Query(_ context.Context, req models.QueryRequest) (models.
 		return items[i].createdAt.Before(items[j].createdAt)
 	})
 
+	// The cursor must be the LAST item actually being returned in this
+	// page, not the first item of the next page -- using the latter was a
+	// real, separate off-by-one bug that silently dropped exactly one item
+	// at every page boundary (see postgres.go's Query() for the full
+	// explanation; verified with a 25-item/limit-4 simulation).
 	out := make([]models.Receipt, 0, limit)
-	var nextCursor string
-	for _, it := range items {
-		if len(out) >= limit {
-			nextCursor = it.id
+	for i, it := range items {
+		if i >= limit {
 			break
 		}
 		out = append(out, it.receipt)
+	}
+	var nextCursor string
+	if len(items) > limit {
+		last := out[len(out)-1]
+		nextCursor = encodeCursor(last.CreatedAt, last.ReceiptID)
 	}
 
 	return models.QueryResponse{Receipts: out, NextCursor: nextCursor}, nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -120,5 +121,86 @@ func TestPostgresVerifyDetectsTamperedPayload(t *testing.T) {
 	}
 	if reason != "payload hash mismatch (tampered)" {
 		t.Fatalf("expected tamper reason, got %q", reason)
+	}
+}
+
+// TestPostgresQueryPaginationDoesNotDropOrDuplicateAcrossPages is the
+// real-database counterpart to store_test's memory-store version of this
+// test -- it exercises the actual SQL Query() builds (the composite
+// "(created_at, receipt_id) > ($n, $n+1)" row comparison and the
+// LIMIT-plus-one/cursor derivation), not just the in-memory Go logic.
+// Skipped like the other Postgres tests if no database is reachable --
+// run it locally against `docker compose up -d postgres` (or CI's own
+// integration job, which does have a real database) before trusting a
+// change to postgres.go's Query().
+func TestPostgresQueryPaginationDoesNotDropOrDuplicateAcrossPages(t *testing.T) {
+	st := openPostgresStore(t)
+	sg, err := signer.New("postgres-pagination-test", testDevSigningSeed, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	tenantID := "pagination-test-" + uuid.NewString()
+	const n = 25
+	base := time.Now().UTC().Truncate(time.Microsecond)
+	want := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		// receipt_id deliberately the REVERSE of created_at order -- the
+		// exact shape that broke the old single-column, wrong-row cursor.
+		id := fmt.Sprintf("%s-%03d", uuid.NewString(), n-i)
+		receipt := models.Receipt{
+			ReceiptID:    id,
+			EventType:    models.EventInputDefense,
+			TenantID:     tenantID,
+			InputVerdict: json.RawMessage(`{"action":"BLOCK","fused_score":0.9}`),
+			CreatedAt:    base.Add(time.Duration(i) * time.Second),
+		}
+		if err := sg.SignReceipt(&receipt); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.Insert(ctx, &receipt); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+		want = append(want, id)
+	}
+
+	var got []string
+	cursor := ""
+	pages := 0
+	for {
+		pages++
+		if pages > n+2 {
+			t.Fatal("too many pages -- pagination is likely looping")
+		}
+		resp, err := st.Query(ctx, models.QueryRequest{TenantID: tenantID, Limit: 4, Cursor: cursor})
+		if err != nil {
+			t.Fatalf("query page %d: %v", pages, err)
+		}
+		for _, r := range resp.Receipts {
+			got = append(got, r.ReceiptID)
+		}
+		if resp.NextCursor == "" {
+			break
+		}
+		cursor = resp.NextCursor
+	}
+
+	if len(got) != n {
+		t.Fatalf("expected %d receipts across all pages, got %d", n, len(got))
+	}
+	seen := make(map[string]int, n)
+	for _, id := range got {
+		seen[id]++
+	}
+	for _, id := range want {
+		if seen[id] != 1 {
+			t.Errorf("receipt %q appeared %d times across pages (want exactly 1)", id, seen[id])
+		}
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("pagination order mismatch at index %d: got %q want %q", i, got[i], want[i])
+		}
 	}
 }
