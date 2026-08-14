@@ -112,6 +112,28 @@ Run `python3 scripts/asi10-rogue-agent-query.py --help` for `--tenant-id`,
 `--agent-id`, `--json`, and other flags. See the script's own docstring for
 a known caveat around audit's cursor pagination on very large histories.
 
+## Recovering credentials if this box is lost
+
+`./scripts/generate-credentials.sh` generates everything into `.env`,
+which only ever exists on this box — losing it means losing every
+credential with no history (and `POSTGRES_PASSWORD` rotation on an
+already-running database needs a manual `ALTER USER` step, so this isn't
+a purely cosmetic problem). If you've set up the optional SOPS+age backup
+(see [.sops.yaml](../../.sops.yaml) in the repo root), recovery on a
+fresh box is:
+
+```bash
+git clone https://github.com/hamidmatiny/aegis.git
+cd aegis
+export SOPS_AGE_KEY_FILE=/path/to/your/age-key.txt   # never committed, kept by you
+./scripts/decrypt-credentials.sh
+./deploy/oracle/setup.sh
+```
+
+`setup.sh` itself also checks for `.env.enc` + an available age key before
+generating fresh credentials, so this can also happen automatically as
+part of a normal `setup.sh` run on a fresh box.
+
 ## Updating just the webpage
 
 Edit `deploy/oracle/demo-web/index.html`, commit, push, then on the VM:

@@ -204,3 +204,29 @@ instance, see the ALTER USER note printed above -- the env var alone will
 not change a live database's actual password.
 
 MSG
+
+# --- Stage B.1: encrypted backup of .env, via SOPS+age (opt-in, additive) ---
+#
+# Skipped entirely, silently, unless BOTH tools are installed AND
+# .sops.yaml has a real age recipient configured (not the placeholder) --
+# so this never disrupts a fresh install, CI, or anyone who hasn't opted
+# into it yet. See .sops.yaml for the one-time setup (age-keygen, etc.),
+# which is deliberately not something this script does on your behalf --
+# the private key must never pass through a script or a chat.
+if command -v sops >/dev/null 2>&1 && command -v age >/dev/null 2>&1    && [ -f "$ROOT/.sops.yaml" ]    && ! grep -q "REPLACE_WITH_YOUR_AGE_PUBLIC_KEY" "$ROOT/.sops.yaml"; then
+  echo "==> Updating encrypted credential backup (.env.enc)..."
+  if sops --input-type dotenv --output-type dotenv --encrypt "$ENV_FILE" > "$ENV_FILE.enc.tmp" 2>/tmp/sops-encrypt.err; then
+    mv "$ENV_FILE.enc.tmp" "$ENV_FILE.enc"
+    echo "    .env.enc updated. It's safe to commit (ciphertext) -- 'git add .env.enc'"
+    echo "    when you're ready. This is your recovery path if .env is ever lost;"
+    echo "    see scripts/decrypt-credentials.sh."
+  else
+    echo "WARNING: sops encryption failed, .env.enc NOT updated:" >&2
+    cat /tmp/sops-encrypt.err >&2
+    rm -f "$ENV_FILE.enc.tmp"
+  fi
+  rm -f /tmp/sops-encrypt.err
+else
+  echo "==> Skipping encrypted .env backup (sops/age not installed, or .sops.yaml"
+  echo "    still has its placeholder key) -- see .sops.yaml to set this up."
+fi

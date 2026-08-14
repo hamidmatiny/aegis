@@ -7,6 +7,9 @@ venv/
 .env
 .env.*
 !.env.example
+# .env.enc is SOPS-encrypted ciphertext (Stage B.1) -- safe to commit,
+# it's the actual point of having it. See .sops.yaml.
+!.env.enc
 
 # Go
 bin/

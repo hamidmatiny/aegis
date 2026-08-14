@@ -103,6 +103,18 @@ fi
 echo "    Also confirm ingress for TCP/80 (and 22 for SSH) is open in the"
 echo "    OCI Console: your VCN's subnet -> Security List -> Ingress Rules."
 
+# Stage B.1 recovery path: if this is a fresh box with no .env yet, but an
+# encrypted backup (.env.enc) came along in the git checkout and the
+# operator has the age private key available, offer to restore from it
+# instead of generating brand-new credentials. Silent no-op for everyone
+# else (no .env.enc committed yet, or no key available) -- falls straight
+# through to the normal generate-credentials.sh flow below, unchanged.
+if [ ! -f .env ] && [ -f .env.enc ] && command -v sops >/dev/null 2>&1    && { [ -n "${SOPS_AGE_KEY_FILE:-}" ] || [ -f "$HOME/.config/sops/age/keys.txt" ]; }; then
+  echo "==> Found .env.enc and an age key -- restoring credentials from the"
+  echo "    encrypted backup instead of generating new ones..."
+  ./scripts/decrypt-credentials.sh
+fi
+
 echo "==> Filling in any missing credentials (existing values in .env are never"
 echo "    touched — this only backfills variables that are unset, so re-running"
 echo "    after a git pull that adds a new required credential, like the"

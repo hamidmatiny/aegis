@@ -165,6 +165,17 @@ See [.env.example](./.env.example) for the full list. Key variables by service:
 | `OPENAI_BASE_URL` | your app | Set to `http://localhost:8080/v1` for reverse-proxy mode |
 | `DATABASE_URL` | redteam, audit | Postgres connection |
 
+### Backing up credentials
+
+`.env` is gitignored and exists only on the box that generated it — losing
+that disk means losing every credential in it, with no history. Optional,
+opt-in encrypted backup via [SOPS](https://github.com/getsops/sops) +
+[age](https://github.com/FiloSottile/age): see [.sops.yaml](./.sops.yaml)
+for one-time setup, `scripts/generate-credentials.sh` for the (automatic,
+once configured) backup step, and `scripts/decrypt-credentials.sh` for
+recovery. Skipped entirely if you haven't set it up — nothing changes
+about the default flow.
+
 ## License
 
 Apache 2.0 — see [LICENSE](./LICENSE).
