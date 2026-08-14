@@ -154,6 +154,10 @@ jobs:
           ./scripts/integration
       - name: Tear down
         if: always()
+        env:
+          # compose uses ${AEGIS_INTERNAL_TOKEN:?...} — interpolation still
+          # runs on `down`, so the token must be present here too.
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
         run: docker compose down -v
 
   benchmark:
