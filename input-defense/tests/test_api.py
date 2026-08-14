@@ -4,8 +4,7 @@ from fastapi.testclient import TestClient
 
 from aegis_input_defense.app import app
 
-client = TestClient(app)
-
+client = TestClient(app, headers={"Authorization": "Bearer test-internal-token"})
 
 def test_health() -> None:
     resp = client.get("/health")

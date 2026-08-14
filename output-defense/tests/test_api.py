@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from aegis_output_defense.app import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"Authorization": "Bearer test-internal-token"})
 
 
 def test_list_detectors() -> None:

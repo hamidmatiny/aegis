@@ -6,7 +6,7 @@ from aegis_input_defense.app import app
 
 
 def test_health() -> None:
-    client = TestClient(app)
+    client = TestClient(app, headers={"Authorization": "Bearer test-internal-token"})
     resp = client.get("/health")
     assert resp.status_code == 200
     body = resp.json()

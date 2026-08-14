@@ -21,7 +21,7 @@ def test_analyze_emits_input_defense_receipt(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(app_module, "_audit", stub)
     monkeypatch.setattr(stub, "emit_input_verdict", mock_write)
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"Authorization": "Bearer test-internal-token"}) as client:
         resp = client.post(
             "/analyze",
             json={
