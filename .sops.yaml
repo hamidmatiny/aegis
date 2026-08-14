@@ -28,6 +28,6 @@
 #   ./scripts/decrypt-credentials.sh
 creation_rules:
   - path_regex: \.env$
-    age: age1c77w7tdsz0rlystk9zvg8sg588lx4mhg3a902zd7eqrur5zs6epssfk9zn
+    age: age1y5djqtenerjrdtvq8zcg3rmgw8rns7943k3u0y4qynse3kpw6a0spafw2s
     input_type: dotenv
     output_type: dotenv

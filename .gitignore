@@ -77,3 +77,7 @@ deploy/oracle/nginx-demo-canary.conf
 # after the Stage 2 Phase 2 canary generator work.
 deploy/oracle/tmp_*
 deploy/oracle/sh-thd-*
+
+# Stage B.1 follow-up: age private keys must never be committed
+age-key.txt
+*.agekey
