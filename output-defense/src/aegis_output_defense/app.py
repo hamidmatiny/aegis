@@ -6,6 +6,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 
 from aegis_output_defense import __version__
 from aegis_output_defense.audit_client import AuditClient
+from aegis_output_defense.internal_auth import InternalTokenMiddleware
 from aegis_output_defense.ml.loader import warmup_models
 from aegis_output_defense.models import (
     AnalyzeRequest,
@@ -16,14 +17,28 @@ from aegis_output_defense.models import (
 from aegis_output_defense.service import OutputDefenseService
 from aegis_output_defense.settings import settings
 
+# This service had no auth of its own beyond Docker network isolation.
+# Refuse to start unauthenticated rather than run open or fall back to a
+# per-process token (which would desync from every other service's copy
+# of this same shared secret) -- same policy as policy-engine/audit's Go
+# services and gateway/agent-gate's outbound calls.
+if not settings.internal_token:
+    raise RuntimeError(
+        "AEGIS_INTERNAL_TOKEN is not set -- output-defense refuses to start unauthenticated. "
+        "Run scripts/generate-credentials.sh, or set it explicitly (see .env.example)."
+    )
+
 app = FastAPI(
     title="AEGIS Output Defense",
     description="Output defense detector service with independent and fused analysis",
     version=__version__,
 )
+app.add_middleware(InternalTokenMiddleware, token=settings.internal_token)
 
 _service = OutputDefenseService()
-_audit = AuditClient(settings.audit_url) if settings.emit_audit else AuditClient("")
+_audit = (
+    AuditClient(settings.audit_url, settings.internal_token) if settings.emit_audit else AuditClient("")
+)
 
 
 def get_service() -> OutputDefenseService:

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     reload: bool = False
     input_defense_url: str = "http://localhost:8090"
     output_defense_url: str = "http://localhost:8091"
+    # Shared internal service-to-service token -- input-defense/output-defense
+    # now reject unauthenticated requests. Cross-service secret, reads the
+    # unprefixed var (same pattern as database_url/model_router_url below).
+    internal_token: str = Field(default_factory=lambda: os.getenv("AEGIS_INTERNAL_TOKEN", ""))
     detection_threshold: float = 0.50
     database_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL", ""))
     store_bypasses: bool = True

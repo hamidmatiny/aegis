@@ -7,6 +7,9 @@ import os
 # Fast stub backends for unit/regression tests (no model downloads).
 os.environ.setdefault("AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND", "stub")
 os.environ.setdefault("AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND", "stub")
+# app.py refuses to import (raises RuntimeError) without this set now --
+# see internal_auth.py.
+os.environ.setdefault("AEGIS_INTERNAL_TOKEN", "test-internal-token")
 
 from pathlib import Path
 

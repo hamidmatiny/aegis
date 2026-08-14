@@ -14,13 +14,18 @@ import (
 // Client emits signed receipts to the audit service.
 type Client struct {
 	baseURL string
+	token   string
 	client  *http.Client
 	enabled bool
 }
 
-func NewClient(baseURL string) *Client {
+// NewClient builds an audit client. token is the shared
+// AEGIS_INTERNAL_TOKEN — audit now rejects unauthenticated requests, so
+// every receipt write must carry it.
+func NewClient(baseURL, token string) *Client {
 	return &Client{
 		baseURL: baseURL,
+		token:   token,
 		enabled: baseURL != "",
 		client:  &http.Client{Timeout: 5 * time.Second},
 	}
@@ -70,6 +75,7 @@ func (c *Client) write(payload map[string]any) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.token)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		slog.Warn("audit emit failed", "error", err)

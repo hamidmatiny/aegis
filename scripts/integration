@@ -25,6 +25,7 @@ fi
 : "${AEGIS_API_KEYS:?AEGIS_API_KEYS must be set for integration tests}"
 : "${AEGIS_AGENT_GATE_API_KEYS:?AEGIS_AGENT_GATE_API_KEYS must be set for integration tests}"
 : "${AEGIS_AGENT_GATE_REVIEWER_KEYS:?AEGIS_AGENT_GATE_REVIEWER_KEYS must be set for integration tests}"
+: "${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set for integration tests}"
 
 # AEGIS_API_KEYS may be a comma-separated list; use the first for smoke tests.
 API_KEY="${AEGIS_API_KEYS%%,*}"
@@ -60,9 +61,16 @@ echo "==> Dashboard rejects wrong credentials..."
 status="$(curl -s -o /dev/null -w '%{http_code}' -u "${AEGIS_DASHBOARD_USER}:wrong-password" http://localhost:3000/)"
 [[ "$status" == "401" ]] || { echo "FAIL: dashboard accepted a wrong password (got $status)"; exit 1; }
 
+echo "==> Policy-engine rejects an unauthenticated internal call..."
+status="$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8081/v1/evaluate/input \
+  -H 'Content-Type: application/json' \
+  -d '{"tenant_id":"default","input_verdict":{"action":"BLOCK","fused_score":0.92,"detector_scores":[{"detector_id":"heuristic","score":0.92,"reasoning":"test"}]}}')"
+[[ "$status" == "401" ]] || { echo "FAIL: policy-engine allowed an unauthenticated internal call (got $status)"; exit 1; }
+
 echo "==> Policy engine input evaluation smoke test..."
 curl -sf -X POST http://localhost:8081/v1/evaluate/input \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer ${AEGIS_INTERNAL_TOKEN}" \
   -d '{"tenant_id":"default","input_verdict":{"action":"BLOCK","fused_score":0.92,"detector_scores":[{"detector_id":"heuristic","score":0.92,"reasoning":"test"}]}}' \
   | grep -q '"action":"block"' || { echo "FAIL: policy-engine evaluate/input"; exit 1; }
 

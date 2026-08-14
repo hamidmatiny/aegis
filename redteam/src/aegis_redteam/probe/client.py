@@ -15,10 +15,12 @@ class DefenseClient:
         input_url: str,
         output_url: str,
         *,
+        token: str = "",
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._input_url = input_url.rstrip("/")
         self._output_url = output_url.rstrip("/")
+        self._token = token
         self._client = client or httpx.AsyncClient(timeout=120.0)
 
     async def close(self) -> None:
@@ -40,7 +42,9 @@ class DefenseClient:
         if enabled_detectors is not None:
             body["enabled_detectors"] = enabled_detectors
 
-        resp = await self._client.post(url, json=body)
+        # input-defense/output-defense now reject unauthenticated requests.
+        headers = {"Authorization": f"Bearer {self._token}"}
+        resp = await self._client.post(url, json=body, headers=headers)
         resp.raise_for_status()
         data = resp.json()
         verdict = data.get("verdict", data)

@@ -45,4 +45,13 @@ fi
 sed -i "s#__AGENT_GATE_SERVICE_KEY__#${SERVICE_KEY}#" "$CONF"
 sed -i "s#__AGENT_GATE_REVIEWER_KEY__#${REVIEWER_KEY}#" "$CONF"
 
+# audit and policy-engine now reject unauthenticated requests -- inject the
+# shared internal token the same way, server-side, so the browser never
+# sees it either.
+if [ -z "${AEGIS_INTERNAL_TOKEN:-}" ]; then
+  echo "WARNING: AEGIS_INTERNAL_TOKEN not set on the dashboard container -- audit and" >&2
+  echo "policy-engine calls through this proxy (/api/audit/, /api/policy/) will get 401s." >&2
+fi
+sed -i "s#__AEGIS_INTERNAL_TOKEN__#${AEGIS_INTERNAL_TOKEN:-}#" "$CONF"
+
 exec nginx -g 'daemon off;'

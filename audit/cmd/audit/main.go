@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aegis-platform/aegis/audit/internal/api"
+	"github.com/aegis-platform/aegis/audit/internal/auth"
 	"github.com/aegis-platform/aegis/audit/internal/service"
 	"github.com/aegis-platform/aegis/audit/internal/signer"
 	"github.com/aegis-platform/aegis/audit/internal/store"
@@ -23,6 +24,18 @@ func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	keyID := envOr("AEGIS_AUDIT_SIGNING_KEY_ID", "dev-key-1")
 	keyMaterial := os.Getenv("AEGIS_AUDIT_SIGNING_KEY")
+
+	// audit holds the tamper-evident record of everything else this
+	// platform does — it had no auth of its own beyond Docker network
+	// isolation. Refuse to start unauthenticated rather than run open or
+	// fall back to a per-process ephemeral token (which would desync
+	// from every other service's copy of this same shared secret).
+	internalToken := os.Getenv(auth.EnvToken)
+	if internalToken == "" {
+		logger.Error(auth.EnvToken + " is not set — audit refuses to start unauthenticated. " +
+			"Run scripts/generate-credentials.sh, or set it explicitly (see .env.example).")
+		os.Exit(1)
+	}
 
 	var sg *signer.Signer
 	var err error
@@ -56,9 +69,12 @@ func main() {
 	mux := http.NewServeMux()
 	api.NewServer(svc).Register(mux)
 
+	var handler http.Handler = mux
+	handler = auth.Middleware(internalToken)(handler)
+
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

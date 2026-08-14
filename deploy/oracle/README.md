@@ -93,6 +93,7 @@ above), so detection runs on the box itself:
 
 ```bash
 cd aegis
+set -a; source .env; set +a   # loads AEGIS_INTERNAL_TOKEN -- audit rejects unauthenticated requests now
 python3 scripts/asi10-rogue-agent-query.py
 ```
 
@@ -102,8 +103,9 @@ calls a `tool_name` outside tools it's already used before -- a simple
 it found anything, `0` if clean, so it's cron-friendly:
 
 ```bash
-# Daily at 07:00, mail on any anomaly (crontab -e on the VM)
-0 7 * * * cd ~/aegis && python3 scripts/asi10-rogue-agent-query.py --since 24h
+# Daily at 07:00, mail on any anomaly (crontab -e on the VM). cron doesn't
+# source .env, so export the token inline or via crontab's own env line.
+0 7 * * * cd ~/aegis && export $(grep AEGIS_INTERNAL_TOKEN .env) && python3 scripts/asi10-rogue-agent-query.py --since 24h
 ```
 
 Run `python3 scripts/asi10-rogue-agent-query.py --help` for `--tenant-id`,

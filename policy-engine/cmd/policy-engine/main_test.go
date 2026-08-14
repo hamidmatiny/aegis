@@ -21,7 +21,7 @@ func TestEvaluateInputHTTPEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	srv := api.NewServer(store, engine.New(), audit.NewClient(""))
+	srv := api.NewServer(store, engine.New(), audit.NewClient("", ""))
 	mux := http.NewServeMux()
 	srv.Register(mux)
 
@@ -58,7 +58,7 @@ func TestPolicyPackDetailAndDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	srv := api.NewServer(store, engine.New(), audit.NewClient(""))
+	srv := api.NewServer(store, engine.New(), audit.NewClient("", ""))
 	mux := http.NewServeMux()
 	srv.Register(mux)
 

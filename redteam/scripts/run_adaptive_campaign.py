@@ -52,7 +52,7 @@ async def main() -> int:
     args = _parse_args()
     attacks = [f for f in load_fixtures() if f.is_attack]
 
-    client = DefenseClient(settings.input_defense_url, settings.output_defense_url)
+    client = DefenseClient(settings.input_defense_url, settings.output_defense_url, token=settings.internal_token)
     service = RedTeamService(
         client,
         threshold=settings.detection_threshold,

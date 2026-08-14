@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -72,6 +73,12 @@ DEFAULT_PAGE_LIMIT = 5000
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help=f"audit service base URL (default: {DEFAULT_BASE_URL})")
+    parser.add_argument(
+        "--token",
+        default=os.environ.get("AEGIS_INTERNAL_TOKEN", ""),
+        help="shared internal service token -- audit rejects unauthenticated requests now "
+        "(default: read from AEGIS_INTERNAL_TOKEN)",
+    )
     parser.add_argument("--tenant-id", default="", help="restrict to one tenant (default: all tenants)")
     parser.add_argument("--agent-id", default="", help="restrict the report to one agent_id (still fetches all, filters client-side)")
     parser.add_argument("--since", default="", help="only consider receipts after this time: ISO-8601 (2026-08-13T00:00:00Z) or relative like 24h / 30m / 7d")
@@ -101,6 +108,7 @@ def _parse_since(value: str) -> str | None:
 
 def fetch_tool_gate_receipts(
     base_url: str,
+    token: str,
     tenant_id: str,
     since_iso: str | None,
     page_limit: int,
@@ -127,7 +135,8 @@ def fetch_tool_gate_receipts(
         if cursor:
             params["cursor"] = cursor
 
-        resp = http.get(f"{base_url.rstrip('/')}/v1/receipts", params=params, timeout=timeout)
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = http.get(f"{base_url.rstrip('/')}/v1/receipts", params=params, headers=headers, timeout=timeout)
         resp.raise_for_status()
         body = resp.json()
 
@@ -224,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         receipts = fetch_tool_gate_receipts(
             base_url=args.base_url,
+            token=args.token,
             tenant_id=args.tenant_id,
             since_iso=since_iso,
             page_limit=args.page_limit,

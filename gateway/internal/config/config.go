@@ -13,6 +13,12 @@ type Config struct {
 	DefaultTenantID    string
 	DefaultModel       string
 	HTTPTimeoutSeconds int
+	// InternalToken authenticates the gateway's own outbound calls to
+	// input-defense, output-defense, and policy-engine, all of which now
+	// reject unauthenticated requests. Read directly (no fallback/default)
+	// so a missing value fails loudly via the startup check in main.go
+	// rather than silently sending unauthenticated requests that 401.
+	InternalToken string
 }
 
 // Load reads configuration from environment variables.
@@ -27,6 +33,7 @@ func Load() Config {
 		DefaultTenantID:    envOr("AEGIS_DEFAULT_TENANT_ID", "default"),
 		DefaultModel:       envOr("AEGIS_DEFAULT_MODEL", "mock-model"),
 		HTTPTimeoutSeconds: envInt("AEGIS_GATEWAY_HTTP_TIMEOUT", 120),
+		InternalToken:      os.Getenv("AEGIS_INTERNAL_TOKEN"),
 	}
 }
 

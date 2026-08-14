@@ -9,6 +9,9 @@ os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND", "stub")
 os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_PII_BACKEND", "regex")
 os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND", "stub")
 os.environ.setdefault("AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND", "stub")
+# app.py refuses to import (raises RuntimeError) without this set now --
+# see internal_auth.py.
+os.environ.setdefault("AEGIS_INTERNAL_TOKEN", "test-internal-token")
 
 import pytest
 

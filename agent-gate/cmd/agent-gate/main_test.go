@@ -21,8 +21,8 @@ func TestHealthEndpoint(t *testing.T) {
 	defer policySrv.Close()
 
 	mux := http.NewServeMux()
-	g := gate.New(policy.NewClient(policySrv.URL), approval.NewStore(0))
-	api.NewServer(g, audit.NewClient("")).Register(mux)
+	g := gate.New(policy.NewClient(policySrv.URL, "test-token"), approval.NewStore(0))
+	api.NewServer(g, audit.NewClient("", "")).Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
@@ -49,8 +49,8 @@ func TestListApprovalsEndpoint(t *testing.T) {
 	defer policySrv.Close()
 
 	mux := http.NewServeMux()
-	g := gate.New(policy.NewClient(policySrv.URL), approval.NewStore(0))
-	api.NewServer(g, audit.NewClient("")).Register(mux)
+	g := gate.New(policy.NewClient(policySrv.URL, "test-token"), approval.NewStore(0))
+	api.NewServer(g, audit.NewClient("", "")).Register(mux)
 
 	evalBody := []byte(`{
 		"tenant_id":"default",

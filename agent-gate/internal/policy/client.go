@@ -15,12 +15,17 @@ import (
 // Client calls policy-engine tool evaluation.
 type Client struct {
 	baseURL    string
+	token      string
 	httpClient *http.Client
 }
 
-func NewClient(baseURL string) *Client {
+// NewClient builds a policy-engine client. token is the shared
+// AEGIS_INTERNAL_TOKEN — policy-engine now rejects unauthenticated
+// requests, so every call must carry it.
+func NewClient(baseURL, token string) *Client {
 	return &Client{
 		baseURL: baseURL,
+		token:   token,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -46,6 +51,7 @@ func (c *Client) EvaluateTool(
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {

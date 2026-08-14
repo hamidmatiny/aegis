@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     port: int = 8090
     reload: bool = False
     audit_url: str = Field(default_factory=lambda: os.getenv("AEGIS_AUDIT_URL", ""))
+    # Shared internal service-to-service token -- see internal_auth.py.
+    # Deliberately reads the unprefixed var (same pattern as audit_url
+    # above): this is a cross-service secret, not specific to this service.
+    internal_token: str = Field(default_factory=lambda: os.getenv("AEGIS_INTERNAL_TOKEN", ""))
     emit_audit: bool = Field(
         default_factory=lambda: os.getenv("AEGIS_AUDIT_EMIT", "true").lower() != "false"
     )

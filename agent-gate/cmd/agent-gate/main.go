@@ -26,10 +26,22 @@ func main() {
 	policyURL := envOr("AEGIS_POLICY_ENGINE_URL", "http://localhost:8081")
 	approvalTTLHours := envInt("AEGIS_APPROVAL_TTL_HOURS", 24)
 
-	policyClient := policy.NewClient(policyURL)
+	// AEGIS_INTERNAL_TOKEN authenticates agent-gate's own calls OUT to
+	// policy-engine and audit — separate from AEGIS_AGENT_GATE_API_KEYS/
+	// AEGIS_AGENT_GATE_REVIEWER_KEYS below, which authenticate calls IN to
+	// agent-gate itself. Both policy-engine and audit now refuse
+	// unauthenticated requests entirely, so this can't be left unset.
+	internalToken := os.Getenv("AEGIS_INTERNAL_TOKEN")
+	if internalToken == "" {
+		logger.Error("AEGIS_INTERNAL_TOKEN is not set — agent-gate's calls to policy-engine and audit " +
+			"will be rejected. Run scripts/generate-credentials.sh, or set it explicitly (see .env.example).")
+		os.Exit(1)
+	}
+
+	policyClient := policy.NewClient(policyURL, internalToken)
 	approvalStore := approval.NewStore(time.Duration(approvalTTLHours) * time.Hour)
 	g := gate.New(policyClient, approvalStore)
-	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""))
+	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""), internalToken)
 
 	authCfg := auth.Load()
 	if authCfg.Service.Source == auth.SourceGenerated {

@@ -32,7 +32,7 @@ func newTestGate(t *testing.T, action, blockReason string) *gate.Gate {
 	t.Helper()
 	srv := mockPolicyServer(action, blockReason)
 	t.Cleanup(srv.Close)
-	return gate.New(policy.NewClient(srv.URL), approval.NewStore(0))
+	return gate.New(policy.NewClient(srv.URL, "test-token"), approval.NewStore(0))
 }
 
 func TestEvaluateAllowsBenignTool(t *testing.T) {
@@ -141,7 +141,7 @@ func TestEvaluateSurfacesRiskCatalogOverride(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	g := gate.New(policy.NewClient(srv.URL), approval.NewStore(0))
+	g := gate.New(policy.NewClient(srv.URL, "test-token"), approval.NewStore(0))
 
 	resp, err := g.Evaluate(context.Background(), models.EvaluateRequest{
 		TenantID: "default",

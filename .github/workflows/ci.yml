@@ -136,6 +136,10 @@ jobs:
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
+          # Shared internal service-to-service token (policy-engine,
+          # audit, input-defense, output-defense all refuse to start
+          # without it now).
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
         run: docker compose up -d --build --wait
       - name: Run smoke tests
         env:
@@ -144,6 +148,7 @@ jobs:
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
         run: |
           chmod +x scripts/integration
           ./scripts/integration

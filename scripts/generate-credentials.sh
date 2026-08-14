@@ -111,6 +111,17 @@ fill "AEGIS_API_KEYS" "echo aegis_\$(random_hex 32)"
 fill "AEGIS_AGENT_GATE_API_KEYS" "echo aegis_\$(random_hex 32)"
 fill "AEGIS_AGENT_GATE_REVIEWER_KEYS" "echo aegis_\$(random_hex 32)"
 
+# Shared internal service-to-service token: policy-engine, audit,
+# input-defense, and output-defense now refuse to start without it, and
+# every process that calls them (gateway, agent-gate, redteam, the
+# dashboard's nginx proxy) needs the SAME value. Unlike the per-service
+# keys above, there is no ephemeral-generate-if-missing fallback for this
+# one anywhere in the code -- a value generated independently by each
+# process would just disagree with every other process's copy and break
+# every internal call, so it has to be filled here, once, and shared via
+# .env like POSTGRES_PASSWORD is.
+fill "AEGIS_INTERNAL_TOKEN" "echo aegis_internal_\$(random_hex 32)"
+
 # --- Added: three secrets that used to ship on public, unrotated
 # defaults from .env.example (found during a security review) ---
 
@@ -156,6 +167,7 @@ DASHBOARD_PASSWORD="$(current_value AEGIS_DASHBOARD_PASSWORD)"
 API_KEY="$(current_value AEGIS_API_KEYS)"
 AGENT_GATE_SERVICE_KEY="$(current_value AEGIS_AGENT_GATE_API_KEYS)"
 AGENT_GATE_REVIEWER_KEY="$(current_value AEGIS_AGENT_GATE_REVIEWER_KEYS)"
+INTERNAL_TOKEN="$(current_value AEGIS_INTERNAL_TOKEN)"
 REDIS_PW="$(current_value REDIS_PASSWORD)"
 PG_PW_DISPLAY="$(current_value POSTGRES_PASSWORD)"
 
@@ -171,6 +183,10 @@ generated — pass --rotate to force fresh values for everything):
                                                         different from the service key so
                                                         an agent can never approve its own
                                                         irreversible action)
+  Internal service token:  $INTERNAL_TOKEN   (shared by policy-engine/audit/input-defense/
+                                              output-defense and everything that calls them —
+                                              same value everywhere, do not regenerate on
+                                              just one service)
   Postgres password:       $PG_PW_DISPLAY
   Redis password:          $REDIS_PW   (not wired into any service yet, reserved)
   Audit signing key:       (regenerated if it was still the public dev default;

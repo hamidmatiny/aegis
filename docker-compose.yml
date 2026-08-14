@@ -4,11 +4,12 @@
 # network or the internet -- regardless of any cloud-provider firewall
 # config. Only the reverse proxy in front of this stack (see
 # deploy/oracle/docker-compose.demo.yml's demo-proxy, or your own ingress)
-# should ever be reachable from outside the box. This matters because
-# policy-engine, input-defense, output-defense, and audit have no
-# service-level authentication of their own -- they were designed to be
-# internal-only, reachable through the gateway/agent-gate's own auth, not
-# exposed directly.
+# should ever be reachable from outside the box. policy-engine,
+# input-defense, output-defense, and audit now also enforce their own
+# service-level auth via a shared AEGIS_INTERNAL_TOKEN (see
+# scripts/generate-credentials.sh) -- they used to rely on this network
+# isolation alone, which meant anything able to reach their port on the
+# Docker network could call them directly with no credential at all.
 #
 # Every custom-built service below has both a `build:` block and an
 # `image:` tag pointing at ghcr.io. `docker compose up -d --build` (what
@@ -74,6 +75,7 @@ services:
       AEGIS_AGENT_GATE_URL: http://agent-gate:8083
       AEGIS_DEFAULT_MODEL: mock-model
       AEGIS_API_KEYS: ${AEGIS_API_KEYS:-}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       input-defense:
         condition: service_started
@@ -104,6 +106,7 @@ services:
       AEGIS_POLICY_ENGINE_PORT: "8081"
       AEGIS_POLICY_DIR: ${AEGIS_POLICY_DIR:-/etc/aegis/policies}
       AEGIS_AUDIT_URL: http://audit:8084
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     volumes:
       - ./policy-engine/policies:/etc/aegis/policies:ro
     depends_on:
@@ -152,6 +155,7 @@ services:
       AEGIS_AUDIT_URL: http://audit:8084
       AEGIS_APPROVAL_TTL_HOURS: ${AEGIS_APPROVAL_TTL_HOURS:-24}
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
       # Service key: lets a calling agent submit tool calls (POST /v1/evaluate).
       AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
       # Reviewer key: required to decide a pending approval. Deliberately a
@@ -186,6 +190,7 @@ services:
       # Dev-only stable seed (32 bytes base64). Override in production.
       AEGIS_AUDIT_SIGNING_KEY: ${AEGIS_AUDIT_SIGNING_KEY:-YWVnaXMtZGV2LWF1ZGl0LXNpZ25pbmcta2V5LXYxISE=}
       AEGIS_AUDIT_SIGNING_KEY_ID: ${AEGIS_AUDIT_SIGNING_KEY_ID:-dev-key-1}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       postgres:
         condition: service_healthy
@@ -210,6 +215,7 @@ services:
       AEGIS_AUDIT_URL: http://audit:8084
       AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND: ${AEGIS_INPUT_DEFENSE_CLASSIFIER_BACKEND:-stub}
       AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND: ${AEGIS_INPUT_DEFENSE_PERPLEXITY_BACKEND:-stub}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       audit:
         condition: service_started
@@ -242,6 +248,7 @@ services:
       AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL: ${AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_MODEL:-grok-4.3}
       AEGIS_OUTPUT_DEFENSE_JUDGE_PROVIDER: ${AEGIS_OUTPUT_DEFENSE_JUDGE_PROVIDER:-grok}
       AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL: ${AEGIS_OUTPUT_DEFENSE_JUDGE_MODEL:-grok-4.3}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       audit:
         condition: service_started
@@ -267,6 +274,7 @@ services:
       AEGIS_REDTEAM_INPUT_DEFENSE_URL: http://input-defense:8090
       AEGIS_REDTEAM_OUTPUT_DEFENSE_URL: http://output-defense:8091
       DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       input-defense:
         condition: service_started
@@ -294,6 +302,7 @@ services:
       # gated behind dashboard basic auth above. Must match agent-gate's keys.
       AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
       AEGIS_AGENT_GATE_REVIEWER_KEYS: ${AEGIS_AGENT_GATE_REVIEWER_KEYS:-}
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:-}
     depends_on:
       audit:
         condition: service_started

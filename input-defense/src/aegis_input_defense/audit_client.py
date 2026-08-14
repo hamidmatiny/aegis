@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class AuditClient:
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, token: str = "") -> None:
         self._base_url = base_url.rstrip("/")
         self._enabled = bool(base_url)
+        self._token = token
 
     @property
     def enabled(self) -> bool:
@@ -46,9 +47,11 @@ class AuditClient:
         await self._write(payload)
 
     async def _write(self, payload: dict[str, Any]) -> None:
+        # audit now rejects unauthenticated requests -- see internal_auth.py.
+        headers = {"Authorization": f"Bearer {self._token}"}
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(f"{self._base_url}/v1/receipts", json=payload)
+                resp = await client.post(f"{self._base_url}/v1/receipts", json=payload, headers=headers)
                 resp.raise_for_status()
         except Exception as exc:
             logger.warning("audit emit failed: %s", exc)

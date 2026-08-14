@@ -12,6 +12,7 @@ import (
 
 	"github.com/aegis-platform/aegis/policy-engine/internal/api"
 	"github.com/aegis-platform/aegis/policy-engine/internal/audit"
+	"github.com/aegis-platform/aegis/policy-engine/internal/auth"
 	"github.com/aegis-platform/aegis/policy-engine/internal/engine"
 	"github.com/aegis-platform/aegis/policy-engine/internal/loader"
 )
@@ -24,6 +25,21 @@ func main() {
 	policyDir := envOr("AEGIS_POLICY_DIR", "policies")
 	reloadSec := envInt("AEGIS_POLICY_RELOAD_SECONDS", 10)
 
+	// policy-engine has no auth of its own beyond this shared internal
+	// token — it was previously reachable, unauthenticated, by anything
+	// that could reach it on the Docker network (including /v1/reload).
+	// Unlike the gateway's AEGIS_API_KEYS, there is no ephemeral fallback
+	// here: this token is shared by every internal service and the
+	// handful of processes that call them, so a per-process generated
+	// value would just desync from everyone else's copy and break every
+	// internal call. Refuse to start instead of running open or broken.
+	internalToken := os.Getenv(auth.EnvToken)
+	if internalToken == "" {
+		logger.Error(auth.EnvToken + " is not set — policy-engine refuses to start unauthenticated. " +
+			"Run scripts/generate-credentials.sh, or set it explicitly (see .env.example).")
+		os.Exit(1)
+	}
+
 	store, err := loader.NewStore(policyDir)
 	if err != nil {
 		logger.Error("failed to load policies", "error", err, "dir", policyDir)
@@ -31,15 +47,18 @@ func main() {
 	}
 
 	eng := engine.New()
-	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""))
+	auditClient := audit.NewClient(envOr("AEGIS_AUDIT_URL", ""), internalToken)
 	srv := api.NewServer(store, eng, auditClient)
 
 	mux := http.NewServeMux()
 	srv.Register(mux)
 
+	var handler http.Handler = mux
+	handler = auth.Middleware(internalToken)(handler)
+
 	httpServer := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

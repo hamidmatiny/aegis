@@ -21,6 +21,18 @@ func main() {
 
 	cfg := config.Load()
 	authCfg := auth.Load()
+
+	// input-defense, output-defense, and policy-engine all reject
+	// unauthenticated requests now (see AEGIS_INTERNAL_TOKEN in
+	// scripts/generate-credentials.sh). Refuse to start rather than run
+	// with every internal call silently 401ing.
+	if cfg.InternalToken == "" {
+		logger.Error("AEGIS_INTERNAL_TOKEN is not set — gateway's calls to input-defense, output-defense, " +
+			"and policy-engine will be rejected. Run scripts/generate-credentials.sh, or set it explicitly " +
+			"(see .env.example).")
+		os.Exit(1)
+	}
+
 	p := pipeline.New(cfg)
 	srv := api.NewServer(p)
 
