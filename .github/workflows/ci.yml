@@ -166,11 +166,50 @@ jobs:
     needs: [integration]
     steps:
       - uses: actions/checkout@v4
-      - name: Run benchmark scaffold
+      - name: Install vegeta
+        # Pinned version + checksum verification (no go toolchain is set
+        # up in this job, and this repo doesn't otherwise depend on one
+        # being present at benchmark time -- a single static binary from
+        # a pinned, checksummed release is the simpler, more reproducible
+        # option here). Bump VEGETA_VERSION deliberately, not silently via
+        # @latest, so a benchmark regression can't come from vegeta itself
+        # changing.
+        env:
+          VEGETA_VERSION: "12.13.0"
+          VEGETA_SHA256: "e8759ce45c14e18374bdccd3ba6068197bc3a9f9b7e484db3837f701b9d12e61"
+        run: |
+          curl -fsSL -o vegeta.tar.gz \
+            "https://github.com/tsenart/vegeta/releases/download/v${VEGETA_VERSION}/vegeta_${VEGETA_VERSION}_linux_amd64.tar.gz"
+          echo "${VEGETA_SHA256}  vegeta.tar.gz" | sha256sum -c -
+          tar -xzf vegeta.tar.gz vegeta
+          sudo mv vegeta /usr/local/bin/vegeta
+          vegeta -version
+      - name: Start stack
+        env:
+          # Same throwaway CI credentials as the integration job -- see
+          # that job's "Start stack" step for why these are hardcoded
+          # here rather than pulled from a secret.
+          AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND: stub
+          AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND: stub
+          AEGIS_DASHBOARD_USER: ci-admin
+          AEGIS_DASHBOARD_PASSWORD: ci-test-password-not-a-secret
+          AEGIS_API_KEYS: ci-test-api-key-not-a-secret
+          AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+          AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+        run: docker compose up -d --build --wait
+      - name: Run benchmark
+        env:
+          AEGIS_API_KEYS: ci-test-api-key-not-a-secret
         run: |
           chmod +x scripts/benchmark.sh
           mkdir -p benchmark-results
           ./scripts/benchmark.sh
+      - name: Tear down
+        if: always()
+        env:
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+        run: docker compose down -v
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@v4
         with:

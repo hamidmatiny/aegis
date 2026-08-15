@@ -106,7 +106,7 @@ make proto              # Lint + generate from shared/proto
 make lint               # Go + Python linters
 make test               # Unit tests (Go + Python)
 make test-integration   # Docker smoke tests
-make bench              # Benchmark harness placeholder
+make bench              # Load test the defended chat-completion pipeline (stub backends)
 ```
 
 ### Running tests without local Go
@@ -122,6 +122,30 @@ docker run --rm -v "$(pwd)/policy-engine:/app" -w /app golang:1.22-alpine go tes
 cd input-defense && pip install -e '.[dev]' && pytest
 cd output-defense && pip install -e '.[dev]' && pytest
 ```
+
+### Load testing
+
+Two load-testing scripts, both built on [vegeta](https://github.com/tsenart/vegeta):
+
+- **`make bench`** / `scripts/benchmark.sh` -- CI-safe profile. Runs against
+  whatever stack is already up (CI runs it with stub detector backends, same
+  as the rest of the suite, so it measures the pipeline's own overhead --
+  auth, defense calls, policy evaluation, JSON marshaling -- not real-model
+  inference latency). Writes `benchmark-results/gateway-chat.json` (vegeta
+  report) plus a text summary.
+- **`scripts/load-test-ml.sh`** -- real-ML-backend profile. Not run in CI
+  (CI never has the ML overlay up). Run this manually against a box running
+  `docker-compose.demo-ml.yml`, with `AEGIS_INTERNAL_TOKEN` and
+  `AEGIS_API_KEYS` set. It load-tests input-defense and output-defense
+  directly (isolating each detector's real inference cost) as well as the
+  full gateway pipeline, writing `benchmark-results/ml-*.json`.
+
+**Tracked for future work:** neither script currently gates CI on any
+latency/throughput/success-rate threshold -- these numbers are informational
+only for now. There's no real baseline yet to set a sane threshold against;
+once a few real runs (especially from `load-test-ml.sh`) establish what
+"normal" looks like, this should be revisited and the CI-safe profile wired
+up to fail the build on a real regression.
 
 ## Build order
 

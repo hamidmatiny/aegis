@@ -68,7 +68,7 @@ test-python:
 test-integration:
 	./scripts/integration
 
-bench:
+bench: # CI-safe vegeta load test against stub backends (informational only, see scripts/benchmark.sh)
 	./scripts/benchmark.sh
 
 # ---------------------------------------------------------------------------
