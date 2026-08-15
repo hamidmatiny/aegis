@@ -8,9 +8,18 @@ services:
     image: nginx:1.27-alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./deploy/oracle/nginx-demo.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/oracle/demo-web:/usr/share/nginx/html:ro
+      # Stage C.1: only ever referenced by the rendered config if
+      # deploy/oracle/tls/origin.pem + origin-key.pem exist at setup.sh
+      # render time (see nginx-demo.conf.template) -- an empty/missing
+      # directory here is harmless, nothing in the plain-HTTP config path
+      # points at it. setup.sh creates this directory unconditionally so
+      # the mount source always exists rather than relying on Docker's
+      # own auto-create-on-missing-bind-source behavior.
+      - ./deploy/oracle/tls:/etc/nginx/tls:ro
     depends_on:
       gateway:
         condition: service_started

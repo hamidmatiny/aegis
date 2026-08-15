@@ -5,6 +5,19 @@
 #  3. Only exposes /health, the defended chat endpoint, and a narrow slice
 #     of agent-gate (evaluate + decide) — nothing else.
 #
+# Stage C.1: this template still literally defines one plain :80 server
+# block below, unchanged from before Stage C. deploy/oracle/setup.sh
+# renders this into nginx-demo.conf as always via envsubst + the canary
+# splice, then runs one more conditional step: if a Cloudflare Origin CA
+# cert pair exists at deploy/oracle/tls/ (see deploy/oracle/README.md),
+# it duplicates the location blocks below (bracketed by a pair of marker
+# comments -- search this file for LOCATIONS START and LOCATIONS END,
+# written without hashes here on purpose so this paragraph doesn't itself
+# match those markers) into a second `listen 443 ssl` server block, and
+# turns this one into a redirect to https. Absent those cert files,
+# nothing about this template's behavior changes at all -- same opt-in,
+# silent-no-op pattern as Stage B.1's credential backup.
+#
 # ${AEGIS_DEMO_API_KEY}, ${AEGIS_DEMO_AGENT_GATE_SERVICE_KEY}, and
 # ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY} are substituted by
 # deploy/oracle/setup.sh via envsubst at container start; none are ever
@@ -27,6 +40,7 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # ###LOCATIONS_START###
     location = /health {
         proxy_pass http://gateway:8080/health;
     }
@@ -81,4 +95,5 @@ server {
     location / {
         try_files $uri $uri/ =404;
     }
+    # ###LOCATIONS_END###
 }

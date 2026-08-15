@@ -88,3 +88,9 @@ deploy/oracle/sh-thd-*
 # Stage B.1 follow-up: age private keys must never be committed
 age-key.txt
 *.agekey
+
+# Stage C.1: Cloudflare Origin CA cert pair (deploy/oracle/tls/origin.pem,
+# deploy/oracle/tls/origin-key.pem) -- already covered by the *.pem / *.key
+# rules above, called out explicitly here since this is private-key
+# material and "already covered by an unrelated-looking rule" is exactly
+# the kind of thing worth spelling out rather than leaving implicit.

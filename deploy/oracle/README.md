@@ -49,12 +49,12 @@ exact per-model footprint this budget is based on.
 5. Add your SSH public key (generate one first if needed: `ssh-keygen -t ed25519 -f ~/.ssh/aegis_oracle`), or let Oracle generate a keypair for you to download.
 6. Create the instance and note its **public IP**.
 
-## 2. Open port 80
+## 2. Open ports 80 and 443
 
-Two firewalls to open — people miss the second one and then can't figure out why the demo isn't reachable:
+Two firewalls to open — people miss the second one and then can't figure out why the demo isn't reachable. Since Stage C.1, both `80` and `443` are needed even if you never turn HTTPS on: `443` sits open but unused until you opt in (see "Domain + HTTPS via Cloudflare" below).
 
-1. **OCI Security List / NSG**: your instance's subnet → Security List → Add Ingress Rule → source `0.0.0.0/0`, TCP, destination port `80`.
-2. **The VM's own iptables**: Oracle's Ubuntu images ship with restrictive rules by default. `deploy/oracle/setup.sh` (below) opens this for you automatically.
+1. **OCI Security List / NSG**: your instance's subnet → Security List → Add Ingress Rule → source `0.0.0.0/0`, TCP, destination port `80`. Repeat for port `443`.
+2. **The VM's own iptables**: Oracle's Ubuntu images ship with restrictive rules by default. `deploy/oracle/setup.sh` (below) opens both ports for you automatically.
 
 ## 3. Deploy
 
@@ -178,8 +178,73 @@ cd aegis && git pull && ./deploy/oracle/setup.sh
 `setup.sh` remounts the volume and restarts `demo-proxy`, so page-only
 changes redeploy in seconds even though the full script re-runs.
 
-## Optional: put a domain + HTTPS in front later
+## Domain + HTTPS via Cloudflare (Stage C.1)
 
-Once this has a real audience, swap `demo-proxy` for Caddy with a domain
-name for automatic HTTPS, or put the VM behind Cloudflare. Not needed for
-an initial demo — plain HTTP to the VM's IP is fine to start.
+The demo is live at **defenseaegis.org**, fronted by Cloudflare's free
+proxy for TLS termination, basic DDoS/bot coverage, and the RAM/bandwidth
+headroom of not terminating TLS on a 1GB box directly. This is a one-time
+setup on Cloudflare's dashboard plus one file drop on the VM -- `setup.sh`
+does the rest, and is a silent no-op for anyone who hasn't done this setup
+(same pattern as the `.env.enc` credential restore above).
+
+**On Cloudflare's dashboard** (you do this yourself -- Claude does not have
+your Cloudflare login and won't ask for it):
+
+1. **DNS**: add an `A` record for `defenseaegis.org` (name `@`) and another
+   for `www`, both pointing at the VM's public IP. Leave the orange cloud
+   (proxy) toggle **ON** for both -- that's what gives you Cloudflare's TLS
+   termination, WAF-adjacent protections, and the RAM savings; an unproxied
+   ("DNS only," grey cloud) record would just point straight at the VM with
+   none of that.
+2. **SSL/TLS → Overview**: set the encryption mode to **Full (strict)**.
+   This is the mode that actually validates the origin's certificate --
+   anything looser either doesn't encrypt Cloudflare-to-origin traffic at
+   all, or doesn't verify what it's talking to.
+3. **SSL/TLS → Origin Server → Create Certificate**: accept the defaults
+   (RSA, 15-year validity, `defenseaegis.org` + `*.defenseaegis.org` as
+   hostnames). Cloudflare shows you the certificate **and private key once,
+   together, on that screen** -- copy both immediately, there is no way to
+   retrieve the private key again afterward (you'd have to generate a new
+   cert pair). This cert is only trusted by Cloudflare's edge, not by
+   public browsers directly -- intentional, it's what stops someone from
+   bypassing Cloudflare and hitting the VM's IP directly over HTTPS with a
+   trusted-looking cert.
+
+**On the VM**, save the two values from step 3 into these exact paths
+(create the directory if `setup.sh` hasn't already):
+
+```bash
+mkdir -p ~/aegis/deploy/oracle/tls
+nano ~/aegis/deploy/oracle/tls/origin.pem       # paste the certificate block
+nano ~/aegis/deploy/oracle/tls/origin-key.pem   # paste the private key block
+chmod 600 ~/aegis/deploy/oracle/tls/origin-key.pem
+```
+
+Both files are already covered by the repo's `.gitignore` (`*.pem`, `*.key`
+patterns) -- they will never be committed even if you're working from
+inside the `aegis` checkout. Then redeploy:
+
+```bash
+cd ~/aegis && ./deploy/oracle/setup.sh
+```
+
+`setup.sh` detects the cert pair, renders a `listen 443 ssl` server block
+using them, and turns the existing `:80` server into a redirect to
+`https://`. Without the cert pair present, this step is a complete no-op --
+the VM keeps serving plain HTTP on `:80` exactly as it did before Stage
+C.1, so there's no harm in running `setup.sh` on a box that hasn't done
+this setup yet.
+
+Verify with `curl -I https://defenseaegis.org/health` after redeploying.
+
+### Why not a self-hosted WAF instead?
+
+Cloudflare's free proxy tier is the primary choice for now: equivalent
+edge protection to a self-hosted WAF, at zero extra RAM cost on a 1GB box
+that can't comfortably spare it. A self-hosted WAF (Coraza + CrowdSec) as
+a separate, deliberately dormant Docker Compose overlay -- built and
+testable, but never wired into `setup.sh`'s default compose chain, so it's
+never part of live traffic -- is planned as a follow-up (Stage C.2), so
+the self-hosted option can be swapped in later (e.g. after an Oracle RAM
+upgrade) without starting from scratch. Not built yet as of this section;
+this note will be updated with real usage instructions once it lands.

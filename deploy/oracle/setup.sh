@@ -101,19 +101,24 @@ else
   echo "    if you want to size up for the real-model profile."
 fi
 
-echo "==> Opening the local firewall for port 80 (Oracle Linux/Ubuntu images"
-echo "    ship with restrictive rules by default — this is the #1 cause of"
-echo "    'it works from the VM but not from the internet' on OCI)."
+echo "==> Opening the local firewall for ports 80 and 443 (Oracle Linux/Ubuntu"
+echo "    images ship with restrictive rules by default — this is the #1 cause"
+echo "    of 'it works from the VM but not from the internet' on OCI). Port"
+echo "    443 is opened unconditionally, whether or not Stage C.1 HTTPS is"
+echo "    actually enabled below — harmless if nginx never binds it."
 if command -v firewall-cmd >/dev/null 2>&1 && sudo systemctl is-active --quiet firewalld 2>/dev/null; then
   sudo firewall-cmd --permanent --add-port=80/tcp
+  sudo firewall-cmd --permanent --add-port=443/tcp
   sudo firewall-cmd --reload
 elif command -v iptables >/dev/null 2>&1; then
   sudo iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || \
     sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+  sudo iptables -C INPUT -p tcp --dport 443 -j ACCEPT 2>/dev/null || \
+    sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
   sudo netfilter-persistent save 2>/dev/null || sudo sh -c "iptables-save > /etc/iptables/rules.v4" 2>/dev/null || true
 fi
-echo "    Also confirm ingress for TCP/80 (and 22 for SSH) is open in the"
-echo "    OCI Console: your VCN's subnet -> Security List -> Ingress Rules."
+echo "    Also confirm ingress for TCP/80, TCP/443 (and 22 for SSH) is open in"
+echo "    the OCI Console: your VCN's subnet -> Security List -> Ingress Rules."
 
 # Stage B.1 recovery path: if this is a fresh box with no .env yet, but an
 # encrypted backup (.env.enc) came along in the git checkout and the
@@ -165,6 +170,52 @@ canary = root.joinpath('nginx-demo-canary.conf').read_text()
 Path('deploy/oracle/nginx-demo.conf').write_text(text.replace('###CANARY_BLOCK###', canary))
 PY
 rm -f deploy/oracle/nginx-demo.conf.tmp
+
+# Stage C.1: opt-in HTTPS via a Cloudflare Origin CA cert, silent no-op
+# absent those files -- same pattern as the Stage B.1 .env.enc restore
+# above. deploy/oracle/README.md documents how to obtain the cert pair
+# from the Cloudflare dashboard and where to put it.
+mkdir -p deploy/oracle/tls
+echo "==> Checking for a Cloudflare Origin CA cert at deploy/oracle/tls/ (see"
+echo "    deploy/oracle/README.md for how to generate one)..."
+python3 <<'PY'
+from pathlib import Path
+
+root = Path('deploy/oracle')
+cert_path = root / 'tls' / 'origin.pem'
+key_path = root / 'tls' / 'origin-key.pem'
+conf_path = root / 'nginx-demo.conf'
+
+start_marker = '# ###LOCATIONS_START###'
+end_marker = '# ###LOCATIONS_END###'
+
+if cert_path.exists() and key_path.exists():
+    text = conf_path.read_text()
+    start_idx = text.index(start_marker)
+    end_idx = text.index(end_marker)
+    assert end_idx > start_idx, "nginx-demo.conf marker ordering is unexpected -- refusing to rewrite"
+    locations = text[start_idx + len(start_marker):end_idx]
+
+    https_server = (
+        "\nserver {\n"
+        "    listen 443 ssl;\n"
+        "    server_name _;\n"
+        "    root /usr/share/nginx/html;\n"
+        "    index index.html;\n"
+        "    ssl_certificate /etc/nginx/tls/origin.pem;\n"
+        "    ssl_certificate_key /etc/nginx/tls/origin-key.pem;\n"
+        + locations +
+        "}\n"
+    )
+
+    redirect_body = "\n    return 301 https://$host$request_uri;\n"
+    text = text[:start_idx] + redirect_body + text[end_idx + len(end_marker):]
+    text += https_server
+    conf_path.write_text(text)
+    print("    HTTPS enabled -- serving on 443 with the Origin CA cert, :80 now redirects.")
+else:
+    print("    No cert pair found -- serving plain HTTP only on :80, same as before Stage C.")
+PY
 
 echo "==> Starting the stack (gateway + dependencies + rate-limited public proxy)..."
 sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy
