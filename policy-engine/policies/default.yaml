@@ -102,6 +102,21 @@ tool_catalog:
     risk_level: MEDIUM
   - tool_name: search_docs
     risk_level: LOW
+  # Operator-platform phase 2 (harness/ tools/skills library additions) --
+  # registered here for the same reason every entry above is: their
+  # misuse is a real, known agent-security risk class (network
+  # exfiltration/SSRF, file-read recon, file-write integrity impact),
+  # even though the harness's own starter implementations are sandboxed
+  # (domain-allowlisted / confined to a local sandbox directory). The
+  # catalog reflects the tool's real-world risk, not how safely this
+  # particular demo implementation happens to be built -- see
+  # harness/src/aegis_harness/tools/{http_get,read_file,write_file}.py.
+  - tool_name: http_get
+    risk_level: MEDIUM
+  - tool_name: read_file
+    risk_level: MEDIUM
+  - tool_name: write_file
+    risk_level: HIGH
 
 settings:
   shadow_mode: false

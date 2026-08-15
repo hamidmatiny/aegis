@@ -50,6 +50,7 @@ async def _main_async(args: argparse.Namespace) -> int:
             model_client=model_client,
             gate_client=gate_client,
             model=args.model,
+            provider=args.provider,
             agent_id=args.agent_id,
             max_turns=args.max_turns,
             approval_timeout_seconds=args.approval_timeout,
@@ -84,7 +85,21 @@ def main() -> int:
         description="Run a governed AEGIS harness agent loop (Stage: operator-platform phase 1)."
     )
     parser.add_argument("message", help="the user message / task to give the agent")
-    parser.add_argument("--model", default="mock-model")
+    parser.add_argument(
+        "--model",
+        default="mock-model",
+        help="model name passed through to model-router, e.g. gpt-4o-mini, "
+        "claude-3-5-haiku-20241022, llama3 (default: mock-model)",
+    )
+    parser.add_argument(
+        "--provider",
+        default="",
+        help="upstream provider for model-router to route to: openai, anthropic, "
+        "gemini, grok, ollama, vllm, or mock. Left empty (the default), "
+        "model-router falls back to its own configured default, which is "
+        "mock -- so a real model is only ever used if this is set explicitly. "
+        "See README.md's 'Testing against a real model' section.",
+    )
     parser.add_argument("--agent-id", default="aegis-harness-cli")
     parser.add_argument("--tenant-id", default="default")
     parser.add_argument("--max-turns", type=int, default=8)

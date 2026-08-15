@@ -59,9 +59,13 @@ class ScriptedModelClient:
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
         self.call_count = 0
+        self.providers_seen: list[str] = []
 
-    async def complete(self, *, model: str, messages: list[dict[str, str]]) -> str:
+    async def complete(
+        self, *, model: str, messages: list[dict[str, str]], provider: str = ""
+    ) -> str:
         self.call_count += 1
+        self.providers_seen.append(provider)
         if not self._responses:
             raise AssertionError("ScriptedModelClient ran out of scripted responses")
         return self._responses.pop(0)
@@ -353,6 +357,35 @@ async def test_turn_budget_exceeded_raises():
     # tool did run 3 times (each was genuinely ALLOWED) -- the budget cap
     # is what stops the run, not a governance failure
     assert len(tool.calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_provider_is_forwarded_to_model_client_every_turn():
+    model = ScriptedModelClient(["The answer is 42."])
+    gate = ScriptedGateClient(decisions=[])
+    await run_agent(
+        system_prompt="be helpful",
+        user_message="what is the answer?",
+        tools=ToolRegistry(),
+        model_client=model,
+        gate_client=gate,
+        provider="openai",
+    )
+    assert model.providers_seen == ["openai"]
+
+
+@pytest.mark.asyncio
+async def test_provider_defaults_to_empty_string():
+    model = ScriptedModelClient(["The answer is 42."])
+    gate = ScriptedGateClient(decisions=[])
+    await run_agent(
+        system_prompt="be helpful",
+        user_message="what is the answer?",
+        tools=ToolRegistry(),
+        model_client=model,
+        gate_client=gate,
+    )
+    assert model.providers_seen == [""]
 
 
 def test_execute_after_gate_refuses_without_allowed_decision_even_called_directly():

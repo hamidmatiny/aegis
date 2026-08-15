@@ -68,6 +68,7 @@ async def run_agent(
     model_client: ModelClient,
     gate_client: GateClient,
     model: str = "mock-model",
+    provider: str = "",
     agent_id: str = "aegis-harness",
     max_turns: int = 8,
     approval_timeout_seconds: float = 300.0,
@@ -86,6 +87,13 @@ async def run_agent(
     answer within `max_turns`, and `ApprovalTimeoutError` if a pending
     approval isn't decided in time. Both are real termination conditions
     a caller should expect and handle, not edge cases to ignore.
+
+    `provider` is forwarded to `model_client.complete()` unchanged on
+    every turn -- left empty (the default), model-router falls back to
+    its own configured default provider ("mock"), which is why every
+    prior run of this harness only ever talked to the mock echo. Set it
+    to "openai"/"anthropic"/"gemini"/"grok"/"ollama"/"vllm" to run
+    against a real model; see harness/README.md.
     """
     messages: list[dict[str, str]] = [
         {"role": "system", "content": build_system_prompt(tools, system_prompt)},
@@ -94,7 +102,9 @@ async def run_agent(
     transcript: list[Turn] = []
 
     for turn_index in range(max_turns):
-        response_text = await model_client.complete(model=model, messages=messages)
+        response_text = await model_client.complete(
+            model=model, messages=messages, provider=provider
+        )
         parsed = parse_model_response(response_text)
 
         if parsed.final_answer is not None:

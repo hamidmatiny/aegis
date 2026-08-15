@@ -28,9 +28,16 @@ import httpx
 
 
 class ModelClient(Protocol):
-    async def complete(self, *, model: str, messages: list[dict[str, str]]) -> str:
+    async def complete(
+        self, *, model: str, messages: list[dict[str, str]], provider: str = ""
+    ) -> str:
         """Return the model's raw text response for the given message
-        history. Implementations decide how to reach a real model."""
+        history. `provider` selects which upstream model-router should
+        route to (e.g. "openai", "anthropic", "ollama", "vllm", "grok",
+        "mock"); an empty string defers to model-router's own configured
+        default, which is "mock" out of the box (see
+        model-router/config/providers.yaml's routing.default_provider).
+        Implementations decide how to reach a real model."""
         ...
 
 
@@ -102,14 +109,26 @@ class ModelRouterClient:
         # that talk to a local mock server can turn it off explicitly.
         self.trust_env = trust_env
 
-    async def complete(self, *, model: str, messages: list[dict[str, str]]) -> str:
+    async def complete(
+        self, *, model: str, messages: list[dict[str, str]], provider: str = ""
+    ) -> str:
         headers = {}
         if self.internal_token:
             headers["Authorization"] = f"Bearer {self.internal_token}"
+        payload: dict[str, Any] = {"model": model, "messages": messages}
+        # Omitted entirely (rather than sent as "") when unset, matching
+        # model-router's own `json:"provider,omitempty"` -- and because
+        # model-router's ResolveChain only falls back to its configured
+        # default_provider ("mock") when the field is genuinely absent,
+        # this is the one line that decides whether a run talks to a real
+        # model or the mock echo. See harness/README.md's "Testing against
+        # a real model" section for why this exists.
+        if provider:
+            payload["provider"] = provider
         async with httpx.AsyncClient(timeout=self.timeout, trust_env=self.trust_env) as client:
             resp = await client.post(
                 f"{self.base_url}/v1/chat/completions",
-                json={"model": model, "messages": messages},
+                json=payload,
                 headers=headers,
             )
             resp.raise_for_status()

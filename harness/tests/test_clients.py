@@ -120,6 +120,37 @@ async def test_model_router_client_omits_header_when_no_token(mock_server):
 
 
 @pytest.mark.asyncio
+async def test_model_router_client_sends_provider_when_set(mock_server):
+    base_url, handler = mock_server
+    handler.responses["POST /v1/chat/completions"] = (200, {"content": "hi from a real model"})
+    client = ModelRouterClient(base_url=base_url, trust_env=False)
+
+    await client.complete(
+        model="gpt-4o-mini", messages=[{"role": "user", "content": "hi"}], provider="openai"
+    )
+
+    assert handler.requests[0]["body"] == {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": "hi"}],
+        "provider": "openai",
+    }
+
+
+@pytest.mark.asyncio
+async def test_model_router_client_omits_provider_when_not_set(mock_server):
+    base_url, handler = mock_server
+    handler.responses["POST /v1/chat/completions"] = (200, {"content": "x"})
+    client = ModelRouterClient(base_url=base_url, trust_env=False)
+
+    await client.complete(model="mock-model", messages=[])
+
+    # No provider key at all -- not even provider="" -- since model-router's
+    # ResolveChain only falls back to its configured default when the field
+    # is genuinely absent from the request.
+    assert "provider" not in handler.requests[0]["body"]
+
+
+@pytest.mark.asyncio
 async def test_model_router_client_raises_on_missing_content(mock_server):
     base_url, handler = mock_server
     handler.responses["POST /v1/chat/completions"] = (200, {"provider": "mock"})
