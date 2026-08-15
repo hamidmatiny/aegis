@@ -1,0 +1,14 @@
+# CrowdSec acquisition config: tells the crowdsec container which log
+# file(s) to tail and which parser family to route them through. Mounted
+# read-only into the crowdsec container at /etc/crowdsec/acquis.yaml by
+# deploy/oracle/docker-compose.waf.yml.
+#
+# coraza-waf (see ../docker-compose.waf.yml) is an nginx-based image
+# writing an nginx-format access log to the shared coraza-access-log
+# volume -- so this uses the standard "nginx" label, which routes into
+# the crowdsecurity/nginx collection's parsers (installed via the
+# COLLECTIONS env var on the crowdsec service itself).
+filenames:
+  - /var/log/coraza/access.log
+labels:
+  type: nginx

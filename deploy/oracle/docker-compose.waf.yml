@@ -1,0 +1,71 @@
+# Stage C.2: self-hosted WAF scaffold (Coraza + OWASP CRS, and CrowdSec's
+# detection engine). Deliberately NOT wired into setup.sh's compose chain --
+# adding this file to a `docker compose -f ... up` command is the only way
+# any of this ever starts. Nothing here changes the live demo unless you
+# explicitly do that yourself. Read deploy/oracle/waf/README.md before you
+# do: there's a real host-level step (the CrowdSec firewall bouncer) that
+# has to happen outside Docker entirely for any of this to actually block
+# traffic instead of just observing it -- there is no official bouncer
+# container image, so this file deliberately does not include one.
+#
+# Layout when actually wired in (not done by this file alone):
+#   internet -> coraza-waf (OWASP CRS signature blocking) -> demo-proxy
+#   (existing rate-limit/API-key-injection/canary logic, unchanged) -> gateway
+# crowdsec tails coraza-waf's access log for behavioral detection
+# (crawling, probing, bad user agents -- the crowdsecurity/nginx
+# collection) on top of Coraza's signature matching, and exposes
+# decisions over its Local API for the host-level firewall bouncer (see
+# waf/README.md) to actually enforce as iptables bans.
+#
+# Usage (testing/inspection only -- see waf/README.md for why this isn't
+# "live" even if you run it): from the repo root,
+#   docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml -f deploy/oracle/docker-compose.waf.yml up -d coraza-waf crowdsec
+services:
+  coraza-waf:
+    image: ghcr.io/coreruleset/coraza-crs:4.25.0-nginx-lts
+    environment:
+      BACKEND: demo-proxy:80
+      ACCESSLOG: /var/log/coraza/access.log
+      # DetectionOnly by default even in this testing overlay, on purpose:
+      # a second layer of "don't accidentally block real traffic" beyond
+      # this file simply not being in setup.sh's compose chain. Flip to
+      # "On" only once you've watched it run against real traffic for a
+      # while and are comfortable with what it would block -- see
+      # waf/README.md's activation section.
+      CORAZA_RULE_ENGINE: DetectionOnly
+    volumes:
+      - coraza-access-log:/var/log/coraza
+    ports:
+      # Deliberately NOT 80/443 -- demo-proxy already holds those, and
+      # this overlay is never in setup.sh's compose chain regardless.
+      # 8081 matches the upstream image's own quick-start convention,
+      # here just for local inspection/testing over the loopback
+      # interface, never from outside the box.
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      demo-proxy:
+        condition: service_started
+    restart: "no"
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.7.8
+    environment:
+      # crowdsecurity/nginx installs the nginx log parser + the behavioral
+      # scenarios (crawling, probing, bad user agents, sqli/xss probing)
+      # documented at https://hub.crowdsec.net/author/crowdsecurity/collections/nginx
+      COLLECTIONS: "crowdsecurity/nginx"
+      GID: "${GID:-1000}"
+    volumes:
+      - coraza-access-log:/var/log/coraza:ro
+      - ./deploy/oracle/waf/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - crowdsec-db:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+    depends_on:
+      coraza-waf:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  coraza-access-log:
+  crowdsec-db:
+  crowdsec-config:

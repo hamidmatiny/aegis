@@ -241,10 +241,12 @@ Verify with `curl -I https://defenseaegis.org/health` after redeploying.
 
 Cloudflare's free proxy tier is the primary choice for now: equivalent
 edge protection to a self-hosted WAF, at zero extra RAM cost on a 1GB box
-that can't comfortably spare it. A self-hosted WAF (Coraza + CrowdSec) as
-a separate, deliberately dormant Docker Compose overlay -- built and
-testable, but never wired into `setup.sh`'s default compose chain, so it's
-never part of live traffic -- is planned as a follow-up (Stage C.2), so
-the self-hosted option can be swapped in later (e.g. after an Oracle RAM
-upgrade) without starting from scratch. Not built yet as of this section;
-this note will be updated with real usage instructions once it lands.
+that can't comfortably spare it. A self-hosted WAF (Coraza + CrowdSec) does
+exist in this repo as of Stage C.2 -- `deploy/oracle/docker-compose.waf.yml`
+-- but it's a separate, deliberately dormant overlay: built and testable,
+never wired into `setup.sh`'s default compose chain, so it's never part of
+live traffic unless you explicitly bring it up yourself. See
+[`deploy/oracle/waf/README.md`](waf/README.md) for the full architecture,
+how to test it in isolation, and the real steps (including a host-level
+piece Docker Compose alone can't cover) to actually activate it later --
+e.g. after an Oracle RAM upgrade -- without starting from scratch.
