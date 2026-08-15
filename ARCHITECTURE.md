@@ -158,28 +158,30 @@ Reference integrations in [examples/](examples/):
 
 Run `./scripts/e2e-examples.sh` with the stack up.
 
-### 11. Harness (Python) — Stage 12, operator-platform phase 1
+### 11. Harness (Python) — Stage 12, operator-platform phases 1-2
 
-A minimal, real, governed multi-step agent loop -- the first concrete piece
-of the "model layer + harness + tools/skills library + runtime" operator
-vision (project memory node N47), built inside AEGIS rather than a new
-repo. Not a general-purpose agent framework: a small demonstration that
-agent-gate's governance can be load-bearing for an actual loop, not just
-advisory for a well-behaved external caller. `tool.execute()` is reachable
-from exactly one call site in the whole package, gated on an ALLOWED
-decision from agent-gate.
+A minimal, real, governed multi-step agent loop plus a starter tool
+library -- the first concrete pieces of the "model layer + harness +
+tools/skills library + runtime" operator vision (project memory node
+N47), built inside AEGIS rather than a new repo. Not a general-purpose
+agent framework: a small demonstration that agent-gate's governance can
+be load-bearing for an actual loop, not just advisory for a well-behaved
+external caller. `tool.execute()` is reachable from exactly one call
+site in the whole package, gated on an ALLOWED decision from agent-gate.
 
 | Capability | Description |
 |------------|--------------|
 | Governed loop | `model-router` (next action) → `agent-gate` (evaluate) → execute → repeat, bounded by a turn budget |
 | Extensible tools | `Tool` interface + `ToolRegistry` — add a tool without touching the loop |
 | Human-approval aware | Genuinely pauses and polls on `AWAITING_HUMAN_APPROVAL`, not simulated |
-| Starter tools | `search_docs` (LOW), `send_email` (MEDIUM, sandboxed), `delete_database` (IRREVERSIBLE, sandboxed) — reuse real `policy-engine` `tool_catalog` entries |
+| Real model selection | `--provider`/`--model` route to any of `model-router`'s providers (OpenAI, Anthropic, Gemini, Grok, Ollama, vLLM) -- omit `--provider` and every run talks to the `mock` provider only, by design |
+| Starter tools (7, all 4 risk tiers) | `search_docs` (LOW), `calculator` (LOW, restricted `ast` evaluator, never `eval()`), `send_email` (MEDIUM, sandboxed), `http_get` (MEDIUM, domain-allowlisted), `read_file` (MEDIUM, sandboxed), `write_file` (HIGH, sandboxed -- first starter tool to use this tier), `delete_database` (IRREVERSIBLE, sandboxed) |
 
 See [harness/README.md](./harness/README.md) for the full design, the
 prompted tool-calling convention (`model-router` has no native
-function-calling), and the honest scope of what's verified without a live
-model.
+function-calling), how to test against a real model with your own API
+key or a local Ollama/vLLM instance, and the honest scope of what's
+verified without a live model.
 
 ## Shared schemas
 

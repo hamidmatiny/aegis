@@ -4,6 +4,8 @@
 
 AEGIS sits between your application and any LLM provider, enforcing defense-in-depth against prompt injection, jailbreaks, data exfiltration, tool/MCP abuse, and supply-chain tampering — with full tamper-evident audit trails.
 
+**Live demo:** [defenseaegis.org](https://defenseaegis.org) — no signup, no API key, runs on a mock model so it's free to poke at. Try a benign request next to a prompt-injection attempt and watch AEGIS catch the difference.
+
 ## Architecture
 
 ```
@@ -36,7 +38,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 | `dashboard/` | React + TS | Operations UI | 9 |
 | `sdk/` | Python + TS | Drop-in SDK wrappers | 10 |
 | `examples/` | Mixed | Reference integrations | 11 |
-| `harness/` | Python | Governed multi-step agent loop (operator-platform phase 1) | 12 |
+| `harness/` | Python | Governed multi-step agent loop + 7-tool starter library, all 4 risk tiers (operator-platform phases 1-2) | 12 |
 | `deploy/` | Helm + SQL | Production deployment | 0 |
 
 ## Quick start
@@ -198,6 +200,27 @@ manual step, not automated -- see the runbook for why.
 | 9 | Dashboard | Done |
 | 10 | SDKs | Done |
 | 11 | Example apps | Done |
+| H4 | Go gateway restored as the HTTP orchestrator (was Python) | Done |
+| 12 | Harness: governed multi-step agent loop + starter tool library (operator-platform phases 1-2, see [ARCHITECTURE.md](./ARCHITECTURE.md#11-harness-python--stage-12-operator-platform-phase-1)) | Done |
+
+### Production hardening (post-launch)
+
+A second pass, after the initial build order above, closing real gaps found by direct investigation of the running system rather than a pre-written checklist — see [ARCHITECTURE.md](./ARCHITECTURE.md) and each linked doc for the full detail on any of these.
+
+| Stage | Component | Status |
+|-------|-----------|--------|
+| A.1 | Internal service-to-service auth (`AEGIS_INTERNAL_TOKEN`) | Done |
+| A.2 | Model-router auth enforcement | Done |
+| B.1 | Encrypted, opt-in credentials backup (SOPS + age) | Done |
+| B.2 | Audit signing-key rotation with historical-key verification | Done |
+| B.3 | Audit cursor-pagination fix (composite keyset, no dropped/duplicated rows) | Done |
+| C.1 | Domain + HTTPS via Cloudflare — see [Domain + HTTPS via Cloudflare](./deploy/oracle/README.md#domain--https-via-cloudflare-stage-c1) | Done |
+| C.2 | Dormant self-hosted WAF scaffold (Coraza + CRS, CrowdSec) — not wired into the default deploy, see [deploy/oracle/waf/README.md](./deploy/oracle/waf/README.md) | Done (dormant, opt-in) |
+| D.1 | Load testing (CI-safe + manual real-ML profile), see [Load testing](#load-testing) | Done |
+| D.2 | Chaos / fault-injection testing against `FAILURE_MODES.md`'s contract, see [Chaos / fault-injection testing](#chaos--fault-injection-testing) | Done |
+| D.3 | Disaster recovery: encrypted postgres backup/restore + daily cron, see [Disaster recovery](#disaster-recovery) | Done |
+| E.1 | Fixed a real credential-leak bypass in taint tracking (server-detected credentials now always block) | Done |
+| E.2 | Agent-identity fingerprinting + spoofing-detection script (`scripts/asi07-identity-consistency-query.py`) | Done |
 
 ## Environment variables
 
