@@ -68,6 +68,9 @@ test-python:
 test-integration:
 	./scripts/integration
 
+chaos: # Fault-injection tests against FAILURE_MODES.md's documented contract (see scripts/chaos-test.sh)
+	./scripts/chaos-test.sh
+
 bench: # CI-safe vegeta load test against stub backends (informational only, see scripts/benchmark.sh)
 	./scripts/benchmark.sh
 

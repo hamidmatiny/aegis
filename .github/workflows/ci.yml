@@ -160,6 +160,40 @@ jobs:
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
         run: docker compose down -v
 
+  chaos:
+    name: Chaos / fault-injection tests
+    runs-on: ubuntu-latest
+    needs: [integration]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start stack
+        env:
+          # Same throwaway CI credentials as the integration job.
+          AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND: stub
+          AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND: stub
+          AEGIS_DASHBOARD_USER: ci-admin
+          AEGIS_DASHBOARD_PASSWORD: ci-test-password-not-a-secret
+          AEGIS_API_KEYS: ci-test-api-key-not-a-secret
+          AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+          AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+        run: docker compose up -d --build --wait
+      - name: Run chaos / fault-injection tests
+        # Unlike the benchmark job, this is pass/fail correctness against
+        # the contract documented in FAILURE_MODES.md -- a failure here
+        # fails the build.
+        env:
+          AEGIS_API_KEYS: ci-test-api-key-not-a-secret
+          AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+        run: |
+          chmod +x scripts/chaos-test.sh
+          ./scripts/chaos-test.sh
+      - name: Tear down
+        if: always()
+        env:
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+        run: docker compose down -v
+
   benchmark:
     name: Benchmark harness
     runs-on: ubuntu-latest

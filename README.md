@@ -106,6 +106,7 @@ make proto              # Lint + generate from shared/proto
 make lint               # Go + Python linters
 make test               # Unit tests (Go + Python)
 make test-integration   # Docker smoke tests
+make chaos              # Fault-injection tests against FAILURE_MODES.md's contract
 make bench              # Load test the defended chat-completion pipeline (stub backends)
 ```
 
@@ -146,6 +147,27 @@ only for now. There's no real baseline yet to set a sane threshold against;
 once a few real runs (especially from `load-test-ml.sh`) establish what
 "normal" looks like, this should be revisited and the CI-safe profile wired
 up to fail the build on a real regression.
+
+### Chaos / fault-injection testing
+
+`scripts/chaos-test.sh` automates the manual procedure described in
+[FAILURE_MODES.md](./FAILURE_MODES.md)'s own "Verification" section: it stops
+one real dependency at a time against the running stack and asserts the
+documented contract actually holds, restoring and health-checking before
+moving to the next one.
+
+- Stopping `input-defense`, `output-defense`, `policy-engine`, or
+  `model-router` must make the gateway's `/v1/chat/completions` fail closed
+  (502/500) -- no response is ever released with a decision dependency down.
+  Stopping `policy-engine` additionally checks that agent-gate's
+  `/v1/evaluate` fails closed too, never `APPROVED`.
+- Stopping `audit` must NOT break anything -- the gateway chat pipeline keeps
+  succeeding (fail-open), per `FAILURE_MODES.md`'s explicit fail-open table.
+
+Unlike the load-testing scripts above, this is pass/fail correctness against
+a contract this repo already publishes, not a numeric measurement -- it runs
+in CI (a dedicated `chaos` job) and a failure here fails the build. Run it
+locally with `./scripts/chaos-test.sh` against an already-running stack.
 
 ## Build order
 
