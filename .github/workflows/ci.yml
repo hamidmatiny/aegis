@@ -182,9 +182,16 @@ jobs:
         # Unlike the benchmark job, this is pass/fail correctness against
         # the contract documented in FAILURE_MODES.md -- a failure here
         # fails the build.
+        #
+        # AEGIS_INTERNAL_TOKEN must be set here too, same reason as the
+        # Tear down step below: `docker compose stop/start` still has to
+        # interpolate the whole compose file first (AEGIS_INTERNAL_TOKEN
+        # is a required `${...:?...}` value on 8 services), even though
+        # stop/start themselves never send it to a container.
         env:
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
+          AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
         run: |
           chmod +x scripts/chaos-test.sh
           ./scripts/chaos-test.sh
