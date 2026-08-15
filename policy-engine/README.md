@@ -157,7 +157,17 @@ Default tool rules (`policies/default.yaml`):
 | Rule | CEL | Action |
 |------|-----|--------|
 | `require-approval-irreversible` | `risk_level == 'IRREVERSIBLE'` | `escalate_to_judge` |
-| `block-tainted-credentials` | tainted arg with credentials | `block` |
+| `block-tainted-credentials` | any arg with `contains_credentials == true` | `block` |
+
+`contains_credentials` is set server-side by agent-gate's `mask.go`, which
+regex-scans every argument's actual value for credential-shaped content
+(API keys, AWS keys, JWTs, private keys, `password=`/`api_key=` patterns) --
+it does not rely on the calling agent to self-declare this. A detected
+credential also gets `taint_level` escalated to `TAINTED`, but the rule
+above triggers on `contains_credentials` alone (Stage E.1) so it isn't
+contingent on that escalation happening correctly in every code path --
+belt-and-suspenders for a class of bug (self-declared security metadata
+going unverified) this project has hit before with `risk_level` spoofing.
 
 ## End-to-end with agent-gate
 

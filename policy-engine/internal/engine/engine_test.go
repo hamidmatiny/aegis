@@ -312,3 +312,106 @@ func TestEvaluateToolCatalogUnknownToolUsesDeclaredRisk(t *testing.T) {
 		t.Fatalf("expected no override for unregistered tool")
 	}
 }
+
+// TestEvaluateToolBlocksCredentialsRegardlessOfTaintLevel guards against
+// the Stage E.1 gap: block-tainted-credentials used to require BOTH
+// contains_credentials AND taint_level == 'TAINTED'. agent-gate's
+// mask.go server-detects credentials in an argument's actual value
+// regardless of what the caller declares, but before its own Stage E.1
+// fix it only escalated taint_level to 'UNTRUSTED', never 'TAINTED' --
+// so a real, server-detected credential with an undeclared or
+// 'UNTRUSTED' taint_level slipped through as ALLOW. The rule now
+// triggers on contains_credentials alone, so this must block even
+// without any TAINTED label present.
+func TestEvaluateToolBlocksCredentialsRegardlessOfTaintLevel(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "block-tainted-credentials", Name: "Block credentials",
+				CEL: "tool_call.arguments.exists(a, a.contains_credentials)", Action: models.ActionBlock, Enabled: true,
+			},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	call := models.ToolCallRequest{
+		ToolName: "send_email",
+		Arguments: []models.ToolArgument{
+			{Name: "body", ContainsCredentials: true, TaintLevel: "UNTRUSTED"},
+		},
+	}
+	decision, err := eng.EvaluateTool(pack, "default", call, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool: %v", err)
+	}
+	if decision.Action != models.ActionBlock {
+		t.Fatalf("expected block for a credential-bearing argument even without an explicit TAINTED label, got %s", decision.Action)
+	}
+}
+
+// TestEvaluateToolBlocksExplicitTaintedCredentials is the pre-existing
+// case (a caller that does explicitly declare TAINTED) -- must keep
+// blocking after the Stage E.1 rule change, not just the new case above.
+func TestEvaluateToolBlocksExplicitTaintedCredentials(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "block-tainted-credentials", Name: "Block credentials",
+				CEL: "tool_call.arguments.exists(a, a.contains_credentials)", Action: models.ActionBlock, Enabled: true,
+			},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	call := models.ToolCallRequest{
+		ToolName: "send_email",
+		Arguments: []models.ToolArgument{
+			{Name: "body", ContainsCredentials: true, TaintLevel: "TAINTED"},
+		},
+	}
+	decision, err := eng.EvaluateTool(pack, "default", call, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool: %v", err)
+	}
+	if decision.Action != models.ActionBlock {
+		t.Fatalf("expected block for an explicitly TAINTED credential-bearing argument, got %s", decision.Action)
+	}
+}
+
+// TestEvaluateToolAllowsCleanArgument is the false-positive guard: an
+// argument with no detected credentials and no taint must not be
+// blocked by this rule.
+func TestEvaluateToolAllowsCleanArgument(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.2.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "block-tainted-credentials", Name: "Block credentials",
+				CEL: "tool_call.arguments.exists(a, a.contains_credentials)", Action: models.ActionBlock, Enabled: true,
+			},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	call := models.ToolCallRequest{
+		ToolName: "search_docs",
+		Arguments: []models.ToolArgument{
+			{Name: "query", ContainsCredentials: false, TaintLevel: "TRUSTED"},
+		},
+	}
+	decision, err := eng.EvaluateTool(pack, "default", call, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool: %v", err)
+	}
+	if decision.Action != models.ActionAllow {
+		t.Fatalf("expected allow for a clean argument, got %s", decision.Action)
+	}
+}

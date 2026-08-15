@@ -49,9 +49,20 @@ func EnrichArgument(arg *models.ToolArgument) {
 	if matched {
 		arg.ContainsCredentials = true
 		arg.MaskedValue = masked
-		if arg.TaintLevel != models.TaintTainted {
-			arg.TaintLevel = models.TaintUntrusted
-		}
+		// A server-detected credential is TAINTED, not merely UNTRUSTED --
+		// this is the actual severity, not a caller's opinion about the
+		// argument's provenance. Getting this right matters: the only
+		// policy rule guarding against credential exfiltration
+		// (block-tainted-credentials) used to require taint_level ==
+		// 'TAINTED' exactly, so a caller that never explicitly declared
+		// TAINTED (the normal case -- nothing in this repo's examples or
+		// SDKs sets it by default) let a real, server-detected credential
+		// sail through as ALLOWED even though ContainsCredentials was
+		// already correctly true. Fixed alongside a matching policy
+		// change (default.yaml) that no longer depends on this field at
+		// all for its own trigger condition, but this is still the
+		// correct value to report.
+		arg.TaintLevel = models.TaintTainted
 	}
 }
 

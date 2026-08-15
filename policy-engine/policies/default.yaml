@@ -56,9 +56,24 @@ tool_rules:
     action: escalate_to_judge
     enabled: true
 
+  # Stage E.1: triggers on contains_credentials alone. It used to also
+  # require taint_level == 'TAINTED', which meant a caller that never
+  # explicitly declared TAINTED (the normal case -- nothing in this
+  # repo's examples or SDKs sets it by default) could get a real,
+  # server-detected credential (agent-gate/internal/mask.go's regex
+  # detection, which runs on every argument's actual value regardless of
+  # what the caller claims) approved anyway, since contains_credentials
+  # alone didn't satisfy this rule's old AND condition. A live credential
+  # in an argument is grounds to block on its own -- the surrounding
+  # taint context doesn't make a leaked API key less of one. mask.go is
+  # also fixed (Stage E.1) to correctly report TAINTED, not just
+  # UNTRUSTED, in this situation, so this rule is now redundant with that
+  # fix in the common case -- kept broad anyway as defense in depth
+  # against any future code path that sets contains_credentials without
+  # going through mask.go's escalation.
   - id: block-tainted-credentials
-    name: Block tainted data in credential fields
-    cel: "tool_call.arguments.exists(a, a.contains_credentials && a.taint_level == 'TAINTED')"
+    name: Block tool arguments containing detected credentials
+    cel: "tool_call.arguments.exists(a, a.contains_credentials)"
     action: block
     enabled: true
 
