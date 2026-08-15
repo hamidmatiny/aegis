@@ -36,6 +36,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 | `dashboard/` | React + TS | Operations UI | 9 |
 | `sdk/` | Python + TS | Drop-in SDK wrappers | 10 |
 | `examples/` | Mixed | Reference integrations | 11 |
+| `harness/` | Python | Governed multi-step agent loop (operator-platform phase 1) | 12 |
 | `deploy/` | Helm + SQL | Production deployment | 0 |
 
 ## Quick start

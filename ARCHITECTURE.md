@@ -158,6 +158,29 @@ Reference integrations in [examples/](examples/):
 
 Run `./scripts/e2e-examples.sh` with the stack up.
 
+### 11. Harness (Python) — Stage 12, operator-platform phase 1
+
+A minimal, real, governed multi-step agent loop -- the first concrete piece
+of the "model layer + harness + tools/skills library + runtime" operator
+vision (project memory node N47), built inside AEGIS rather than a new
+repo. Not a general-purpose agent framework: a small demonstration that
+agent-gate's governance can be load-bearing for an actual loop, not just
+advisory for a well-behaved external caller. `tool.execute()` is reachable
+from exactly one call site in the whole package, gated on an ALLOWED
+decision from agent-gate.
+
+| Capability | Description |
+|------------|--------------|
+| Governed loop | `model-router` (next action) → `agent-gate` (evaluate) → execute → repeat, bounded by a turn budget |
+| Extensible tools | `Tool` interface + `ToolRegistry` — add a tool without touching the loop |
+| Human-approval aware | Genuinely pauses and polls on `AWAITING_HUMAN_APPROVAL`, not simulated |
+| Starter tools | `search_docs` (LOW), `send_email` (MEDIUM, sandboxed), `delete_database` (IRREVERSIBLE, sandboxed) — reuse real `policy-engine` `tool_catalog` entries |
+
+See [harness/README.md](./harness/README.md) for the full design, the
+prompted tool-calling convention (`model-router` has no native
+function-calling), and the honest scope of what's verified without a live
+model.
+
 ## Shared schemas
 
 All cross-service communication uses protobuf definitions in `shared/proto/aegis/v1/`:
