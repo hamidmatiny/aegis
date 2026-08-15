@@ -46,6 +46,7 @@ func (c *Client) EmitToolGate(
 	trace *TraceContext,
 	toolName string,
 	agentID string,
+	serviceKeyFingerprint string,
 	decision models.ToolCallDecision,
 	policyAction string,
 ) {
@@ -57,17 +58,26 @@ func (c *Client) EmitToolGate(
 	// without them the audit trail records *that* a call happened but not
 	// *what* was called or *by whom*, which makes "an agent that suddenly
 	// starts calling delete_* tools it never called before" unqueryable.
+	//
+	// service_key_fingerprint (Stage E.2, ASI07) is a separate signal:
+	// agent_id is entirely caller-declared and never verified against the
+	// credential that authenticated the request, so nothing stops one key
+	// from claiming many different agent_ids, or the same agent_id being
+	// claimed under different keys. Recording the fingerprint here lets
+	// scripts/asi07-identity-consistency-query.py flag that after the
+	// fact -- it's a detection signal, not a new enforcement check.
 	toolPayload := map[string]any{
-		"tool_name":             toolName,
-		"agent_id":              agentID,
-		"status":                decision.Status,
-		"denial_reason":         decision.DenialReason,
-		"violated_policies":     decision.ViolatedPolicies,
-		"flagged_taint":         decision.FlaggedTaint,
-		"approval_request_id":   decision.ApprovalRequestID,
-		"decided_at":            decision.DecidedAt,
-		"evaluation_latency_ms": decision.EvaluationLatencyMS,
-		"policy_action":         policyAction,
+		"tool_name":               toolName,
+		"agent_id":                agentID,
+		"service_key_fingerprint": serviceKeyFingerprint,
+		"status":                  decision.Status,
+		"denial_reason":           decision.DenialReason,
+		"violated_policies":       decision.ViolatedPolicies,
+		"flagged_taint":           decision.FlaggedTaint,
+		"approval_request_id":     decision.ApprovalRequestID,
+		"decided_at":              decision.DecidedAt,
+		"evaluation_latency_ms":   decision.EvaluationLatencyMS,
+		"policy_action":           policyAction,
 	}
 	toolJSON, err := json.Marshal(toolPayload)
 	if err != nil {

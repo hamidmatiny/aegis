@@ -38,7 +38,7 @@ func TestEmitToolGate_IncludesToolNameAndAgentID(t *testing.T) {
 	}
 
 	decision := models.ToolCallDecision{Status: models.StatusApproved, DecidedAt: time.Now()}
-	c.EmitToolGate("default", &TraceContext{TraceID: "trace-1"}, "delete_database", "agent-42", decision, "allow")
+	c.EmitToolGate("default", &TraceContext{TraceID: "trace-1"}, "delete_database", "agent-42", "fp-abc123", decision, "allow")
 
 	select {
 	case <-done:
@@ -62,6 +62,9 @@ func TestEmitToolGate_IncludesToolNameAndAgentID(t *testing.T) {
 	if toolDecision["agent_id"] != "agent-42" {
 		t.Errorf("expected agent_id 'agent-42' in the audit receipt, got %v -- without this, ASI10 rogue-agent pattern queries can't attribute a tool call to a specific agent over time", toolDecision["agent_id"])
 	}
+	if toolDecision["service_key_fingerprint"] != "fp-abc123" {
+		t.Errorf("expected service_key_fingerprint 'fp-abc123' in the audit receipt, got %v -- without this, scripts/asi07-identity-consistency-query.py can't cross-check agent_id claims against the credential that actually authenticated the request", toolDecision["service_key_fingerprint"])
+	}
 }
 
 func TestEmitToolGate_DisabledClientDoesNotPanic(t *testing.T) {
@@ -70,5 +73,5 @@ func TestEmitToolGate_DisabledClientDoesNotPanic(t *testing.T) {
 		t.Fatal("client with empty baseURL should be disabled")
 	}
 	// Should be a no-op, not a panic or a hang.
-	c.EmitToolGate("default", nil, "some_tool", "some-agent", models.ToolCallDecision{}, "allow")
+	c.EmitToolGate("default", nil, "some_tool", "some-agent", "fp-abc123", models.ToolCallDecision{}, "allow")
 }

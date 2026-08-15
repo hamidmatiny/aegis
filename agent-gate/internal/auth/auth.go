@@ -13,7 +13,9 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
@@ -98,6 +100,49 @@ func GenerateKey() string {
 	return "aegis_" + hex.EncodeToString(b)
 }
 
+// Fingerprint returns a short, non-reversible identifier for a key --
+// never the key itself, and not usable to reconstruct it (SHA-256 of a
+// high-entropy 256-bit key, truncated to 48 bits of output is more than
+// enough to distinguish a small number of operator-configured keys from
+// each other without leaking anything about the original secret).
+//
+// Used to correlate agent identity claims (agent_id, entirely
+// caller-declared and unverified) against which actual credential
+// authenticated the request -- see the Stage E.1/E.2 note on
+// contextKeyFingerprint below for why this exists.
+func Fingerprint(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+type contextKey int
+
+// contextKeyFingerprint carries the Fingerprint of whichever Service key
+// authenticated the current request, set by Middleware and read by
+// handlers that want to record it (agent-gate's tool-gate audit emission
+// does, so the audit trail can later reveal when a single agent_id is
+// claimed under multiple different keys, or a single key claims many
+// different agent_id values -- neither is enforced here, since this
+// project's shared-key-per-integration model doesn't support strict
+// per-agent credential binding without a bigger architecture change; this
+// is a detection signal for scripts/asi07-identity-consistency-query.py,
+// not a new authorization check).
+const contextKeyFingerprint contextKey = iota
+
+// ContextWithFingerprint returns a context carrying the given key
+// fingerprint, retrievable later via FingerprintFromContext.
+func ContextWithFingerprint(ctx context.Context, fingerprint string) context.Context {
+	return context.WithValue(ctx, contextKeyFingerprint, fingerprint)
+}
+
+// FingerprintFromContext returns the fingerprint set by ContextWithFingerprint,
+// or "" if none was set (e.g. an exempt path, or a request that was never
+// authenticated with a Service key at all).
+func FingerprintFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(contextKeyFingerprint).(string)
+	return v
+}
+
 // Valid reports whether key matches one of this set's keys, using a
 // constant-time comparison per candidate to avoid leaking timing info.
 func (ks KeySet) Valid(key string) bool {
@@ -161,6 +206,7 @@ func Middleware(cfg Config) func(http.Handler) http.Handler {
 					"\"X-API-Key: <key>\".")
 				return
 			}
+			r = r.WithContext(ContextWithFingerprint(r.Context(), Fingerprint(key)))
 			next.ServeHTTP(w, r)
 		})
 	}

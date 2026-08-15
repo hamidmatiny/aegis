@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aegis-platform/aegis/agent-gate/internal/auth"
@@ -155,6 +156,78 @@ func TestMiddleware_ApprovalsGetRequiresServiceKey(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 reading an approval with a service key, got %d", rec.Code)
+	}
+}
+
+// TestFingerprint_DeterministicAndDistinct is the core property this
+// whole feature (Stage E.2, ASI07 identity-consistency detection) relies
+// on: the same key must always produce the same fingerprint (so an
+// agent's established fingerprint baseline is stable across requests),
+// different keys must produce different fingerprints (so it actually
+// distinguishes identities), and the fingerprint must never just be the
+// key itself or an obvious substring of it.
+func TestFingerprint_DeterministicAndDistinct(t *testing.T) {
+	a := auth.Fingerprint("svc-key-one")
+	b := auth.Fingerprint("svc-key-one")
+	c := auth.Fingerprint("svc-key-two")
+
+	if a != b {
+		t.Fatalf("expected the same key to produce the same fingerprint, got %q and %q", a, b)
+	}
+	if a == c {
+		t.Fatalf("expected different keys to produce different fingerprints, both were %q", a)
+	}
+	if a == "svc-key-one" || strings.Contains(a, "svc-key-one") {
+		t.Fatalf("fingerprint must not be or contain the original key, got %q", a)
+	}
+}
+
+func TestMiddleware_SetsFingerprintInContextForServiceKey(t *testing.T) {
+	var gotFingerprint string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/evaluate", func(w http.ResponseWriter, r *http.Request) {
+		gotFingerprint = auth.FingerprintFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+	h := auth.Middleware(testConfig())(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/evaluate", nil)
+	req.Header.Set("Authorization", "Bearer svc-key")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	want := auth.Fingerprint("svc-key")
+	if gotFingerprint != want {
+		t.Fatalf("expected context fingerprint %q, got %q", want, gotFingerprint)
+	}
+}
+
+func TestMiddleware_DoesNotSetFingerprintOnExemptPaths(t *testing.T) {
+	var gotFingerprint string
+	sawFingerprint := false
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		gotFingerprint = auth.FingerprintFromContext(r.Context())
+		sawFingerprint = true
+		w.WriteHeader(http.StatusOK)
+	})
+	h := auth.Middleware(testConfig())(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if !sawFingerprint {
+		t.Fatal("handler was not reached")
+	}
+	if gotFingerprint != "" {
+		t.Fatalf("expected no fingerprint set on an exempt, unauthenticated path, got %q", gotFingerprint)
 	}
 }
 

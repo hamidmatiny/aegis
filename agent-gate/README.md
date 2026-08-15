@@ -154,7 +154,12 @@ Agent-gate calls `POST /v1/evaluate/tool` on policy-engine. Default rules in `po
 | Rule | Trigger | Policy action | Gate status |
 |------|---------|---------------|-------------|
 | `require-approval-irreversible` | `risk_level == 'IRREVERSIBLE'` | `escalate_to_judge` | `AWAITING_HUMAN_APPROVAL` |
-| `block-tainted-credentials` | tainted arg with credentials | `block` | `DENIED` |
+| `block-tainted-credentials` | any arg with a server-detected credential (`contains_credentials`) | `block` | `DENIED` |
+
+`contains_credentials` is set server-side by this service's own regex
+credential scan (see "Taint tracking" below), not by caller declaration --
+this rule triggers on that detection alone (Stage E.1), independent of
+whatever `taint_level` the caller did or didn't set.
 
 Risk levels: `LOW`, `MEDIUM`, `HIGH`, `IRREVERSIBLE`.
 
@@ -189,3 +194,17 @@ make test-go   # from repo root
 Arguments carry `taint_level` (`TRUSTED`, `UNTRUSTED`, `TAINTED`) and optional `taint_source` (`RAG_DOCUMENT`, `WEB_FETCH`, `TOOL_OUTPUT`, etc.). The gate aggregates taint labels and flags tainted/credential-bearing arguments in the decision.
 
 Credential-bearing arguments are masked before policy evaluation and in `sanitized_tool_call` returned to the caller.
+
+## Agent identity (Stage E.2)
+
+`agent_id` on a tool call is entirely caller-declared -- this service's
+auth is a shared service-key set (`AEGIS_AGENT_GATE_API_KEYS`), not a
+per-agent credential, so nothing at the HTTP layer stops one key from
+claiming a different agent's identity. Every `TOOL_GATE` audit receipt
+now also carries `service_key_fingerprint` (a short, non-reversible hash
+of whichever key actually authenticated the request -- see
+`internal/auth/auth.go`'s `Fingerprint()`), so the two can be cross-checked
+after the fact via `scripts/asi07-identity-consistency-query.py`
+(see [deploy/oracle/README.md](../deploy/oracle/README.md)). This is a
+detection signal recorded at request time, not a new authorization check
+-- agent-gate does not reject a request for an identity mismatch.

@@ -111,6 +111,40 @@ it found anything, `0` if clean, so it's cron-friendly:
 Run `python3 scripts/asi10-rogue-agent-query.py --help` for `--tenant-id`,
 `--agent-id`, `--json`, and other flags.
 
+## Detecting agent-identity inconsistencies (ASI07)
+
+`agent_id` is entirely caller-declared -- agent-gate's auth is a shared
+service-key set, not a per-agent credential, so nothing stops one key
+from claiming a different agent's identity. Since Stage E.2, every
+`TOOL_GATE` receipt also carries `service_key_fingerprint` (a short,
+non-reversible hash of whichever key authenticated the request), so this
+can be cross-checked after the fact:
+
+```bash
+cd aegis
+set -a; source .env; set +a
+python3 scripts/asi07-identity-consistency-query.py
+```
+
+It flags the first time an established `agent_id` shows up under a NEW
+key fingerprint (could be a legitimate credential rotation, could be
+someone else claiming that identity -- investigate, don't assume). It
+also prints, purely informationally, how many distinct `agent_id` values
+each key has claimed -- this repo's own examples legitimately share one
+key across several agent_ids, so that's not flagged as an anomaly unless
+you pass `--max-agents-per-key` for a deployment that provisions one key
+per agent and wants that assumption enforced. Same cron-friendly exit
+code contract as the ASI10 script above (`1` on any anomaly, `0` clean):
+
+```bash
+0 7 * * * cd ~/aegis && export $(grep AEGIS_INTERNAL_TOKEN .env) && python3 scripts/asi07-identity-consistency-query.py --since 24h
+```
+
+This is a detection signal, not enforcement -- agent-gate does not block
+on any of this. True per-agent enforcement would need real per-agent
+credentials, a bigger architecture change than this phase; see the
+script's own module docstring for the full reasoning.
+
 ## Recovering credentials if this box is lost
 
 `./scripts/generate-credentials.sh` generates everything into `.env`,

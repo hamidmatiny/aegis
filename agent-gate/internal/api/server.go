@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aegis-platform/aegis/agent-gate/internal/audit"
+	"github.com/aegis-platform/aegis/agent-gate/internal/auth"
 	"github.com/aegis-platform/aegis/agent-gate/internal/gate"
 	"github.com/aegis-platform/aegis/agent-gate/internal/models"
 )
@@ -65,7 +66,13 @@ func (s *Server) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.audit != nil {
-		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), req.ToolCall.ToolName, req.ToolCall.AgentID, resp.Decision, resp.PolicyAction)
+		// Stage E.2: the fingerprint of whichever Service key actually
+		// authenticated this request (set by auth.Middleware), recorded
+		// alongside the caller-declared agent_id so the two can later be
+		// cross-checked for consistency -- see
+		// scripts/asi07-identity-consistency-query.py.
+		fingerprint := auth.FingerprintFromContext(r.Context())
+		s.audit.EmitToolGate(req.TenantID, audit.TraceFromRequest(req), req.ToolCall.ToolName, req.ToolCall.AgentID, fingerprint, resp.Decision, resp.PolicyAction)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
