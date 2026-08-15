@@ -177,6 +177,20 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 
+echo "==> Ensuring the daily postgres backup cron job is installed (Stage D.3 --"
+echo "    see DR-RUNBOOK.md)..."
+# Idempotent: dedupe by dropping any prior line running this exact script
+# before re-adding it, so re-running setup.sh (e.g. after a git pull) never
+# accumulates duplicate cron entries. 03:00 box-local time is an arbitrary
+# off-peak default -- edit the box's crontab directly to change it.
+BACKUP_CRON_CMD="cd $ROOT && ./scripts/backup-postgres.sh >> $ROOT/backups/backup.log 2>&1"
+BACKUP_CRON_LINE="0 3 * * * $BACKUP_CRON_CMD"
+mkdir -p "$ROOT/backups"
+( crontab -l 2>/dev/null | grep -vF "scripts/backup-postgres.sh" ; echo "$BACKUP_CRON_LINE" ) | crontab -
+echo "    Installed: runs scripts/backup-postgres.sh daily at 03:00, logging to"
+echo "    backups/backup.log. This backs up postgres_data to THIS box only --"
+echo "    see DR-RUNBOOK.md for why off-box redundancy is a separate, manual step."
+
 PUBLIC_IP="$(curl -sf -m 3 ifconfig.me || echo "<your-vm-public-ip>")"
 cat <<MSG
 

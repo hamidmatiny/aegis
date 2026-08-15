@@ -107,6 +107,7 @@ make lint               # Go + Python linters
 make test               # Unit tests (Go + Python)
 make test-integration   # Docker smoke tests
 make chaos              # Fault-injection tests against FAILURE_MODES.md's contract
+make backup             # Encrypted postgres snapshot (see DR-RUNBOOK.md)
 make bench              # Load test the defended chat-completion pipeline (stub backends)
 ```
 
@@ -168,6 +169,18 @@ Unlike the load-testing scripts above, this is pass/fail correctness against
 a contract this repo already publishes, not a numeric measurement -- it runs
 in CI (a dedicated `chaos` job) and a failure here fails the build. Run it
 locally with `./scripts/chaos-test.sh` against an already-running stack.
+
+### Disaster recovery
+
+See [DR-RUNBOOK.md](./DR-RUNBOOK.md) for the full procedure. Short version:
+`docker-compose.yml` has exactly one persistent volume (`postgres_data` --
+the audit trail and the redteam's learned attack corpus); everything else is
+reproducible from GitHub/GHCR. `scripts/backup-postgres.sh` runs daily via a
+cron job installed by `deploy/oracle/setup.sh`, encrypting a snapshot with
+the same SOPS+age setup as the credential backup (Stage B.1).
+`scripts/restore-postgres.sh` restores it. Off-box redundancy (surviving a
+total VM loss, not just data corruption on a live box) is a deliberate
+manual step, not automated -- see the runbook for why.
 
 ## Build order
 

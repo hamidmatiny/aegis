@@ -31,3 +31,12 @@ creation_rules:
     age: age1y5djqtenerjrdtvq8zcg3rmgw8rns7943k3u0y4qynse3kpw6a0spafw2s
     input_type: dotenv
     output_type: dotenv
+  # Stage D.3: postgres backups (scripts/backup-postgres.sh). Same age
+  # recipient as .env above -- this project accepts one key protecting
+  # both backup types rather than managing two keypairs at this scale
+  # (see DR-RUNBOOK.md). binary, not dotenv: a gzipped pg_dump has no
+  # KEY=VALUE structure to preserve.
+  - path_regex: \.sql\.gz$
+    age: age1y5djqtenerjrdtvq8zcg3rmgw8rns7943k3u0y4qynse3kpw6a0spafw2s
+    input_type: binary
+    output_type: binary

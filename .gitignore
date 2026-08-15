@@ -11,6 +11,13 @@ venv/
 # it's the actual point of having it. See .sops.yaml.
 !.env.enc
 
+# Stage D.3: postgres backups. The plain .sql.gz dump is raw audit/attack
+# data, never committed. Its .sql.gz.enc counterpart is SOPS-encrypted
+# ciphertext -- same safe-to-commit reasoning as .env.enc above.
+backups/*.sql.gz
+!backups/*.sql.gz.enc
+backups/backup.log
+
 # Go
 bin/
 dist/

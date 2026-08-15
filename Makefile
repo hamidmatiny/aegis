@@ -71,6 +71,12 @@ test-integration:
 chaos: # Fault-injection tests against FAILURE_MODES.md's documented contract (see scripts/chaos-test.sh)
 	./scripts/chaos-test.sh
 
+backup: # Encrypted postgres snapshot -- see DR-RUNBOOK.md
+	./scripts/backup-postgres.sh
+
+restore: # Restore postgres from the latest encrypted snapshot -- see DR-RUNBOOK.md
+	./scripts/restore-postgres.sh
+
 bench: # CI-safe vegeta load test against stub backends (informational only, see scripts/benchmark.sh)
 	./scripts/benchmark.sh
 
