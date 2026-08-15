@@ -43,6 +43,18 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 sudo systemctl enable --now docker
 
+# `make` is not part of Ubuntu/Debian cloud images' minimal base install
+# (unlike a dev machine with build-essential or Xcode CLT already present).
+# Nothing this script itself runs needs it -- the cron job below calls
+# scripts/backup-postgres.sh directly, not `make backup` -- but the repo's
+# Makefile targets (`make bench`, `make chaos`, `make backup`, ...) are
+# genuinely useful to have on the box itself for manual debugging, so
+# install it the same way Docker is handled above: only if missing.
+if ! command -v make >/dev/null 2>&1; then
+  echo "==> Installing make (for the repo's Makefile targets, e.g. 'make backup')..."
+  (sudo apt-get update -qq && sudo apt-get install -y make 2>/dev/null) ||     (sudo dnf install -y make 2>/dev/null) ||     echo "    Could not install make automatically -- the scripts under scripts/"          "still work fine when run directly (e.g. ./scripts/backup-postgres.sh)."
+fi
+
 # Three tiers, based on the model footprint documented in
 # input-defense/README.md and output-defense/README.md: the real ML
 # backends need roughly 2GB headroom for input-defense and 1.5GB for

@@ -25,6 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: bufbuild/buf-setup-action@v1
+        with:
+          # Without this, buf-setup-action resolves its download URL via an
+          # unauthenticated GitHub API call, sharing the anonymous 60/hr
+          # rate limit across every GitHub-hosted runner on the internet --
+          # a known, unrelated-to-this-repo flake (the failure this fixes:
+          # "API rate limit exceeded for <runner IP>"). GITHUB_TOKEN is the
+          # workflow's own automatically-provided token, not a new secret.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint protobuf
         run: cd shared && buf lint
       - name: Generate code
@@ -60,6 +68,8 @@ jobs:
             audit/go.sum
             shared/gen/go/go.sum
       - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate protobuf
         run: cd shared && buf generate
       - name: Download gen/go modules
