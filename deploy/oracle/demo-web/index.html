@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AEGIS — open-source defense-in-depth for LLM agents</title>
 <meta name="description" content="Open-source defense-in-depth for LLM apps and agents. Try the live pipeline: input/output detection, a policy engine, and agent tool-permissioning — with a published, honest adaptive red-team bypass rate.">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="shortcut icon" href="/favicon.ico">
 <style>
   :root {
     --bg: #0b0e14; --panel: #131722; --panel-2: #0f131c; --border: #232838; --text: #e6e9f0;
@@ -26,6 +31,10 @@
 
   /* ---------- hero ---------- */
   .hero { padding: 48px 0 8px; text-align: center; }
+  .hero .brand-row {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0;
+  }
+  .hero .brand-row img { width: 40px; height: 40px; border-radius: 8px; }
   .hero .wordmark {
     font-size: 2rem; font-weight: 800; letter-spacing: 0.03em; margin: 0;
   }
@@ -189,7 +198,10 @@
 <main>
 
   <div class="hero">
-    <p class="wordmark">AEGIS</p>
+    <div class="brand-row">
+      <img src="/icon.svg" alt="AEGIS shield logo" width="40" height="40">
+      <p class="wordmark">AEGIS</p>
+    </div>
     <p class="tagline">
       Open-source defense-in-depth for LLM apps and agents — input/output
       detection, a policy engine, and tool-permissioning that stops a
