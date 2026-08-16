@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /src
 COPY model-router/go.mod model-router/go.sum* ./
 RUN go mod download
