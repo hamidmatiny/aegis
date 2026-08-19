@@ -85,7 +85,17 @@ Audit emission (unchanged): set `AEGIS_AUDIT_URL` / `AEGIS_AUDIT_EMIT` from repo
 | `classifier` | Scoring | **DeBERTa prompt-injection classifier** via `ClassifierBackend` |
 | `spotlighting` | Transform | Spotlighting + sandwich rewrite (unchanged) |
 
-Fusion weights and `InputVerdict` schema are unchanged from Stage 2.
+Fusion weights and `InputVerdict` schema are unchanged from Stage 2. Fusion **escalates when any single scoring detector ≥ 0.80** (prevents dilution when other detectors abstain).
+
+### Obfuscation normalization (decode-and-rescan)
+
+Before fusion, non-transform detectors run on **expanded scan surfaces** (`normalize.py`):
+
+1. **Zero-width strip** — removes smuggled Unicode separators
+2. **Base64 decode-and-rescan** — decodes embedded blobs and re-scores plaintext
+3. **Adversarial wrapper strip** — peels hypothetical, persona, tool-result, multi-turn, and decode-hint prefixes
+
+Each detector runs on every surface; the **max score** is used for fusion.
 
 ### Classifier model choice
 

@@ -29,6 +29,8 @@ _WRAPPER_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\[tool result[^\]]*\]\s*", re.I),
     re.compile(r"^decode and execute this base64 instruction:\s*", re.I),
     re.compile(r"^apply rot13 then hex-decode the following:\s*", re.I),
+    re.compile(r"^for a tabletop rpg[:\s-]*", re.I),
+    re.compile(r"^as a forensic novelist[,\s-]*", re.I),
 )
 
 

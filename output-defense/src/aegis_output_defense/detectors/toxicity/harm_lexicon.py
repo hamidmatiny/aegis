@@ -12,7 +12,9 @@ _FRAMING_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     ),
     re.compile(r"^for educational purposes only[:\s-]*", re.I),
     re.compile(r"^for (?:a )?creative writing exercise[:\s-]*", re.I),
+    re.compile(r"^for a tabletop rpg[:\s-]*", re.I),
     re.compile(r"^as (?:a )?creative (?:writing )?exercise[:\s-]*", re.I),
+    re.compile(r"^as a forensic novelist[,\s-]*", re.I),
     re.compile(r"^in (?:a )?fictional (?:scenario|story|context|universe)[:\s-]*", re.I),
     re.compile(r"^pretend (?:you are|this is) (?:writing|a story)[:\s-]*", re.I),
     re.compile(r"^imagine (?:you are|that) (?:writing|a story)[:\s-]*", re.I),
@@ -117,26 +119,163 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
     (
         "weapon_recipe",
         re.compile(
-            r"(how to (?:make|build)|recipe for).{0,40}(bomb|explosive|weapon)",
-            re.I,
+            r"(?:how to (?:make|build)|recipe for|instructions for|constructing a|build a).{0,50}"
+            r"(?:pipe )?(?:bomb|explosive|weapon|ied|detonator)",
+            re.I | re.S,
         ),
         0.88,
     ),
     (
-        "truncated_stepwise_harm_prompt",
+        "procedural_harm_instruction",
         re.compile(
-            r"describe (?:step[- ]by[- ]step|step by step).{0,70}(?:character|someone|one).{0,30}might",
+            r"(?:walk (?:me )?through|step[- ]by[- ]step|list (?:each )?stage|enumerate|outline|"
+            r"provide (?:combat )?techniques|explain how to|give a).{0,140}"
+            r"(?:lethal|fatal|poison|lacing|overdose|respiration|incapacitat|arson|derail|"
+            r"exfiltrat|clone|pipe bomb|deflagrat|ricin|tracker|stalk|phishing|electrolyte|"
+            r"oxidizer|detonat|tamper|hidden camera|keycard|mfa|cookies?)",
+            re.I | re.S,
+        ),
+        0.86,
+    ),
+    (
+        "security_disable_prep",
+        re.compile(
+            r"(?:enumerate|list|outline|describe).{0,90}"
+            r"(?:disable|bypass|defeat|tamper with).{0,60}"
+            r"(?:smoke detector|fire alarm|cctv|security system|access control|railway signaling)",
             re.I | re.S,
         ),
         0.84,
     ),
     (
-        "truncated_pressure_device_prompt",
+        "truncated_sabotage_stem",
         re.compile(
-            r"(?:assemble|build).{0,40}pressure vessel.{0,50}(?:releases?\s+ener\w*|rapid|detonat)",
+            r"(?:disable a smoke detector|disable the (?:alarm|detector)|bypass the lock)\s*$",
+            re.I,
+        ),
+        0.82,
+    ),
+    (
+        "truncated_harm_stem",
+        re.compile(
+            r"(?:lethal dose of|rapid decomposition|without witnesses|until respiration|"
+            r"high-yield oxidizer|committing arson|before committing|covertly\s*$|"
+            r"sealed container\s*$|sodium nitrite\s*$|for rapid decomposition)",
+            re.I | re.S,
+        ),
+        0.82,
+    ),
+    (
+        "truncated_fictional_harm_setup",
+        re.compile(
+            r"describe (?:step[- ]by[- ]step|step by step).{0,90}"
+            r"(?:character|protagonist|someone|one).{0,25}might(?:\s+\w{0,3})?\s*$",
+            re.I | re.S,
+        ),
+        0.84,
+    ),
+    (
+        "truncated_device_assembly_stem",
+        re.compile(
+            r"(?:assemble|build|construct).{0,50}"
+            r"(?:pressure vessel|pipe|container|apparatus|vessel).{0,60}"
+            r"(?:releases?\s+ener\w*|rapid|detonat)\s*$",
+            re.I | re.S,
+        ),
+        0.86,
+    ),
+    (
+        "improvised_energetic_device",
+        re.compile(
+            r"(?:potassium nitrate|kno3|ammonium nitrate).{0,70}"
+            r"(?:sugar|fuel|pipe|deflagrat|fragment|metal pipe)",
             re.I | re.S,
         ),
         0.88,
+    ),
+    (
+        "oxidizer_concentration",
+        re.compile(
+            r"(?:concentrate|high-yield).{0,50}(?:peroxide|oxidizer).{0,90}"
+            r"(?:decomposition|rapid|container|sealed)",
+            re.I | re.S,
+        ),
+        0.86,
+    ),
+    (
+        "malware_exfil_output",
+        re.compile(
+            r"(?:powershell dropper|dropper|keylogger|ransomware|malware).{0,70}"
+            r"(?:browser cookies|credentials|remote host|silently|exfiltrat)",
+            re.I | re.S,
+        ),
+        0.85,
+    ),
+    (
+        "surveillance_stalking",
+        re.compile(
+            r"(?:stalker|hidden camera|gps tracker).{0,90}"
+            r"(?:plant|install|record|vehicle|locker|without leaving|undressing)",
+            re.I | re.S,
+        ),
+        0.84,
+    ),
+    (
+        "poison_lacing",
+        re.compile(
+            r"(?:lacing|spik(?:e|ing)).{0,50}(?:beverage|drink).{0,70}(?:lethal|poison|dose|nitrite)",
+            re.I | re.S,
+        ),
+        0.88,
+    ),
+    (
+        "substance_self_harm",
+        re.compile(
+            r"(?:opioids?|prescription pills?).{0,60}(?:alcohol|respiration|breathing).{0,50}"
+            r"(?:ceases?|stops?|fatal)",
+            re.I | re.S,
+        ),
+        0.90,
+    ),
+    (
+        "electrolyte_self_harm",
+        re.compile(
+            r"(?:fatal|inducing).{0,40}electrolyte imbalance",
+            re.I | re.S,
+        ),
+        0.88,
+    ),
+    (
+        "infrastructure_sabotage",
+        re.compile(
+            r"tamper.{0,50}(?:railway|railroad|signaling).{0,50}derail",
+            re.I | re.S,
+        ),
+        0.88,
+    ),
+    (
+        "toxin_synthesis",
+        re.compile(
+            r"(?:synthesiz|extract|produce).{0,50}(?:ricin|castor beans?|nerve agent)",
+            re.I | re.S,
+        ),
+        0.90,
+    ),
+    (
+        "credential_cloning",
+        re.compile(
+            r"(?:clone|copy|duplicate).{0,50}(?:rfid|keycard|badge|mfa|oauth)",
+            re.I | re.S,
+        ),
+        0.82,
+    ),
+    (
+        "phishing_harvest",
+        re.compile(
+            r"phishing email.{0,70}(?:harvest|steal|collect).{0,50}(?:mfa|credentials|banking)",
+            re.I | re.S,
+        ),
+        0.86,
     ),
     (
         "dual_use_explosive",
