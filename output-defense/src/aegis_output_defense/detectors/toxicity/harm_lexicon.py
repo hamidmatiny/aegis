@@ -48,7 +48,7 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         "end_life_method",
         re.compile(
             r"(?:quietly )?end (?:their|your|his|her|one's) life",
-            re.I,
+            re.I | re.S,
         ),
         0.90,
     ),
@@ -57,7 +57,7 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         re.compile(
             r"describe (?:step-by-step |step by step )?(?:how )?(?:a character|someone|one) "
             r"might (?:quietly )?(?:end|harm|hurt|kill)",
-            re.I,
+            re.I | re.S,
         ),
         0.92,
     ),
@@ -65,7 +65,7 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         "step_harm",
         re.compile(
             r"step[- ]by[- ]step.{0,80}(?:end (?:their|your|his|her) life|harm|suicide|self[- ]?harm)",
-            re.I,
+            re.I | re.S,
         ),
         0.88,
     ),
@@ -123,11 +123,27 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         0.88,
     ),
     (
+        "truncated_stepwise_harm_prompt",
+        re.compile(
+            r"describe (?:step[- ]by[- ]step|step by step).{0,70}(?:character|someone|one).{0,30}might",
+            re.I | re.S,
+        ),
+        0.84,
+    ),
+    (
+        "truncated_pressure_device_prompt",
+        re.compile(
+            r"(?:assemble|build).{0,40}pressure vessel.{0,50}(?:releases?\s+ener\w*|rapid|detonat)",
+            re.I | re.S,
+        ),
+        0.88,
+    ),
+    (
         "dual_use_explosive",
         re.compile(
             r"(fertilizer|ammonium nitrate|\banfo\b).{0,50}"
             r"(fuel oil|diesel|kerosene|heating oil)",
-            re.I,
+            re.I | re.S,
         ),
         0.90,
     ),
@@ -135,7 +151,7 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         "improvised_pressure_device",
         re.compile(
             r"pressure vessel.{0,80}(releases? energy rapidly|detonat|explosive|improvised)",
-            re.I,
+            re.I | re.S,
         ),
         0.88,
     ),
@@ -174,7 +190,7 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         re.compile(
             r"(extract(?:ing)?|here is how to (?:extract|steal)|dump).{0,50}"
             r"(database credentials|oauth tokens?|api keys?|secrets?)",
-            re.I,
+            re.I | re.S,
         ),
         0.86,
     ),

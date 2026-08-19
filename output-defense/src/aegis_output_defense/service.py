@@ -101,7 +101,16 @@ class OutputDefenseService:
         judge_votes: list[JudgeVote] = []
         judge_boosted: float | None = None
 
-        run_judge = invoke_judge if invoke_judge is not None else is_ambiguous_score(pre_fused)
+        suspicious_normalization = bool(
+            {"zero_width_stripped", "base64_decoded", "wrapper_stripped"}.intersection(
+                set(normalization)
+            )
+        )
+        run_judge = (
+            invoke_judge
+            if invoke_judge is not None
+            else (is_ambiguous_score(pre_fused) or (suspicious_normalization and pre_fused >= 0.25))
+        )
         judge_scan = surfaces[0] if len(surfaces) == 1 else content
         if run_judge and "judge" not in ids:
             judge = self._get_detector("judge")
