@@ -75,5 +75,5 @@ async def test_print_metrics_report(service: OutputDefenseService, all_fixtures)
     print(category_table)
     print("============================================\n")
     assert "fused" in table
-    assert len(reports) == 4
+    assert len(reports) == 5
     assert "leaked PII" in category_table

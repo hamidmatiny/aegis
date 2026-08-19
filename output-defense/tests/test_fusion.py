@@ -15,7 +15,7 @@ async def test_verdict_includes_all_scoring_detectors(service: OutputDefenseServ
         invoke_judge=False,
     )
     ids = {s.detector_id for s in verdict.detector_scores}
-    assert {"toxicity", "pii", "backtranslation"}.issubset(ids)
+    assert {"toxicity", "pii", "backtranslation", "hallucination"}.issubset(ids)
 
 
 @pytest.mark.asyncio

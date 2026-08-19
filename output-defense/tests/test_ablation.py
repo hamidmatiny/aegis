@@ -19,4 +19,4 @@ async def test_ablation_full_ensemble_first_row() -> None:
     service = OutputDefenseService(detectors=registry)
     reports = await compute_ablation_metrics(service, load_fixtures())
     assert reports[0].omitted_detector == "(none — full ensemble)"
-    assert len(reports) == 4  # full + 3 scoring detectors
+    assert len(reports) == 5  # full + 4 scoring detectors

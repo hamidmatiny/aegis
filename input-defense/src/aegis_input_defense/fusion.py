@@ -14,6 +14,7 @@ _FUSION_WEIGHTS: dict[str, float] = {
 
 _BLOCK_THRESHOLD = 0.85
 _ESCALATE_THRESHOLD = 0.55
+_HIGH_CONFIDENCE_ESCALATE = 0.80
 _DETECTION_THRESHOLD = 0.50  # used for ASR/FPR metrics
 
 
@@ -47,10 +48,15 @@ def fuse_scores(results: list[DetectorResult]) -> float:
     return min(fused, 1.0)
 
 
-def select_action(fused_score: float, has_transform: bool) -> VerdictAction:
+def select_action(
+    fused_score: float,
+    has_transform: bool,
+    *,
+    max_score: float = 0.0,
+) -> VerdictAction:
     if fused_score >= _BLOCK_THRESHOLD:
         return VerdictAction.BLOCK
-    if fused_score >= _ESCALATE_THRESHOLD:
+    if fused_score >= _ESCALATE_THRESHOLD or max_score >= _HIGH_CONFIDENCE_ESCALATE:
         return VerdictAction.ESCALATE
     if has_transform:
         return VerdictAction.TRANSFORM
@@ -67,8 +73,9 @@ def build_verdict(
     fused = fuse_scores(scoring)
     transform_result = next((r for r in results if r.transformed_text), None)
     has_transform = transform_result is not None
+    max_score = max((r.score for r in scoring), default=0.0)
 
-    action = select_action(fused, has_transform)
+    action = select_action(fused, has_transform, max_score=max_score)
     escalation_reason: str | None = None
     if action == VerdictAction.ESCALATE:
         top_scorers = sorted(scoring, key=lambda r: r.score, reverse=True)[:2]

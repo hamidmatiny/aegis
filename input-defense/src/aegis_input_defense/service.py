@@ -6,6 +6,7 @@ from aegis_input_defense.detectors.base import Detector, DetectorContext
 from aegis_input_defense.detectors.registry import ALL_DETECTOR_IDS, build_detector_registry
 from aegis_input_defense.fusion import build_verdict
 from aegis_input_defense.models import DetectorInfo, DetectorResult, InputVerdict
+from aegis_input_defense.normalize import expand_scan_surfaces
 
 
 class InputDefenseService:
@@ -39,7 +40,24 @@ class InputDefenseService:
     ) -> DetectorResult:
         detector = self._get_detector(detector_id)
         ctx = DetectorContext(trusted_instruction=trusted_instruction, request_id=request_id)
-        return await detector.analyze(text, ctx)
+        if detector.is_transform:
+            return await detector.analyze(text, ctx)
+        return await self._analyze_on_surfaces(detector, text, ctx)
+
+    async def _analyze_on_surfaces(
+        self,
+        detector: Detector,
+        text: str,
+        ctx: DetectorContext,
+    ) -> DetectorResult:
+        surfaces, _ = expand_scan_surfaces(text)
+        best: DetectorResult | None = None
+        for surface in surfaces:
+            result = await detector.analyze(surface, ctx)
+            if best is None or result.score > best.score:
+                best = result
+        assert best is not None
+        return best
 
     async def analyze_all(
         self,
@@ -51,11 +69,27 @@ class InputDefenseService:
     ) -> InputVerdict:
         ids = enabled_detectors or list(ALL_DETECTOR_IDS)
         ctx = DetectorContext(trusted_instruction=trusted_instruction, request_id=request_id)
+        surfaces, normalization = expand_scan_surfaces(text)
 
         results: list[DetectorResult] = []
         for detector_id in ids:
             detector = self._get_detector(detector_id)
-            result = await detector.analyze(text, ctx)
+            if detector.is_transform:
+                result = await detector.analyze(text, ctx)
+            else:
+                best: DetectorResult | None = None
+                for surface in surfaces:
+                    scored = await detector.analyze(surface, ctx)
+                    if best is None or scored.score > best.score:
+                        best = scored
+                assert best is not None
+                result = best
+                if normalization:
+                    result.metadata = {
+                        **result.metadata,
+                        "normalization": ",".join(normalization),
+                        "scan_surfaces": str(len(surfaces)),
+                    }
             results.append(result)
 
         return build_verdict(results, request_id=request_id)

@@ -15,7 +15,9 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     (
         "ignore_instructions",
         re.compile(
-            r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)", re.I
+            r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+"
+            r"(instructions?|prompts?|rules?|guidance)",
+            re.I,
         ),
         0.85,
         "Direct instruction override detected",
@@ -27,6 +29,17 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         "Safety guideline override attempt",
     ),
     (
+        "paraphrased_override",
+        re.compile(
+            r"(kindly|please)?\s*(disregard|ignore|forget|set aside)\s+"
+            r".{0,20}(earlier|previous|prior|above)\s+"
+            r"(guidance|instructions?|prompts?|rules?)",
+            re.I,
+        ),
+        0.82,
+        "Paraphrased instruction-override request",
+    ),
+    (
         "system_override",
         re.compile(r"(^|\n)\s*system\s*:\s*.+(override|new instruction|must comply)", re.I | re.M),
         0.85,
@@ -36,7 +49,8 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         "prompt_leak",
         re.compile(
             r"(print|show|reveal|dump|output|export)\s+.{0,30}"
-            r"(system prompt|initial instructions|hidden config|api keys?|secrets?|tool definitions?)",
+            r"(system prompt|initial instructions|hidden config|api keys?|secrets?|"
+            r"tool definitions?|confidential.{0,20}(?:system )?config(?:uration)?)",
             re.I,
         ),
         0.90,
@@ -57,11 +71,23 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     (
         "roleplay_bypass",
         re.compile(
-            r"(pretend you are|act as|respond as|you are now).{0,40}(unrestricted|no (content )?policy|evil twin|without filtering)",
+            r"(pretend you are|act as|respond as|you are now).{0,60}"
+            r"(unrestricted|no (content )?policy|evil twin|without filtering|"
+            r"no safety (policy|filter|rules?))",
             re.I,
         ),
         0.80,
         "Role-play persona bypass",
+    ),
+    (
+        "soft_persona_exfil",
+        re.compile(
+            r"(fictional scenario|no content policy|without (a )?content policy)"
+            r".{0,80}(steal|extract|exfiltrat|oauth|token|credential|secret)",
+            re.I | re.S,
+        ),
+        0.84,
+        "Soft persona jailbreak paired with credential theft",
     ),
     (
         "delimiter_escape",

@@ -11,7 +11,7 @@ def test_list_detectors() -> None:
     resp = client.get("/detectors")
     assert resp.status_code == 200
     ids = {d["detector_id"] for d in resp.json()}
-    assert ids == {"toxicity", "pii", "backtranslation", "judge"}
+    assert ids == {"toxicity", "pii", "backtranslation", "hallucination", "judge"}
 
 
 def test_analyze_single_pii() -> None:

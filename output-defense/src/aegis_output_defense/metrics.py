@@ -24,9 +24,9 @@ FIXTURES_PATH = (
     Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "outputs.yaml"
 )
 
-DETECTOR_IDS = ["toxicity", "pii", "backtranslation", "fused"]
+DETECTOR_IDS = ["toxicity", "pii", "backtranslation", "hallucination", "fused"]
 
-ABLATION_OMIT_IDS = ["toxicity", "pii", "backtranslation"]
+ABLATION_OMIT_IDS = ["toxicity", "pii", "backtranslation", "hallucination"]
 
 CATEGORY_ORDER = [
     "leaked_pii",

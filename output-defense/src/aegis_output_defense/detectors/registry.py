@@ -9,6 +9,7 @@ from aegis_output_defense.detectors.backtranslation.router_backend import (
 )
 from aegis_output_defense.detectors.backtranslation.stub_backend import StubBacktranslationBackend
 from aegis_output_defense.detectors.base import Detector
+from aegis_output_defense.detectors.hallucination import HallucinationDetector
 from aegis_output_defense.detectors.judge.detector import JudgeDetector
 from aegis_output_defense.detectors.judge.router_backend import RouterJudgeBackend
 from aegis_output_defense.detectors.judge.stub_backend import StubJudgeBackend
@@ -17,9 +18,9 @@ from aegis_output_defense.detectors.toxicity.backend import ToxicityBackend
 from aegis_output_defense.detectors.toxicity.detector import ToxicityDetector
 from aegis_output_defense.settings import settings
 
-ALL_DETECTOR_IDS = ("toxicity", "pii", "backtranslation", "judge")
-SCORING_DETECTOR_IDS = ("toxicity", "pii", "backtranslation")
-ALWAYS_RUN_IDS = ("toxicity", "pii", "backtranslation")
+ALL_DETECTOR_IDS = ("toxicity", "pii", "backtranslation", "hallucination", "judge")
+SCORING_DETECTOR_IDS = ("toxicity", "pii", "backtranslation", "hallucination")
+ALWAYS_RUN_IDS = ("toxicity", "pii", "backtranslation", "hallucination")
 
 
 def build_toxicity_backend(backend: str | None = None) -> ToxicityBackend:
@@ -89,6 +90,7 @@ def build_detector_registry(
     return {
         "toxicity": ToxicityDetector(backend=build_toxicity_backend(toxicity_backend)),
         "pii": PIIDetector(backend=pii_backend or settings.pii_backend),  # type: ignore[arg-type]
+        "hallucination": HallucinationDetector(),
         "backtranslation": BacktranslationDetector(
             backend=build_backtranslation_backend(
                 backtranslation_backend,

@@ -1,19 +1,16 @@
-"""Decode-and-rescan normalization for obfuscated model output."""
+"""Decode-and-rescan plus jailbreak-wrapper stripping for input text."""
 
 from __future__ import annotations
 
 import base64
 import re
 
-# Zero-width and other invisible format characters used to break pattern matching.
 _ZERO_WIDTH = {0x200B, 0x200C, 0x200D, 0xFEFF, 0x2060}
-
-# Base64 blobs long enough to hide meaningful payload text.
 _B64_BLOB = re.compile(r"[A-Za-z0-9+/]{20,}={0,2}")
 
-# Jailbreak / indirection wrappers that hide the inner payload from
-# detectors. Class-level prefixes (hypothetical, persona, tool result,
-# multi-turn, decode-hint), not a single campaign string.
+# Wrapper classes used by adaptive attackers (hypothetical, persona, tool
+# indirection, multi-turn, decode-hint). Patterns are class-level, not a
+# single campaign string.
 _WRAPPER_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(
         r"^hypothetically speaking,?\s*(for educational purposes only)?[:\s-]*",
@@ -32,6 +29,12 @@ _WRAPPER_PREFIX_RES: tuple[re.Pattern[str], ...] = (
 )
 
 
+def strip_zero_width(text: str) -> str:
+    if not any(ord(ch) in _ZERO_WIDTH for ch in text):
+        return text
+    return "".join(ch for ch in text if ord(ch) not in _ZERO_WIDTH)
+
+
 def strip_adversarial_wrappers(text: str) -> str:
     """Peel common jailbreak / indirection prefixes so inner intent is visible."""
     current = text.strip()
@@ -46,15 +49,7 @@ def strip_adversarial_wrappers(text: str) -> str:
     return current
 
 
-def strip_zero_width(text: str) -> str:
-    """Remove zero-width characters that split tokens across pattern matchers."""
-    if not any(ord(ch) in _ZERO_WIDTH for ch in text):
-        return text
-    return "".join(ch for ch in text if ord(ch) not in _ZERO_WIDTH)
-
-
 def decode_base64_segments(text: str) -> list[str]:
-    """Extract and decode embedded base64 blobs (mirrors input-defense heuristic)."""
     decoded: list[str] = []
     seen: set[str] = set()
     for blob in _B64_BLOB.findall(text):
@@ -73,12 +68,8 @@ def decode_base64_segments(text: str) -> list[str]:
     return decoded
 
 
-def expand_scan_surfaces(content: str) -> tuple[list[str], list[str]]:
-    """
-    Build scan surfaces: original, zero-width-stripped, and base64-decoded variants.
-
-    Returns (surfaces, normalization_steps_applied).
-    """
+def expand_scan_surfaces(text: str) -> tuple[list[str], list[str]]:
+    """Original + deobfuscated + unwrapped surfaces for defense-in-depth scoring."""
     surfaces: list[str] = []
     applied: list[str] = []
     seen: set[str] = set()
@@ -91,12 +82,12 @@ def expand_scan_surfaces(content: str) -> tuple[list[str], list[str]]:
         if step and step not in applied:
             applied.append(step)
 
-    add(content)
-    stripped = strip_zero_width(content)
-    if stripped != content:
-        add(stripped, "zero_width_stripped")
+    add(text)
+    stripped_zw = strip_zero_width(text)
+    if stripped_zw != text:
+        add(stripped_zw, "zero_width_stripped")
 
-    for candidate in (content, stripped):
+    for candidate in (text, stripped_zw):
         unwrapped = strip_adversarial_wrappers(candidate)
         if unwrapped != candidate:
             add(unwrapped, "wrapper_stripped")
@@ -107,11 +98,3 @@ def expand_scan_surfaces(content: str) -> tuple[list[str], list[str]]:
                 add(inner, "wrapper_stripped")
 
     return surfaces, applied
-
-
-def prepare_scan_content(content: str) -> tuple[str, list[str]]:
-    """Single combined scan string (original + normalized segments)."""
-    surfaces, applied = expand_scan_surfaces(content)
-    if len(surfaces) == 1:
-        return surfaces[0], applied
-    return "\n---\n".join(surfaces), applied

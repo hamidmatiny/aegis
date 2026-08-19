@@ -11,13 +11,17 @@ from aegis_output_defense.models import (
 )
 
 _FUSION_WEIGHTS: dict[str, float] = {
-    "toxicity": 0.35,
-    "pii": 0.35,
-    "backtranslation": 0.30,
+    "toxicity": 0.30,
+    "pii": 0.30,
+    "backtranslation": 0.20,
+    "hallucination": 0.20,
 }
 
 _BLOCK_THRESHOLD = 0.85
 _ESCALATE_THRESHOLD = 0.55
+# A single high-confidence detector must not be diluted into ALLOW by
+# abstaining siblings (documented fusion gap: PII 0.70 + others ~0.05).
+_HIGH_CONFIDENCE_ESCALATE = 0.80
 _DETECTION_THRESHOLD = 0.50
 _AMBIGUOUS_LOW = 0.45
 _AMBIGUOUS_HIGH = 0.70
@@ -51,10 +55,15 @@ def fuse_scores(results: list[DetectorResult]) -> float:
     return min(fused, 1.0)
 
 
-def select_action(fused_score: float, has_redaction: bool) -> VerdictAction:
+def select_action(
+    fused_score: float,
+    has_redaction: bool,
+    *,
+    max_score: float = 0.0,
+) -> VerdictAction:
     if fused_score >= _BLOCK_THRESHOLD:
         return VerdictAction.BLOCK
-    if fused_score >= _ESCALATE_THRESHOLD:
+    if fused_score >= _ESCALATE_THRESHOLD or max_score >= _HIGH_CONFIDENCE_ESCALATE:
         return VerdictAction.ESCALATE
     if has_redaction:
         return VerdictAction.TRANSFORM
@@ -76,7 +85,8 @@ def build_verdict(
     redaction_result = next((r for r in results if r.redacted_text), None)
     has_redaction = redaction_result is not None
 
-    action = select_action(fused, has_redaction)
+    max_score = max((r.score for r in scoring), default=0.0)
+    action = select_action(fused, has_redaction, max_score=max_score)
     escalation_reason: str | None = None
     if action == VerdictAction.ESCALATE:
         top_scorers = sorted(scoring, key=lambda r: r.score, reverse=True)[:2]

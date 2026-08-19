@@ -32,6 +32,27 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
     ),
     ("phone", re.compile(r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "PHONE", 0.70),
     (
+        "date_of_birth",
+        re.compile(
+            r"\bborn\s+(?:on\s+)?(?:\d{1,2}\s+[A-Za-z]+\s+\d{4}|"
+            r"[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+            re.I,
+        ),
+        "DOB",
+        0.62,
+    ),
+    (
+        "street_address",
+        re.compile(
+            r"\b\d{1,5}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,3}\s+"
+            r"(?:Street|St|Lane|Ln|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|"
+            r"Way|Court|Ct|Place|Pl)\b",
+            re.I,
+        ),
+        "ADDRESS",
+        0.64,
+    ),
+    (
         "email_leak",
         re.compile(r"(?i)(here is (my|the|your)|leaked|dump).{0,40}@[a-z0-9.-]+\.[a-z]{2,}"),
         "EMAIL",
@@ -49,8 +70,24 @@ _NER_ENTITY_WEIGHTS: dict[str, float] = {
 
 _LEAK_CONTEXT = re.compile(
     r"(?i)(contact|address|leaked|patient|record|name is|my name|here is|your name|"
-    r"located at|lives in|social security|ssn|database|dump|credentials|phone|email)"
+    r"located at|lives in|living at|account holder|social security|ssn|database|"
+    r"dump|credentials|phone|email|mobile|born)"
 )
+
+_PERSON_NAME = re.compile(r"\b[A-Z][a-z]{1,20}\s+[A-Z][a-z]{1,20}\b")
+
+_IDENTITY_FIELD_NAMES = frozenset({"phone", "date_of_birth", "street_address", "ssn"})
+
+
+def _identity_dossier_boost(content: str, matches: list[str]) -> tuple[float, str | None]:
+    """Raise score when several identity attributes co-occur (a dossier dump)."""
+    fields = {name for name in matches if name in _IDENTITY_FIELD_NAMES}
+    has_name = bool(_PERSON_NAME.search(content))
+    if has_name:
+        fields.add("person_name")
+    if len(fields) >= 3:
+        return 0.92, "identity_dossier"
+    return 0.0, None
 
 
 @dataclass
@@ -70,6 +107,13 @@ def scan_regex(content: str) -> PIIScanResult:
             matches.append(name)
             max_score = max(max_score, weight)
             redacted = pattern.sub(f"[REDACTED-{label}]", redacted)
+
+    boost, dossier_label = _identity_dossier_boost(content, matches)
+    if boost > max_score and dossier_label:
+        matches.append(dossier_label)
+        max_score = boost
+        if dossier_label == "identity_dossier":
+            redacted = _PERSON_NAME.sub("[REDACTED-PERSON]", redacted)
 
     return PIIScanResult(score=min(max_score, 1.0), matches=matches, redacted_text=redacted)
 
