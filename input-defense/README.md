@@ -220,6 +220,7 @@ python scripts/run_ablation_study.py --classifier-backend stub --perplexity-back
 |-----------|--------|-----------|
 | **Classifier default model** | Ungated DeBERTa substitute; Llama-Prompt-Guard-2-86M requires HF gated access | Set `AEGIS_INPUT_DEFENSE_PROMPT_GUARD_MODEL_ID` + `HF_TOKEN` when approved |
 | **Perplexity detector** | Real LM improves encoding/obfuscation (100% ASR) but weak on multi-turn (0%) and adds ~20% benign FPR | Tune calibration or use domain-specific reference LM |
+| **Heuristic harmful-intent** | M3: memoir/nostalgic framing + crime-instruction class (incl. hotwiring / stepwise memoir requests) | Broader narrative-framing coverage without raising benign FPR |
 | **Detector execution** | Sequential, not parallel | Parallelize when latency becomes a bottleneck |
 | **gRPC / OpenTelemetry deps** | Declared in pyproject, not wired | Stage 0 forward-compat only |
 

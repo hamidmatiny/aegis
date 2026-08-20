@@ -77,7 +77,7 @@ Analyzes model responses before they reach the application.
 | **Hallucination** | Structural falsehoods, contradictions, fabricated citations |
 | LLM-judge ensemble | 3× model-router judges on ambiguous band **or suspicious normalization** (stub optional) |
 
-**Pipeline (M1/M2 hardening):** Like input defense, scoring detectors run on expanded surfaces (zero-width strip, base64 decode, wrapper strip). Fusion weights include `hallucination` and **escalate when any single detector ≥ 0.80**. The judge runs when fused score is ambiguous (0.45–0.70) **or** when obfuscation normalization fired (`zero_width_stripped`, `base64_decoded`, `wrapper_stripped`) and fused ≥ 0.25. The harm lexicon uses **shape-based** patterns (procedural harm, truncation stems, security-disable prep) rather than corpus-specific truncated templates.
+**Pipeline (M1–M3 hardening):** Like input defense, scoring detectors run on expanded surfaces (zero-width strip, base64 decode, wrapper strip — including soft policy-disable / refusal-pivot wrappers). Fusion weights include `hallucination` and **escalate when any single detector ≥ 0.80**. The judge runs when fused score is ambiguous (0.45–0.70) **or** when obfuscation normalization fired (`zero_width_stripped`, `base64_decoded`, `wrapper_stripped`) and fused ≥ 0.25. The harm lexicon uses **shape-based** patterns (procedural harm, truncation stems, illicit synthesis, soft-refusal pivots, policy-disable completions) rather than corpus-specific templates. Milestone 3 validates against held-out Adapt BR, not frozen-corpus R1 wipeouts.
 
 **Output:** `OutputVerdict` with fused score, per-detector breakdown, optional `redacted_content`, optional `judge_votes`.
 

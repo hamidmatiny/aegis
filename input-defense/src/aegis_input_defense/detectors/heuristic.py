@@ -153,12 +153,25 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     (
         "emotional_illegal_framing",
         re.compile(
-            r"(grandmother|grandma|late\s+\w+).{0,80}(stories?|used to tell).{0,120}"
-            r"(steal|stealing|hack|hacking|bomb|explosive|drug|poison|kill|murder)",
+            r"(grandmother|grandma|late\s+\w+|memoir|bedtime stor(?:y|ies)).{0,100}"
+            r"(stories?|used to tell|chapter|continue).{0,140}"
+            r"(steal|stealing|hack|hacking|bomb|explosive|drug|poison|kill|murder|"
+            r"hotwir(?:e|ing)|hot-wir(?:e|ing)|skimming|phishing|break(?:ing)? into)",
             re.I | re.S,
         ),
         0.85,
         "Emotional/nostalgic narrative framing around illegal or harmful instructions",
+    ),
+    (
+        "memoir_crime_instruction",
+        re.compile(
+            r"(memoir|bedtime|nostalgic|continue (?:her|his|the) story).{0,120}"
+            r"(step[- ]by[- ]step|details for).{0,80}"
+            r"(hotwir|steal|hack|bomb|skimming|phishing|break(?:ing)? into)",
+            re.I | re.S,
+        ),
+        0.84,
+        "Memoir/story framing requesting stepwise crime instructions",
     ),
     (
         "violence_facilitation",
