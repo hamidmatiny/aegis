@@ -34,6 +34,7 @@ packages = ["src/aegis_redteam"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/aegis_redteam/fixtures/attacks.yaml" = "aegis_redteam/fixtures/attacks.yaml"
 "src/aegis_redteam/fixtures/attacks_held_out.yaml" = "aegis_redteam/fixtures/attacks_held_out.yaml"
+"src/aegis_redteam/fixtures/attacks_reserved.yaml" = "aegis_redteam/fixtures/attacks_reserved.yaml"
 "src/aegis_redteam/baselines/phase1_stub_bypass.yaml" = "aegis_redteam/baselines/phase1_stub_bypass.yaml"
 
 [tool.ruff]

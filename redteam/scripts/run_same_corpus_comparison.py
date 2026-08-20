@@ -22,6 +22,7 @@ from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import (
     FIXTURES_PATH,
     HELD_OUT_FIXTURES_PATH,
+    RESERVED_FIXTURES_PATH,
     format_round_table,
     load_fixtures,
 )
@@ -78,9 +79,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--hardened-only", action="store_true", help="Run hardened only")
     parser.add_argument(
         "--corpus",
-        choices=("default", "held_out"),
+        choices=("default", "held_out", "reserved"),
         default="default",
-        help="Attack fixture corpus (default: attacks.yaml; held_out: attacks_held_out.yaml)",
+        help=(
+            "Attack fixture corpus (default: attacks.yaml; held_out: attacks_held_out.yaml; "
+            "reserved: attacks_reserved.yaml)"
+        ),
     )
     return parser.parse_args()
 
@@ -158,7 +162,12 @@ async def main() -> int:
         )
         return 1
 
-    corpus_path = HELD_OUT_FIXTURES_PATH if args.corpus == "held_out" else FIXTURES_PATH
+    if args.corpus == "held_out":
+        corpus_path = HELD_OUT_FIXTURES_PATH
+    elif args.corpus == "reserved":
+        corpus_path = RESERVED_FIXTURES_PATH
+    else:
+        corpus_path = FIXTURES_PATH
     attacks = [f for f in load_fixtures(corpus_path) if f.is_attack]
     strategy_count = len(args.strategies) if args.strategies else len(list_strategies())
     expected_r1 = len(attacks) * strategy_count
