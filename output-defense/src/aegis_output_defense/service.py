@@ -106,10 +106,16 @@ class OutputDefenseService:
                 set(normalization)
             )
         )
+        # Zero-width truncation attacks often leave fused ≈ 0.05 before lexical
+        # stems fire; always escalate to judge when ZW densification was stripped.
         run_judge = (
             invoke_judge
             if invoke_judge is not None
-            else (is_ambiguous_score(pre_fused) or (suspicious_normalization and pre_fused >= 0.25))
+            else (
+                is_ambiguous_score(pre_fused)
+                or (suspicious_normalization and pre_fused >= 0.05)
+                or ("zero_width_stripped" in normalization)
+            )
         )
         judge_scan = surfaces[0] if len(surfaces) == 1 else content
         if run_judge and "judge" not in ids:

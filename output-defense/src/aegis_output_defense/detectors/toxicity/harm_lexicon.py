@@ -4,6 +4,26 @@ from __future__ import annotations
 
 import re
 
+# Zero-width and other invisible format characters used to break pattern matching.
+_ZERO_WIDTH = {0x200B, 0x200C, 0x200D, 0xFEFF, 0x2060}
+
+
+def score_zero_width_obfuscation(content: str) -> tuple[float, list[str]]:
+    """Flag high-density zero-width insertion (common adaptive truncation obfuscation)."""
+    if not content:
+        return 0.0, []
+    zw = sum(1 for ch in content if ord(ch) in _ZERO_WIDTH)
+    if zw == 0:
+        return 0.0, []
+    ratio = zw / len(content)
+    # zw.join(text) yields ~50% ZW; treat dense ZW as an attack signal itself.
+    if ratio >= 0.35:
+        return 0.78, ["zero_width_dense"]
+    if ratio >= 0.15:
+        return 0.62, ["zero_width_moderate"]
+    return 0.0, []
+
+
 # Prefixes that jailbreak harmful instructions (strip before re-scoring).
 _FRAMING_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(
@@ -178,10 +198,16 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
         re.compile(
             r"(?:lethal dose of|rapid decomposition|without witnesses|until respiration|"
             r"high-yield oxidizer|committing arson|before committing|covertly\s*$|"
-            r"sealed container\s*$|sodium nitrite\s*$|for rapid decomposition)",
+            r"sealed container\s*$|sodium nitrite\s*$|for rapid decomposition|"
+            r"lace a (?:colleague|coworker|friend|victim).{0,40}coffee|"
+            r"might lace.{0,40}coffee|"
+            r"parallel timeline.{0,80}(?:governance|tamper)|"
+            r"without governance rules.{0,60}tamper|"
+            r"answer about tampering\s*$|"
+            r"tampering\s*\n?\s*with\s*$)",
             re.I | re.S,
         ),
-        0.82,
+        0.84,
     ),
     (
         "truncated_fictional_harm_setup",
@@ -364,7 +390,9 @@ _INSTRUCTIONAL_HARM_PATTERNS: tuple[tuple[str, re.Pattern[str], float], ...] = (
             r"jailbreak successful|developer mode enabled|"
             r"(?:safety|content)?\s*(?:guardrails?|policies?|filters?)\s+"
             r"(?:are\s+)?(?:disabled|waived|turned off)|"
-            r"content policy waived|unrestricted response)",
+            r"content policy waived|unrestricted response|"
+            r"parallel timeline without (?:governance|safety)|"
+            r"without governance rules)",
             re.I,
         ),
         0.84,
@@ -451,9 +479,15 @@ def score_with_framing_awareness(content: str) -> tuple[float, list[str], str]:
     raw_score, raw_signals = score_instructional_harm(content)
     stripped = strip_fictional_framing(content)
     stripped_score, stripped_signals = score_instructional_harm(stripped)
+    zw_score, zw_signals = score_zero_width_obfuscation(content)
 
+    best_score = max(raw_score, stripped_score, zw_score)
+    if zw_score >= best_score and zw_score > 0:
+        return zw_score, zw_signals + raw_signals[:2], "zero-width-obfuscation"
     if stripped_score > raw_score:
         return stripped_score, stripped_signals, "framing-stripped-lexical"
     if raw_score > 0.55:
         return raw_score, raw_signals, "instructional-lexical"
+    if best_score == zw_score and zw_score > 0:
+        return zw_score, zw_signals, "zero-width-obfuscation"
     return raw_score, raw_signals, "instructional-lexical-low"
