@@ -9,10 +9,16 @@ feed official Adapt BR or RESULTS.md numbers.
 from __future__ import annotations
 
 import base64
+import importlib.util
 import os
 from dataclasses import dataclass
 
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("transformers") is None,
+    reason="ML extras not installed (requires toxic-bert backend)",
+)
 
 # Hardened backends for this module only (override conftest stubs).
 os.environ["AEGIS_OUTPUT_DEFENSE_TOXICITY_BACKEND"] = "toxic-bert"
