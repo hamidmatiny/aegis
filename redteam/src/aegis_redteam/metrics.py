@@ -20,6 +20,7 @@ from aegis_redteam.models import (
 )
 
 FIXTURES_PATH = Path(__file__).resolve().parent / "fixtures" / "attacks.yaml"
+HELD_OUT_FIXTURES_PATH = Path(__file__).resolve().parent / "fixtures" / "attacks_held_out.yaml"
 
 CATEGORY_ORDER = [
     "direct_injection",
