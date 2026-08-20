@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from aegis_redteam.adaptive.variants import generate_adaptive_variants
@@ -100,7 +101,7 @@ class RedTeamService:
         return ProbeResponse(result=result)
 
     async def run_campaign(self, req: RunCampaignRequest) -> RunCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:
@@ -145,7 +146,7 @@ class RedTeamService:
     async def run_adaptive_campaign(
         self, req: RunAdaptiveCampaignRequest
     ) -> RunAdaptiveCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:

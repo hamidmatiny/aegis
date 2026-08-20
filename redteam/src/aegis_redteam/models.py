@@ -100,6 +100,7 @@ class RunCampaignRequest(BaseModel):
     strategies: list[str] | None = None
     categories: list[str] | None = None
     store_bypasses: bool | None = None
+    fixtures_path: str | None = None
 
 
 class RunAdaptiveCampaignRequest(RunCampaignRequest):
