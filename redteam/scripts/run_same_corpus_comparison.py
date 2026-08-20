@@ -20,6 +20,8 @@ from dataclasses import dataclass
 
 from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import (
+    FIXTURES_PATH,
+    HELD_OUT_FIXTURES_PATH,
     format_round_table,
     load_fixtures,
 )
@@ -74,6 +76,12 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--stub-only", action="store_true", help="Run stub profile only")
     parser.add_argument("--hardened-only", action="store_true", help="Run hardened only")
+    parser.add_argument(
+        "--corpus",
+        choices=("default", "held_out"),
+        default="default",
+        help="Attack fixture corpus (default: attacks.yaml; held_out: attacks_held_out.yaml)",
+    )
     return parser.parse_args()
 
 
@@ -150,7 +158,8 @@ async def main() -> int:
         )
         return 1
 
-    attacks = [f for f in load_fixtures() if f.is_attack]
+    corpus_path = HELD_OUT_FIXTURES_PATH if args.corpus == "held_out" else FIXTURES_PATH
+    attacks = [f for f in load_fixtures(corpus_path) if f.is_attack]
     strategy_count = len(args.strategies) if args.strategies else len(list_strategies())
     expected_r1 = len(attacks) * strategy_count
 
@@ -173,6 +182,7 @@ async def main() -> int:
         use_router_mutations=use_router,
         max_router_blocked=settings.max_router_blocked,
         max_router_bypass=settings.max_router_bypass,
+        fixtures_path=str(corpus_path),
     )
 
     print(
@@ -205,7 +215,7 @@ async def main() -> int:
         snapshots.append(await _run_profile(HARDENED_STACK, req, router_client))
 
     print("AEGIS Red Team — Same-Corpus Before/After Comparison")
-    print(f"Corpus: {len(attacks)} attacks | Round-1 strategies: {strategy_count}")
+    print(f"Corpus: {corpus_path.name} ({len(attacks)} attacks) | Round-1 strategies: {strategy_count}")
     print(f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}")
     print()
 
