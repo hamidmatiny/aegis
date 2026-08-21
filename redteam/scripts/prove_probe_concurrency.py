@@ -83,9 +83,7 @@ async def run_batch(
     probe = build_defense_stack(stack)
     sem = asyncio.Semaphore(max(1, concurrency))
     jobs = [
-        _run_one(probe, fixture, strategy, sem)
-        for fixture in fixtures
-        for strategy in strategies
+        _run_one(probe, fixture, strategy, sem) for fixture in fixtures for strategy in strategies
     ]
     # Preserve submission order in gather so serial and concurrent produce the
     # same list order for easier debugging; comparison is still key-based.

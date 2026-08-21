@@ -77,8 +77,8 @@ async def main() -> int:
     n_probes = len(attacks) * len(strategies)
     print(
         f"ladder: {len(attacks)} attacks "
-        f"(in={sum(1 for a in attacks if a.target.value=='input_defense')} "
-        f"out={sum(1 for a in attacks if a.target.value=='output_defense')}) "
+        f"(in={sum(1 for a in attacks if a.target.value == 'input_defense')} "
+        f"out={sum(1 for a in attacks if a.target.value == 'output_defense')}) "
         f"× {len(strategies)} = {n_probes} probes",
         flush=True,
     )

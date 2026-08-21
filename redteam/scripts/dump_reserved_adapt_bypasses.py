@@ -95,9 +95,7 @@ async def main() -> int:
         "by_round": Counter(r.metadata.get("round", "") for r in adaptive_bypass),
     }
     # JSON-serialize Counters
-    summary = {
-        k: (dict(v) if isinstance(v, Counter) else v) for k, v in summary.items()
-    }
+    summary = {k: (dict(v) if isinstance(v, Counter) else v) for k, v in summary.items()}
     args.summary_out.write_text(json.dumps(summary, indent=2))
     print(
         f"wrote {len(adaptive_bypass)} adaptive bypasses → {args.out}\n"
