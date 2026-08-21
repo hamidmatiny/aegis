@@ -52,6 +52,9 @@ class RouterBacktranslationBackend(BacktranslationBackend):
             )
             restatement = completion.content
         except Exception as exc:
+            # Campaign spend guards set abort_live_bt — never silent-stub mid-grade.
+            if getattr(exc, "abort_live_bt", False):
+                raise
             fallback = await self._stub.evaluate(content, original_prompt=original_prompt)
             return BacktranslationResult(
                 score=fallback.score,

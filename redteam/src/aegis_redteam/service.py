@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from aegis_redteam.adaptive.variants import generate_adaptive_variants
@@ -100,7 +102,7 @@ class RedTeamService:
         return ProbeResponse(result=result)
 
     async def run_campaign(self, req: RunCampaignRequest) -> RunCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:
@@ -145,7 +147,7 @@ class RedTeamService:
     async def run_adaptive_campaign(
         self, req: RunAdaptiveCampaignRequest
     ) -> RunAdaptiveCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:
@@ -161,86 +163,109 @@ class RedTeamService:
         campaign_id = f"adaptive-{int(started.timestamp() * 1000)}"
         all_results: list[ProbeResult] = []
         round_reports: list[RoundReport] = []
+        abort_reason: str | None = None
+        abort_router_calls: int | None = None
 
         for round_num in range(1, req.rounds + 1):
             round_results: list[ProbeResult] = []
             variants_generated = 0
 
-            if round_num == 1:
-                total_r1 = len(fixtures) * len(strategies)
-                done = 0
-                for fixture in fixtures:
-                    for strategy in strategies:
+            try:
+                if round_num == 1:
+                    total_r1 = len(fixtures) * len(strategies)
+                    jobs: list[tuple[AttackFixture, str]] = [
+                        (fixture, strategy) for fixture in fixtures for strategy in strategies
+                    ]
+
+                    async def _baseline_job(
+                        fixture: AttackFixture,
+                        strategy: str,
+                        *,
+                        _round: int = round_num,
+                    ) -> ProbeResult:
                         mutated = apply_strategy(strategy, fixture.payload())
-                        result = await self._run_probe(
+                        return await self._run_probe(
                             attack_id=fixture.id,
                             category=fixture.category,
                             target=fixture.target,
                             strategy=strategy,
                             payload=mutated,
-                            metadata={"round": str(round_num), "phase": "baseline"},
+                            metadata={"round": str(_round), "phase": "baseline"},
                         )
-                        round_results.append(result)
-                        done += 1
-                        bypassed = sum(1 for r in round_results if r.bypassed)
-                        print(
-                            f"\r  R1 [{campaign_id[-6:]}] {done}/{total_r1} probes"
-                            f" | bypasses: {bypassed}",
-                            end="",
-                            file=sys.stderr,
-                            flush=True,
-                        )
-                print(file=sys.stderr)
-            else:
-                prev_round = str(round_num - 1)
-                prior_round_probes = [
-                    r for r in all_results if r.metadata.get("round") == prev_round
-                ]
-                router = self._router_client if req.use_router_mutations else None
-                print(
-                    f"  R{round_num}: generating adaptive variants...",
-                    file=sys.stderr,
-                    flush=True,
-                )
-                variants = await generate_adaptive_variants(
-                    prior_round_probes,
-                    round_number=round_num,
-                    max_lexical_per_bypass=req.max_variants_per_bypass,
-                    router_client=router,
-                    max_router_blocked=req.max_router_blocked,
-                    max_router_bypass=req.max_router_bypass,
-                )
-                variants_generated = len(variants)
-                print(
-                    f"  R{round_num}: {variants_generated} variants — probing...",
-                    file=sys.stderr,
-                    flush=True,
-                )
-                for vi, variant in enumerate(variants, 1):
-                    result = await self._run_probe(
-                        attack_id=variant.attack_id,
-                        category=variant.category,
-                        target=variant.target,
-                        strategy=variant.strategy,
-                        payload=variant.payload,
-                        metadata={
-                            "round": str(round_num),
-                            "phase": "adaptive",
-                            "mutation_kind": variant.mutation_kind,
-                            "source_attack_id": variant.source_attack_id,
-                            "source_strategy": variant.source_strategy,
-                        },
+
+                    round_results = await self._run_probes_concurrent(
+                        [_baseline_job(f, s) for f, s in jobs],
+                        concurrency=req.probe_concurrency,
+                        progress_label=f"R1 [{campaign_id[-6:]}]",
+                        progress_total=total_r1,
                     )
-                    round_results.append(result)
-                    bypassed = sum(1 for r in round_results if r.bypassed)
+                else:
+                    prev_round = str(round_num - 1)
+                    prior_round_probes = [
+                        r for r in all_results if r.metadata.get("round") == prev_round
+                    ]
+                    router = self._router_client if req.use_router_mutations else None
                     print(
-                        f"\r  R{round_num} {vi}/{variants_generated} variants"
-                        f" | bypasses: {bypassed}",
-                        end="",
+                        f"  R{round_num}: generating adaptive variants...",
                         file=sys.stderr,
                         flush=True,
                     )
-                print(file=sys.stderr)
+                    variants = await generate_adaptive_variants(
+                        prior_round_probes,
+                        round_number=round_num,
+                        max_lexical_per_bypass=req.max_variants_per_bypass,
+                        router_client=router,
+                        max_router_blocked=req.max_router_blocked,
+                        max_router_bypass=req.max_router_bypass,
+                    )
+                    variants_generated = len(variants)
+                    print(
+                        f"  R{round_num}: {variants_generated} variants — probing...",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+                    async def _adaptive_job(
+                        variant: Any,
+                        *,
+                        _round: int = round_num,
+                    ) -> ProbeResult:
+                        return await self._run_probe(
+                            attack_id=variant.attack_id,
+                            category=variant.category,
+                            target=variant.target,
+                            strategy=variant.strategy,
+                            payload=variant.payload,
+                            metadata={
+                                "round": str(_round),
+                                "phase": "adaptive",
+                                "mutation_kind": variant.mutation_kind,
+                                "source_attack_id": variant.source_attack_id,
+                                "source_strategy": variant.source_strategy,
+                            },
+                        )
+
+                    round_results = await self._run_probes_concurrent(
+                        [_adaptive_job(v) for v in variants],
+                        concurrency=req.probe_concurrency,
+                        progress_label=f"R{round_num}",
+                        progress_total=variants_generated,
+                        progress_unit="variants",
+                    )
+            except Exception as exc:
+                from aegis_redteam.probe.router_spend import RouterSpendExhausted
+
+                if not isinstance(exc, RouterSpendExhausted):
+                    raise
+                partial = list(exc.partial_results or [])
+                round_results.extend(partial)
+                abort_reason = str(exc)
+                abort_router_calls = exc.router_calls
+                print(
+                    f"\n  ABORT live router: {abort_reason}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
             for result in round_results:
                 if store:
@@ -257,6 +282,8 @@ class RedTeamService:
                     variants_generated=variants_generated,
                 )
             )
+            if abort_reason:
+                break
 
         completed = datetime.now(tz=UTC)
         base_report = build_campaign_report(
@@ -288,7 +315,86 @@ class RedTeamService:
         )
         self._campaigns[campaign_id] = report
         patterns_stored = sum(1 for r in all_results if r.bypassed) if store else 0
-        return RunAdaptiveCampaignResponse(report=report, patterns_stored=patterns_stored)
+        return RunAdaptiveCampaignResponse(
+            report=report,
+            patterns_stored=patterns_stored,
+            aborted=bool(abort_reason),
+            abort_reason=abort_reason,
+            router_calls_used=abort_router_calls,
+            probes_completed_before_abort=len(all_results) if abort_reason else None,
+        )
+
+    async def _run_probes_concurrent(
+        self,
+        coros: list[Any],
+        *,
+        concurrency: int,
+        progress_label: str,
+        progress_total: int,
+        progress_unit: str = "probes",
+    ) -> list[ProbeResult]:
+        """Run independent probe coroutines with a concurrency cap; preserve order."""
+        if not coros:
+            return []
+        from aegis_redteam.probe.router_spend import RouterSpendExhausted
+
+        sem = asyncio.Semaphore(max(1, concurrency))
+        done = 0
+        bypassed = 0
+        lock = asyncio.Lock()
+        spend_exc: RouterSpendExhausted | None = None
+
+        async def _wrap(idx: int, coro: Any) -> ProbeResult | BaseException:
+            nonlocal done, bypassed, spend_exc
+            async with sem:
+                if spend_exc is not None:
+                    if asyncio.iscoroutine(coro):
+                        coro.close()
+                    return spend_exc
+                try:
+                    result = await coro
+                except RouterSpendExhausted as exc:
+                    spend_exc = RouterSpendExhausted(
+                        str(exc),
+                        router_calls=exc.router_calls,
+                        probe_index=idx + 1,
+                    )
+                    return spend_exc
+            async with lock:
+                done += 1
+                if result.bypassed:
+                    bypassed += 1
+                print(
+                    f"\r  {progress_label} {done}/{progress_total} {progress_unit}"
+                    f" | bypasses: {bypassed}",
+                    end="",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            return result
+
+        raw = await asyncio.gather(*[_wrap(i, c) for i, c in enumerate(coros)])
+        print(file=sys.stderr)
+        completed = [r for r in raw if isinstance(r, ProbeResult)]
+        spend_hits = [r for r in raw if isinstance(r, RouterSpendExhausted)]
+        other_errs = [
+            r
+            for r in raw
+            if isinstance(r, BaseException) and not isinstance(r, RouterSpendExhausted)
+        ]
+        if other_errs:
+            raise other_errs[0]
+        if spend_hits:
+            exc = spend_hits[0]
+            raise RouterSpendExhausted(
+                str(exc),
+                router_calls=exc.router_calls,
+                probe_index=exc.probe_index,
+                partial_results=completed,
+            )
+        # Preserve original submission order among completed results when no abort.
+        return [r for r in raw if isinstance(r, ProbeResult)]
+
 
     async def _run_probe(
         self,

@@ -90,6 +90,8 @@ class RouterJudgeBackend(JudgeBackend):
             )
             reply = completion.content
         except Exception as exc:
+            if getattr(exc, "abort_live_bt", False):
+                raise
             latency = int((time.perf_counter() - start) * 1000)
             return JudgeVote(
                 judge_id=judge_id,

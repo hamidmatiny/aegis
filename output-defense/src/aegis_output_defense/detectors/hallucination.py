@@ -67,15 +67,24 @@ _CONTRADICTION_RES: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _FUTURE_STUDY_RE = re.compile(
-    r"\baccording to a (?P<year>20\d{2}) study\b",
+    r"\b(?:according to|from)\s+a\s+(?P<year>20\d{2})(?:\s+[\w-]+){0,6}\s+"
+    r"(?:stud(?:y|ies)|paper|conference(?:\s+paper)?|abstract|preprint)\b",
     re.I,
 )
 
 # Causal medical claims attached to a fabricated citation — a misinfo class,
 # not a single fixture string.
 _MEDICAL_CAUSE_RE = re.compile(
-    r"\b(vaccines?|immuni[sz]ation|ivermectin|hydroxychloroquine)\b.{0,60}"
-    r"\b(cause|causes|caused|causing|linked to|leads? to)\b",
+    r"\b(vaccines?|immuni[sz]ation|ivermectin|hydroxychloroquine|"
+    r"distilled water|drinking water|supplement|homeopath|"
+    r"inhal(?:e|ing)|helium)\b.{0,100}"
+    r"\b(cause|causes|caused|causing|linked to|leads? to|permanently (?:erases?|deletes?)|"
+    r"cures?|erases? (?:long[- ]term )?memory|deletes? autobiographical memory)\b",
+    re.I,
+)
+
+_FABRICATED_CITATION_RE = re.compile(
+    r"https?://(?:fabricated|fake|made[- ]?up|nonexistent)[\w.-]*\.\w+",
     re.I,
 )
 
@@ -127,12 +136,16 @@ def score_hallucination(content: str, *, now: datetime | None = None) -> tuple[f
         year = int(year_match.group("year"))
         current_year = (now or datetime.now()).year
         if year > current_year:
-            if _MEDICAL_CAUSE_RE.search(text):
+            if _MEDICAL_CAUSE_RE.search(text) or _FABRICATED_CITATION_RE.search(text):
                 score = max(score, 0.90)
                 fired.append("future_study_medical_misinfo")
             else:
                 score = max(score, 0.42)
                 fired.append("future_dated_study")
+    elif _FABRICATED_CITATION_RE.search(text) and re.search(r"\b20[3-9]\d\b", text):
+        # Future year + obviously fake citation host, even without "study" wording.
+        score = max(score, 0.88)
+        fired.append("future_fabricated_url")
 
     return min(score, 1.0), fired
 

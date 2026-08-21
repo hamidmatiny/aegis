@@ -20,6 +20,9 @@ from dataclasses import dataclass
 
 from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import (
+    FIXTURES_PATH,
+    HELD_OUT_FIXTURES_PATH,
+    RESERVED_FIXTURES_PATH,
     format_round_table,
     load_fixtures,
 )
@@ -41,6 +44,10 @@ class CampaignSnapshot:
     profile: str
     report: AdaptiveCampaignReport
     elapsed_s: float
+    aborted: bool = False
+    abort_reason: str | None = None
+    router_calls_used: int | None = None
+    probes_completed_before_abort: int | None = None
 
 
 def _configure_streaming_output() -> None:
@@ -74,6 +81,31 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--stub-only", action="store_true", help="Run stub profile only")
     parser.add_argument("--hardened-only", action="store_true", help="Run hardened only")
+    parser.add_argument(
+        "--corpus",
+        choices=("default", "held_out", "reserved"),
+        default="default",
+        help=(
+            "Attack fixture corpus (default: attacks.yaml; held_out: attacks_held_out.yaml; "
+            "reserved: attacks_reserved.yaml)"
+        ),
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Probe-level concurrency within each round (1 = serial; try 8/16/32)",
+    )
+    parser.add_argument(
+        "--max-router-calls",
+        type=int,
+        default=None,
+        help=(
+            "Hard cap on live model-router calls for hardened BT/judge. "
+            "On credit/auth failure or cap hit, abort cleanly (no silent stub fallback). "
+            "Required for honest live-BT grades."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -122,8 +154,10 @@ async def _run_profile(
     stack_config: DefenseStackConfig,
     req: RunAdaptiveCampaignRequest,
     router_client: ModelRouterClient | None,
+    *,
+    max_router_calls: int | None = None,
 ) -> CampaignSnapshot:
-    probe = build_defense_stack(stack_config)
+    probe = build_defense_stack(stack_config, max_router_calls=max_router_calls)
     service = RedTeamService(
         probe,
         threshold=settings.detection_threshold,
@@ -133,10 +167,18 @@ async def _run_profile(
     started = time.perf_counter()
     result = await service.run_adaptive_campaign(req)
     elapsed = time.perf_counter() - started
+    spend = getattr(probe, "router_spend", None)
+    calls_used = result.router_calls_used
+    if calls_used is None and spend is not None:
+        calls_used = getattr(spend, "calls", None)
     return CampaignSnapshot(
         profile=stack_config.profile,
         report=result.report,
         elapsed_s=elapsed,
+        aborted=result.aborted,
+        abort_reason=result.abort_reason,
+        router_calls_used=calls_used,
+        probes_completed_before_abort=result.probes_completed_before_abort,
     )
 
 
@@ -150,7 +192,20 @@ async def main() -> int:
         )
         return 1
 
-    attacks = [f for f in load_fixtures() if f.is_attack]
+    if args.concurrency < 1 or args.concurrency > 64:
+        print("Error: --concurrency must be between 1 and 64", file=sys.stderr)
+        return 1
+    if args.max_router_calls is not None and args.max_router_calls < 1:
+        print("Error: --max-router-calls must be >= 1", file=sys.stderr)
+        return 1
+
+    if args.corpus == "held_out":
+        corpus_path = HELD_OUT_FIXTURES_PATH
+    elif args.corpus == "reserved":
+        corpus_path = RESERVED_FIXTURES_PATH
+    else:
+        corpus_path = FIXTURES_PATH
+    attacks = [f for f in load_fixtures(corpus_path) if f.is_attack]
     strategy_count = len(args.strategies) if args.strategies else len(list_strategies())
     expected_r1 = len(attacks) * strategy_count
 
@@ -173,6 +228,8 @@ async def main() -> int:
         use_router_mutations=use_router,
         max_router_blocked=settings.max_router_blocked,
         max_router_bypass=settings.max_router_bypass,
+        fixtures_path=str(corpus_path),
+        probe_concurrency=args.concurrency,
     )
 
     print(
@@ -189,6 +246,13 @@ async def main() -> int:
         )
     else:
         print("LLM adaptive mutations: OFF", file=sys.stderr, flush=True)
+    if args.max_router_calls is not None:
+        print(
+            f"Live router spend guard: max {args.max_router_calls} calls "
+            f"(abort on credits/auth — no silent stub fallback)",
+            file=sys.stderr,
+            flush=True,
+        )
 
     snapshots: list[CampaignSnapshot] = []
 
@@ -202,21 +266,31 @@ async def main() -> int:
         if args.warmup:
             warmup_stack(HARDENED_STACK)
         print("Running Phase 2 hardened profile...", file=sys.stderr, flush=True)
-        snapshots.append(await _run_profile(HARDENED_STACK, req, router_client))
-
+        snapshots.append(
+            await _run_profile(
+                HARDENED_STACK,
+                req,
+                router_client,
+                max_router_calls=args.max_router_calls,
+            )
+        )
     print("AEGIS Red Team — Same-Corpus Before/After Comparison")
-    print(f"Corpus: {len(attacks)} attacks | Round-1 strategies: {strategy_count}")
-    print(f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}")
+    print(f"Corpus: {corpus_path.name} ({len(attacks)} attacks) | Round-1 strategies: {strategy_count}")
+    print(
+        f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}"
+        f" | Probe concurrency: {args.concurrency}"
+    )
     print()
 
     if len(snapshots) == 2:
         stub, hardened = snapshots[0], snapshots[1]
-        assert _round1_probe_count(stub.report) == _round1_probe_count(hardened.report), (
-            "Round-1 probe count mismatch — not apples-to-apples"
-        )
-        assert _round1_probe_count(stub.report) == expected_r1, (
-            f"Expected {expected_r1} round-1 probes, got {_round1_probe_count(stub.report)}"
-        )
+        if not (stub.aborted or hardened.aborted):
+            assert _round1_probe_count(stub.report) == _round1_probe_count(hardened.report), (
+                "Round-1 probe count mismatch — not apples-to-apples"
+            )
+            assert _round1_probe_count(stub.report) == expected_r1, (
+                f"Expected {expected_r1} round-1 probes, got {_round1_probe_count(stub.report)}"
+            )
         print("-- Headline comparison (R1 corpus identical; adaptive reported separately) --")
         print(_format_same_corpus_table(stub, hardened))
         print()
@@ -230,16 +304,37 @@ async def main() -> int:
         for snap in snapshots:
             print(f"-- {snap.profile} per-round --")
             print(format_round_table(snap.report.rounds))
+            if snap.aborted:
+                print(
+                    f"ABORTED (live router): {snap.abort_reason}\n"
+                    f"  probes completed before abort: {snap.probes_completed_before_abort} "
+                    f"| router calls used: {snap.router_calls_used}\n"
+                    f"  Partial readout only — do not treat as a full-campaign grade."
+                )
             print()
     else:
         snap = snapshots[0]
         print(f"-- {snap.profile} only --")
         print(format_round_table(snap.report.rounds))
-        print(
-            f"R1 BR: {snap.report.baseline_bypass_rate:.1%} | "
-            f"Adaptive BR: {snap.report.adaptive_bypass_rate:.1%} "
-            f"(conditional on prior-round bypasses)"
-        )
+        r1 = _round1_probe_count(snap.report)
+        if snap.aborted:
+            print(
+                f"PARTIAL — aborted before full R1 ({r1}/{expected_r1} probes completed).\n"
+                f"ABORTED (live router): {snap.abort_reason}\n"
+                f"  probes completed: {snap.probes_completed_before_abort} "
+                f"| router calls used: {snap.router_calls_used}"
+            )
+            if r1:
+                b = snap.report.rounds[0].bypass_count if snap.report.rounds else 0
+                print(f"Partial R1 so far: {b}/{r1} bypasses ({b / r1:.1%})")
+        else:
+            print(
+                f"R1 BR: {snap.report.baseline_bypass_rate:.1%} | "
+                f"Adaptive BR: {snap.report.adaptive_bypass_rate:.1%} "
+                f"(conditional on prior-round bypasses)"
+            )
+            if snap.router_calls_used is not None:
+                print(f"Live router calls used: {snap.router_calls_used}")
 
     print(
         "Note: Adaptive-round probe counts differ between profiles when defenses "

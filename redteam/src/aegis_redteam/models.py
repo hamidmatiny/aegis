@@ -100,6 +100,7 @@ class RunCampaignRequest(BaseModel):
     strategies: list[str] | None = None
     categories: list[str] | None = None
     store_bypasses: bool | None = None
+    fixtures_path: str | None = None
 
 
 class RunAdaptiveCampaignRequest(RunCampaignRequest):
@@ -110,6 +111,9 @@ class RunAdaptiveCampaignRequest(RunCampaignRequest):
     use_router_mutations: bool = True
     max_router_blocked: int = Field(default=15, ge=0, le=100)
     max_router_bypass: int = Field(default=5, ge=0, le=50)
+    # Probe-level parallelism within a round (1 = legacy serial). Does not change
+    # scoring semantics; only wall-clock scheduling of independent probes.
+    probe_concurrency: int = Field(default=1, ge=1, le=64)
 
 
 class RoundReport(BaseModel):
@@ -134,6 +138,10 @@ class RunCampaignResponse(BaseModel):
 class RunAdaptiveCampaignResponse(BaseModel):
     report: AdaptiveCampaignReport
     patterns_stored: int
+    aborted: bool = False
+    abort_reason: str | None = None
+    router_calls_used: int | None = None
+    probes_completed_before_abort: int | None = None
 
 
 class ProbeRequest(BaseModel):
