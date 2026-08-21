@@ -7,7 +7,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import cast, Any
 
 from aegis_redteam.adaptive.variants import generate_adaptive_variants
 from aegis_redteam.clients.model_router import ModelRouterClient
@@ -334,7 +334,7 @@ class RedTeamService:
 
         results = await asyncio.gather(*[_wrap(c) for c in coros])
         print(file=sys.stderr)
-        return list(results)
+        return cast(list[ProbeResult], list(results))
 
     async def _run_probe(
         self,
