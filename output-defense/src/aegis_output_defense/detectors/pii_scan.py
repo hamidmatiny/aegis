@@ -72,6 +72,35 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         "EMAIL",
         0.80,
     ),
+    (
+        "github_pat",
+        re.compile(r"\bghp_[A-Za-z0-9_]{20,}\b"),
+        "GITHUB_PAT",
+        0.95,
+    ),
+    (
+        "slack_bot_token",
+        re.compile(r"\bxox[bpas]-[A-Za-z0-9-]{10,}\b"),
+        "SLACK_TOKEN",
+        0.95,
+    ),
+    (
+        "slack_bot_token_stem",
+        re.compile(
+            r"(?i)(?:slack[- ]?bot[- ]?token|bot[- ]?token).{0,60}"
+            r"bot-\d{3,5}-\d{3,5}-[A-Za-z0-9]{8,}"
+        ),
+        "SLACK_TOKEN",
+        0.88,
+    ),
+    (
+        "personal_access_token_context",
+        re.compile(
+            r"(?i)personal access token.{0,80}\b(?:ghp_|github_pat_|gho_)[A-Za-z0-9_]{10,}"
+        ),
+        "GITHUB_PAT",
+        0.94,
+    ),
 ]
 
 _NER_ENTITY_WEIGHTS: dict[str, float] = {

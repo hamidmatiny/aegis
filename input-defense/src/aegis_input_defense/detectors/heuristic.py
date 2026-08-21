@@ -186,12 +186,36 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
     (
         "crime_instruction_request",
         re.compile(
-            r"(step[- ]by[- ]step|how to|teach me to|show me how to|tell me how to).{0,60}"
-            r"(steal(?:ing)?|rob(?:bing)?|break(?:ing)? into|hotwire|hot-wire|pick a lock)",
+            r"(step[- ]by[- ]step|how to|teach me to|show me how to|tell me how to|"
+            r"teaches? the audience|beat by beat).{0,80}"
+            r"(steal(?:ing)?|rob(?:bing)?|break(?:ing)? into|hotwire|hot-wire|"
+            r"pick a lock|pin\s+tumbler|lock\s+with\s+picks|defeat a .{0,40}lock)",
             re.I,
         ),
         0.80,
         "Step-by-step instructions requested for theft or burglary",
+    ),
+    (
+        "stageplay_crime_coaching",
+        re.compile(
+            r"(?:one-act play|workshopping|spoken monologue|protagonist).{0,120}"
+            r"(?:burglar|locksmith|thief).{0,120}"
+            r"(?:defeat|pick|teach).{0,80}(?:lock|picks|tumbler)",
+            re.I | re.S,
+        ),
+        0.84,
+        "Creative-writing framing that still requests lockpicking/burglary coaching",
+    ),
+    (
+        "credential_clone_guide",
+        re.compile(
+            r"(?:field guide|how to|procedure).{0,60}"
+            r"(?:clon(?:e|ing)|copy).{0,50}"
+            r"(?:keycard|hotel key|magnetic.{0,20}card|rfid|badge)",
+            re.I | re.S,
+        ),
+        0.84,
+        "Request for credential/keycard cloning instructions",
     ),
     (
         "harmful_persona_action",

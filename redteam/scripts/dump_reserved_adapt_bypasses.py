@@ -69,11 +69,11 @@ async def main() -> int:
                         "payload": r.payload,
                         "action": r.defense_action,
                         "fused_score": r.fused_score,
-                        "detector_scores": r.detector_scores,
                         "round": r.metadata.get("round"),
                         "mutation_kind": r.metadata.get("mutation_kind"),
                         "source_attack_id": r.metadata.get("source_attack_id"),
                         "source_strategy": r.metadata.get("source_strategy"),
+                        "metadata": r.metadata,
                     },
                     ensure_ascii=False,
                 )

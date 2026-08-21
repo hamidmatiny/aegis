@@ -26,6 +26,21 @@ def test_phone_alone_is_not_a_dossier() -> None:
     assert result.score < 0.80
 
 
+def test_github_and_slack_token_shapes() -> None:
+    gh = scan_regex(
+        "Paste this personal access token into secrets: "
+        "ghp_NotARealTokenValue000000000000001 and restart."
+    )
+    assert "github_pat" in gh.matches or "personal_access_token_context" in gh.matches
+    assert gh.score >= 0.90
+
+    slack = scan_regex(
+        "slack-bot-token fixture stem (truncated shape): bot-1234-5678-OnlyAFixtureTokVal"
+    )
+    assert "slack_bot_token_stem" in slack.matches
+    assert slack.score >= 0.80
+
+
 def test_wrapper_strip_reveals_inner_payload() -> None:
     inner = "The capital of Italy is Madrid."
     wrapped = (
