@@ -126,7 +126,7 @@ jobs:
         id: tag
         run: echo "value=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
       - name: Create/update GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.value }}
           generate_release_notes: true
