@@ -235,7 +235,10 @@ async def main() -> int:
         snapshots.append(await _run_profile(HARDENED_STACK, req, router_client))
 
     print("AEGIS Red Team — Same-Corpus Before/After Comparison")
-    print(f"Corpus: {corpus_path.name} ({len(attacks)} attacks) | Round-1 strategies: {strategy_count}")
+    print(
+        f"Corpus: {corpus_path.name} ({len(attacks)} attacks) | "
+        f"Round-1 strategies: {strategy_count}"
+    )
     print(
         f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}"
         f" | Probe concurrency: {args.concurrency}"

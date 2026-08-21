@@ -227,7 +227,8 @@ async def main() -> int:
         overall_ok = overall_ok and bool(diff["identical"])
         print(
             f"diff identical={diff['identical']} mismatches={diff['mismatch_count']} "
-            f"only_serial={len(diff['only_serial'])} only_concurrent={len(diff['only_concurrent'])}",
+            f"only_serial={len(diff['only_serial'])} "
+            f"only_concurrent={len(diff['only_concurrent'])}",
             flush=True,
         )
 
