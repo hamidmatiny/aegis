@@ -147,6 +147,8 @@ docker compose up -d --build input-defense output-defense redteam
 
 ### Same-corpus comparison (local in-process stacks)
 
+`scripts/run_same_corpus_comparison.py` runs stub vs hardened in-process defenses and prints **R1 BR** / **Adapt BR** columns (no blended overall). Default probe concurrency remains serial (`N=1`).
+
 ```bash
 # Lexical adaptive mutations only; report R1 BR and Adapt BR separately.
 python scripts/run_same_corpus_comparison.py --rounds 3 --warmup --no-router-mutations
@@ -165,7 +167,7 @@ python scripts/ladder_probe_concurrency.py --limit-attacks 8 --levels 8 16 32
 
 Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.45–0.70).
 
-**Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies → 24.5% overall BR). Compare live hardened stack via `scripts/run_before_after.py`.
+**Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies). Prefer reporting R1 and adaptive phases separately when comparing; see [RESULTS.md](../RESULTS.md). Compare live hardened stack via `scripts/run_before_after.py`.
 
 Full analysis: [RESULTS.md](../RESULTS.md)
 

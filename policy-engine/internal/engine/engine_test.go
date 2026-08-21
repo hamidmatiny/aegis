@@ -415,3 +415,42 @@ func TestEvaluateToolAllowsCleanArgument(t *testing.T) {
 		t.Fatalf("expected allow for a clean argument, got %s", decision.Action)
 	}
 }
+
+// TestEvaluateToolHttpGetEscalates documents the MEDIUM exfil gap closure:
+// catalogued http_get must not fall through to default allow.
+func TestEvaluateToolHttpGetEscalates(t *testing.T) {
+	eng := engine.New()
+	pack := models.PolicyPack{
+		ID:      "default",
+		Version: "0.3.0",
+		ToolRules: []models.PolicyRule{
+			{
+				ID: "escalate-medium-exfil-http-get", Name: "Escalate http_get",
+				CEL: "tool_call.tool_name == 'http_get'", Action: models.ActionEscalateToJudge, Enabled: true,
+			},
+		},
+		ToolCatalog: []models.ToolCatalogEntry{
+			{ToolName: "http_get", RiskLevel: "MEDIUM"},
+			{ToolName: "search_docs", RiskLevel: "LOW"},
+		},
+		Settings: models.PolicySettings{DefaultAction: models.ActionAllow},
+	}
+
+	httpGet := models.ToolCallRequest{ToolName: "http_get", RiskLevel: "MEDIUM"}
+	decision, err := eng.EvaluateTool(pack, "default", httpGet, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool http_get: %v", err)
+	}
+	if decision.Action != models.ActionEscalateToJudge {
+		t.Fatalf("expected escalate for http_get, got %s", decision.Action)
+	}
+
+	search := models.ToolCallRequest{ToolName: "search_docs", RiskLevel: "LOW"}
+	decision, err = eng.EvaluateTool(pack, "default", search, models.ModeEnforce)
+	if err != nil {
+		t.Fatalf("EvaluateTool search_docs: %v", err)
+	}
+	if decision.Action != models.ActionAllow {
+		t.Fatalf("expected allow for search_docs, got %s", decision.Action)
+	}
+}

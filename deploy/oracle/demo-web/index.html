@@ -57,7 +57,7 @@
   .btn-secondary { background: var(--panel); color: var(--text); }
 
   .features {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 36px 0 4px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 36px 0 4px;
   }
   @media (max-width: 640px) { .features { grid-template-columns: 1fr; } }
   .feature-card {
@@ -210,7 +210,7 @@
     <div class="badge-row">
       <span class="pill ok">Apache 2.0</span>
       <span class="pill ok">Self-hosted</span>
-      <span class="pill warn">Adaptive red-teamed — real ~48% bypass rate published</span>
+      <span class="pill warn">Adaptive red-teamed — R1 &amp; Adapt BR published separately</span>
     </div>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="https://github.com/hamidmatiny/aegis" target="_blank" rel="noopener">View on GitHub</a>
@@ -229,7 +229,11 @@
     </div>
     <div class="feature-card">
       <h3>Agent tool-permissioning</h3>
-      <p>Taint-tracked tool calls and human-approval gating for irreversible actions — the layer most guardrail projects skip entirely.</p>
+      <p>Taint-tracked tool calls and human-approval gating for irreversible actions — the layer most guardrail projects skip entirely. Content classification still carries the load for attacks that never become a tool call.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Governed harness + tools</h3>
+      <p>Shipped starter agent loop and 7-tool library that will not execute a tool without an agent-gate allow decision — governance is load-bearing, not advisory.</p>
     </div>
   </div>
 
@@ -250,12 +254,15 @@
     itself always runs on a mock model, never a real provider — that's
     also labeled explicitly below, so nothing here pretends to be
     something it isn't. And even the hardened, full-model version of the
-    detectors doesn't catch everything — our own adaptive red-team
-    testing found real-model detectors converge to roughly the same ~48%
-    bypass rate as the lightweight ones by round 3 of an adapting
-    attacker. We publish that number so you find out from us, not from a
-    bypass. Full methodology and numbers:
+    detectors doesn't catch everything — adaptive red-team campaigns show
+    that static (round-1) gains often do not survive mutation pressure.
+    We publish <strong>R1 BR</strong> and <strong>Adapt BR</strong>
+    separately (never one blended “overall bypass” headline) so you find
+    out from us, not from a bypass. Full methodology and numbers:
     <a href="https://github.com/hamidmatiny/aegis/blob/main/RESULTS.md" target="_blank" rel="noopener">RESULTS.md</a>.
+    The live demo is the chat pipeline; the governed
+    <a href="https://github.com/hamidmatiny/aegis/tree/main/harness" target="_blank" rel="noopener">harness + tools library</a>
+    is in the same repo for agent loops that must go through agent-gate.
   </p>
 
   <div class="examples">

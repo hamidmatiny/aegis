@@ -157,7 +157,15 @@ Default tool rules (`policies/default.yaml`):
 | Rule | CEL | Action |
 |------|-----|--------|
 | `require-approval-irreversible` | `risk_level == 'IRREVERSIBLE'` | `escalate_to_judge` |
+| `escalate-medium-exfil-http-get` | `tool_name == 'http_get'` | `escalate_to_judge` |
 | `block-tainted-credentials` | any arg with `contains_credentials == true` | `block` |
+
+**Honest scope:** under this default pack, **only IRREVERSIBLE** catalog
+tools auto-escalate. `MEDIUM` / `HIGH` are labels in the risk catalog;
+they do not escalate unless you add an explicit tool rule (e.g. escalating
+exfil-shaped tools such as `http_get`). Content attacks that never call a
+tool are handled by input/output defense + input/output policy, not these
+tool rules — see [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 `contains_credentials` is set server-side by agent-gate's `mask.go`, which
 regex-scans every argument's actual value for credential-shaped content

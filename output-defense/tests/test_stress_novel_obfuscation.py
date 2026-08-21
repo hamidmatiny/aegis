@@ -26,9 +26,9 @@ os.environ["AEGIS_OUTPUT_DEFENSE_PII_BACKEND"] = "ner"
 os.environ["AEGIS_OUTPUT_DEFENSE_BACKTRANSLATION_BACKEND"] = "stub"
 os.environ["AEGIS_OUTPUT_DEFENSE_JUDGE_BACKEND"] = "stub"
 
-from aegis_output_defense.detectors.registry import build_detector_registry
-from aegis_output_defense.models import VerdictAction
-from aegis_output_defense.service import OutputDefenseService
+from aegis_output_defense.detectors.registry import build_detector_registry  # noqa: E402
+from aegis_output_defense.models import VerdictAction  # noqa: E402
+from aegis_output_defense.service import OutputDefenseService  # noqa: E402
 
 ZW = "\u200b"
 
