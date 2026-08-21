@@ -111,6 +111,9 @@ class RunAdaptiveCampaignRequest(RunCampaignRequest):
     use_router_mutations: bool = True
     max_router_blocked: int = Field(default=15, ge=0, le=100)
     max_router_bypass: int = Field(default=5, ge=0, le=50)
+    # Probe-level parallelism within a round (1 = legacy serial). Does not change
+    # scoring semantics; only wall-clock scheduling of independent probes.
+    probe_concurrency: int = Field(default=1, ge=1, le=64)
 
 
 class RoundReport(BaseModel):

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from aegis_output_defense.detectors.base import Detector, DetectorContext
 from aegis_output_defense.detectors.judge.detector import JudgeDetector
 from aegis_output_defense.detectors.registry import ALWAYS_RUN_IDS, build_detector_registry
@@ -78,24 +80,23 @@ class OutputDefenseService:
         ctx = DetectorContext(original_prompt=original_prompt, request_id=request_id)
         surfaces, normalization = expand_scan_surfaces(content)
 
-        results: list[DetectorResult] = []
-        for detector_id in ids:
-            if detector_id == "judge":
-                continue
+        async def _score_detector(detector_id: str) -> DetectorResult | None:
             detector = self._get_detector(detector_id)
-            best: DetectorResult | None = None
-            for surface in surfaces:
-                result = await detector.analyze(surface, ctx)
-                if best is None or result.score > best.score:
-                    best = result
-            if best is not None:
-                if normalization:
-                    best.metadata = {
-                        **best.metadata,
-                        "normalization": ",".join(normalization),
-                        "scan_surfaces": str(len(surfaces)),
-                    }
-                results.append(best)
+            surface_results = await asyncio.gather(
+                *[detector.analyze(surface, ctx) for surface in surfaces]
+            )
+            best = max(surface_results, key=lambda r: r.score)
+            if normalization:
+                best.metadata = {
+                    **best.metadata,
+                    "normalization": ",".join(normalization),
+                    "scan_surfaces": str(len(surfaces)),
+                }
+            return best
+
+        scoring_ids = [detector_id for detector_id in ids if detector_id != "judge"]
+        scored = await asyncio.gather(*[_score_detector(did) for did in scoring_ids])
+        results = [r for r in scored if r is not None]
 
         pre_fused = fuse_scores(results)
         judge_votes: list[JudgeVote] = []
