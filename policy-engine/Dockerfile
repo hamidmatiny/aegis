@@ -5,7 +5,7 @@ RUN go mod download
 COPY policy-engine/ ./
 RUN CGO_ENABLED=0 go build -o /policy-engine ./cmd/policy-engine
 
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=builder /policy-engine /usr/local/bin/policy-engine
