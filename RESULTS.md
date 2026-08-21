@@ -1,31 +1,125 @@
-# AEGIS Phase 2 — Defensive Capability Results (Stage H3)
+# AEGIS Phase 2 — Defensive Capability Results (Stage H3+)
 
-This document reports **adaptive red-team evidence** and **detector ablation** after Stages H1–H3. Numbers are labeled **your terminal** (authoritative full runs) vs **agent session** (partial/diagnostic runs).
+This document reports **adaptive red-team evidence** after Stages H1–H3 and the
+Milestone 2/3 defense-hardening cycle. Headline metrics are **R1 BR** (static
+catch rate on a fixed corpus × strategies) and **Adapt BR** (bypass rate on
+adaptive rounds 2–3, **conditional on prior-round survivors**). These must not
+be blended into a single “overall bypass rate.”
 
 ---
 
-## TL;DR
+## TL;DR (current verified state — 2026-08)
 
-We publish this because most guardrail vendors only report round-1 catch
-rates against a fixed test corpus — a number that looks good in a demo and
-tells you almost nothing about a real, adaptive attacker. We ran our own
-detectors through adaptive red-team campaigns that breed new attacks from
-whatever got through the previous round, and reported the result honestly
-even though it isn't flattering:
+Most guardrail vendors publish only round-1 catch rates on a fixed test set.
+We run adaptive campaigns that breed from whatever got through, and we grade
+on **held-out and reserved corpora**, not only the development corpus.
+
+| Corpus | Role | Hardened R1 BR | Hardened Adapt BR | Stub R1 BR | Stub Adapt BR |
+|--------|------|----------------|-------------------|------------|---------------|
+| **Frozen** (`attacks.yaml`) | Development / saturated | **0.0%** (0/240) | **0/0** (no R1 survivors) | 0.8% (2/240) | 8.3% (1/12) |
+| **Held-out** (`attacks_held_out.yaml`) | Independent check (seen during M3) | **0.0%** (0/240) post-M3 | **0/0** post-M3 (was **73.7%** pre-M3) | 6.7% (16/240) | 8.3% (8/96) |
+| **Reserved** (`attacks_reserved.yaml`) | **Blind final grade** (pre-M4; unseen in development) | **26.2%** (63/240) | **60.5%** (508/840) | 32.5% (78/240) | 57.2% (540/944) |
+
+**Plain language (reserved corpus — the number that counts today):**
+
+> Out of 100 fresh attacks, about **26** get through hardened defenses today
+> versus about **33** with stub/no real hardening. Out of 100 **persistent
+> adapting** attackers that already found a foothold, about **60** eventually
+> get through — **either way** (hardened 60.5% vs stub 57.2%).
+
+**Read this carefully:** frozen (and post-M3 held-out) **Adapt 0/0 is not
+evidence of adaptive robustness**. It means round 1 caught every seed on
+*that* corpus, so adaptive rounds never ran. The reserved blind grade shows
+hardening still helps a little on first contact (−6.3 pp R1 vs stub) but does
+**not** win the adaptive fight.
+
+Commands (threshold 0.50, lexical mutations only):
+
+```bash
+redteam/.venv/bin/python redteam/scripts/run_same_corpus_comparison.py \
+  --rounds 3 --warmup --no-router-mutations
+redteam/.venv/bin/python redteam/scripts/run_same_corpus_comparison.py \
+  --corpus held_out --rounds 3 --warmup --no-router-mutations
+redteam/.venv/bin/python redteam/scripts/run_same_corpus_comparison.py \
+  --corpus reserved --rounds 3 --warmup --no-router-mutations
+```
+
+---
+
+## Why the frozen corpus is no longer the headline
+
+The original 30-attack frozen corpus (`attacks.yaml`) drove Milestone 1–3
+detector work. After M3, hardened **R1 BR is 0/240** on that set, so **Adapt
+BR is 0/0** (zero adaptive probes). That looks perfect and is **misleading**:
+
+1. The campaign only mutates **prior-round bypasses**. No R1 survivors → no
+   adaptive measurement.
+2. Detector work was guided by failures on this corpus (and later held-out).
+   Saturation here does not prove generalization.
+3. The **reserved** corpus was built independently for final grading and was
+   not used to tune defenses. Its hardened Adapt BR **60.5% (508/840)** is the
+   honest **pre-M4** adaptive grade for M2+M3 combined (see reserved subsection:
+   post-M4 reserved Adapt 0/0 is vacuous saturation, not adaptive proof).
+
+Held-out followed the same pattern: pre-M3 hardened Adapt **73.7% (448/608)**;
+after M3 pattern/class fixes, held-out hardened also reached R1 **0/240** /
+Adapt **0/0**. Useful as a checkpoint, not as a substitute for a blind set.
+
+---
+
+## Multi-corpus detail tables
+
+### Reserved (blind grade) — 2026-08-20 (pre-M4)
+
+| Profile | R1 probes | R1 bypass | R1 BR | Adapt probes | Adapt bypass | Adapt BR |
+|---------|-----------|-----------|-------|--------------|--------------|----------|
+| Phase 1 stub | 240 | 78 | 32.5% | 944 | 540 | 57.2% |
+| Phase 2 hardened | 240 | 63 | 26.2% | 840 | 508 | 60.5% |
+
+Hardened per-round: R1 63/240 → R2 147/252 (58.3%) → R3 361/588 (61.4%).
+
+**Why this PR cites the pre-M4 reserved grade:** These headline figures are the
+**pre-M4** reserved blind grade (honest adaptive comparison while seeds still
+survived round 1). After M4 class fixes, reserved can look like frozen/held-out:
+hardened **R1 0/240 → Adapt 0/0** — a **vacuous saturation / overfit artifact**,
+not proof of adaptive robustness (no R1 survivors means adaptive rounds never
+ran). We therefore intentionally publish the pre-M4 reserved R1/Adapt numbers
+here rather than the post-M4 0/0 disclosure as if it were a win.
+
+### Held-out — pre-M3 vs post-M3
+
+| Checkpoint | Profile | R1 BR | Adapt BR |
+|------------|---------|-------|----------|
+| Pre-M3 | stub | 23.8% (57/240) | 65.2% (477/732) |
+| Pre-M3 | hardened | 16.2% (39/240) | **73.7% (448/608)** |
+| Post-M3 | stub | 6.7% (16/240) | 8.3% (8/96) |
+| Post-M3 | hardened | 0.0% (0/240) | **0/0** (no R1 survivors) |
+
+### Frozen — post-M3 (saturated)
+
+| Profile | R1 probes | R1 bypass | R1 BR | Adapt probes | Adapt bypass | Adapt BR |
+|---------|-----------|-----------|-------|--------------|--------------|----------|
+| Phase 1 stub | 240 | 2 | 0.8% | 12 | 1 | 8.3% |
+| Phase 2 hardened | 240 | 0 | 0.0% | 0 | 0 | 0.0% |
+
+---
+
+## Historical H3 baseline (archival — do not use as current grade)
+
+The June 2026 terminal run below used **only** the frozen corpus and still
+published a blended “overall” rate. Kept for provenance; **superseded** by the
+multi-corpus TL;DR above. Methodology note from the campaign script still
+applies: do not blend R1 and Adapt into one headline.
 
 | Metric | Stub detectors | Hardened (real-model) detectors |
 |---|---|---|
-| Round 1 bypass rate | 10.8% | 9.2% |
+| Round 1 bypass rate | 10.8% (26/240) | 9.2% (22/240) |
 | Round 3 bypass rate | 72.8% | 75.0% |
-| Overall bypass rate | 47.4% | 48.3% |
+| ~~Overall bypass rate~~ (do not use) | ~~47.4%~~ | ~~48.3%~~ |
 
-**Real-model hardening barely moves the number that matters.** Full
-methodology, root-cause analysis, and reproduction commands below — see
-[Headline finding](#headline-finding-read-this-first) for the details and
-[Implications for fixes](#implications-for-fixes-by-root-cause) for what
-we're doing about it: continuous adversarial monitoring (the `redteam/`
-engine that produced these numbers) rather than a one-time install that
-claims the problem is solved.
+**Real-model hardening barely moved adaptive survival on that early frozen
+run.** Continuous adversarial monitoring (`redteam/`) remains the product
+posture — not a one-time install that claims the problem is solved.
 
 ---
 
@@ -84,21 +178,31 @@ Reproduce: `python scripts/run_convergence_diagnostic.py --warmup --no-router-mu
 
 ## Headline finding (read this first)
 
-**Real-model hardening improves static (round-1) catch rates but does not meaningfully improve sustained adaptive bypass rates.**
+**See [TL;DR (current verified state)](#tldr-current-verified-state--2026-08) for the
+numbers that supersede this section.**
+
+**Archival finding (frozen corpus only, June 2026):** Real-model hardening
+improved static (round-1) catch rates slightly but did not meaningfully improve
+sustained adaptive bypass rates **on that corpus at that time**.
 
 | Metric | Phase 1 stub | Phase 2 hardened | Δ |
 |--------|--------------|------------------|---|
-| **Round 1 bypass rate** (same 30×8 corpus) | **10.8%** (26/240) | **9.2%** (22/240) | **−1.6 pp** (modest improvement) |
-| **Round 2 bypass rate** | 65.4% (68/104) | **75.0%** (66/88) | **+9.6 pp** (hardened worse) |
-| **Round 3 bypass rate** | 72.8% (198/272) | **75.0%** (198/264) | **+2.2 pp** (hardened worse) |
-| **Overall bypass rate** | **47.4%** | **48.3%** | **+0.9 pp** (statistical parity) |
+| **Round 1 bypass rate** (same 30×8 corpus) | **10.8%** (26/240) | **9.2%** (22/240) | **−1.6 pp** |
+| **Round 2 bypass rate** | 65.4% (68/104) | **75.0%** (66/88) | **+9.6 pp** |
+| **Round 3 bypass rate** | 72.8% (198/272) | **75.0%** (198/264) | **+2.2 pp** |
+| ~~**Overall bypass rate**~~ | ~~**47.4%**~~ | ~~**48.3%**~~ | do not use |
 
-**Source:** **your terminal**, 2026-06-27 — `redteam/.venv/bin/python redteam/scripts/run_same_corpus_comparison.py --no-router-mutations`  
-Backends: stub vs hardened in-process (`prompt-guard` + `lm` / `toxic-bert` + `ner` + `router` backtranslation). Threshold 0.50.
+**Source (archival):** terminal run 2026-06-27 —
+`redteam/.venv/bin/python redteam/scripts/run_same_corpus_comparison.py --no-router-mutations`
 
-**Interpretation:** Prompt-Guard, Toxic-BERT, spaCy NER, and Grok backtranslation **do help on the initial fixed corpus**, but once the campaign enters adaptive rounds that **breed from successful bypasses**, hardened and stub defenses **converge to ~75% bypass** and **near-identical overall bypass (~48%)**. This is a citable, honest result: **static fixture gains do not survive evolutionary mutation pressure** under the current adaptive design.
+**Current interpretation (2026-08):** After M2/M3, the frozen corpus is
+**saturated** (hardened R1 0/240 → Adapt 0/0). The **reserved** blind grade is
+hardened R1 **26.2% (63/240)** / Adapt **60.5% (508/840)** vs stub
+**32.5% / 57.2%**. Hardening helps first contact a little; adaptive survival
+remains the open problem.
 
-This is **not** a policy-engine issue — red-team probes defense services directly (`POST /analyze`), bypassing policy-engine entirely.
+This is **not** a policy-engine issue — red-team probes defense services
+directly (`POST /analyze`), bypassing policy-engine entirely.
 
 ---
 
