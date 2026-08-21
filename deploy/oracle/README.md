@@ -175,8 +175,14 @@ Edit `deploy/oracle/demo-web/index.html`, commit, push, then on the VM:
 cd aegis && git pull && ./deploy/oracle/setup.sh
 ```
 
-`setup.sh` remounts the volume and restarts `demo-proxy`, so page-only
-changes redeploy in seconds even though the full script re-runs.
+`demo-web` is an **nginx bind-mount** of that HTML: after `git pull`, a
+proxy remount/restart (or `setup.sh`) is enough — you do **not** rebuild
+defense containers for page-only changes.
+
+**Policy YAML changes** (e.g. escalating `http_get`) are different: the
+policy-engine loads packs at startup (and via `POST /v1/reload` when used).
+A `git pull` alone does not apply YAML until you restart `policy-engine` or
+call reload successfully.
 
 ## Domain + HTTPS via Cloudflare (Stage C.1)
 

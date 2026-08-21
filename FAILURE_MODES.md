@@ -24,7 +24,8 @@ evaluation modes and must not be used on a production enforcement path.
 
 Policy hot reload is atomic: a reload error leaves the previously loaded pack
 in service. Operators must treat a reload error as a failed configuration
-deployment and correct it before retrying.
+deployment and correct it before retrying. **Changing `policies/default.yaml`
+on disk is not live until restart or a successful `/v1/reload`.**
 
 ## Explicitly fail open: observability and backend degradation
 

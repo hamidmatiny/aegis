@@ -36,14 +36,24 @@ for irreversible actions.
 **Honesty about detection limits.** Every guardrail vendor, AEGIS included,
 can report a round-1 catch rate against a fixed test set and make it look
 good — that number is close to meaningless against a real attacker who
-adapts. [RESULTS.md](./RESULTS.md) reports what happens under adaptive
-red-teaming that breeds new attacks from prior bypasses: hardened detectors
-converge to roughly the same ~48% overall bypass rate as unhardened ones by
-round 3. We publish that because it's true and because the fix isn't a
-better detector — it's continuous monitoring, which is what the `redteam`
-service is actually for. None of the other three projects publish adaptive
-numbers at all, which doesn't mean they'd do worse — it means there's no way
-to know.
+adapts. [RESULTS.md](./RESULTS.md) reports adaptive red-teaming that breeds
+new attacks from prior bypasses. **Methodology:** publish **R1 BR** (static
+catch on the full corpus) and **Adapt BR** (bypass rate on rounds 2+,
+conditional on prior-round survivors) **separately** — do not blend them into
+one “overall bypass rate” headline. The archival H3 frozen-corpus run on
+`main` still shows round tables including a historical overall figure; a
+multi-corpus RESULTS rewrite (held-out / reserved blind grades) is tracked
+separately pending review. The product posture is continuous monitoring via
+`redteam/`, not a one-time install that claims the problem is solved. None of
+the other three projects publish adaptive numbers at all, which doesn't mean
+they'd do worse — it means there's no way to know.
+
+**Defense-in-depth vs text-only peers.** Most open-source guardrails stop at
+input/output filtering. AEGIS also ships **agent-gate** + a tool risk catalog
+(and a governed **harness** that will not execute a tool without an allow
+decision). That matters for tool-misuse classes — and it is honest to say
+content classification remains the load-bearing layer for attacks that never
+become tool calls. See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## When one of the others might be a better fit
 

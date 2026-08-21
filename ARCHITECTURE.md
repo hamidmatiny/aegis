@@ -4,6 +4,17 @@
 
 AEGIS is a provider-agnostic security gateway that protects LLM applications through five defense layers. Every decision fuses multiple independent signals; no single detector is the sole gate.
 
+**What each layer actually carries (load-bearing vs complementary):**
+
+| Layer | Role in real attack outcomes |
+|-------|------------------------------|
+| **Input / output defense** (content classification) | **Primary, load-bearing** for most adaptive red-team Adapt-round failures audited against the default pack (~**83%** were pure content / secret-already-leaked paths with no tool call). If this layer misses, the compromise is often already complete. |
+| **Policy engine** | Translates detector verdicts and tool risk into allow/block/escalate — independent of any single model score. |
+| **Agent-gate + tool catalog** | **Differentiator vs most guardrail projects**, but only covers outcomes that become tool calls. Under the default pack today, **IRREVERSIBLE** tools require human approval (~**7%** of that Adapt-bypass set mapped to irreversible tool misuse). **MEDIUM/HIGH** catalog labels alone do not escalate unless a specific tool rule exists (exfil-shaped `http_get` escalation is tracked in a separate policy PR). Credential-shaped args are blocked regardless of tier. |
+| **Red-team engine** | Continuous measurement — not a one-time install claim. Report **R1 BR** and **Adapt BR** separately; never blend into one “overall bypass rate.” |
+
+This split matters for positioning: layered tool-permissioning is a real advantage over text-only guardrails, but it does **not** substitute for content defense on the large class of attacks that never touch a tool. The ~83% / ~7% split is an architecture finding from tool-relevance audit of Adapt bypasses — not a substitute for the published R1/Adapt tables in [RESULTS.md](./RESULTS.md).
+
 ## Defense layers
 
 ```mermaid
@@ -87,7 +98,8 @@ Deterministic, code-level permission system for tool/MCP calls.
 | Policy evaluation | Calls policy-engine `/v1/evaluate/tool` for CEL rules |
 | Taint tracking | Propagates `taint_level` / `taint_source` on arguments |
 | Credential masking | Regex-based detection + `[REDACTED-*]` in sanitized tool calls |
-| Human approval | Irreversible actions → `AWAITING_HUMAN_APPROVAL` + `/v1/approvals/{id}/decide` |
+| Human approval | Default pack: **IRREVERSIBLE** catalog tools → `AWAITING_HUMAN_APPROVAL`. MEDIUM/HIGH are catalogued for operators; they do not auto-escalate unless a tool rule matches (see policy-engine `default.yaml`). |
+| Credential args | `contains_credentials` on any argument → `block` (independent of risk tier) |
 
 **Port:** 8083 — see [agent-gate/README.md](./agent-gate/README.md)
 
@@ -99,9 +111,10 @@ Continuous adversarial testing in sandboxed staging.
 |------------|-------------|
 | Attack corpus | Local YAML fixtures targeting input/output defenses (30 attacks, H3 expanded) |
 | Mutation strategies | 8 transforms (paraphrase, roleplay, encoding, multi-turn, etc.) |
-| Campaign runner | Probes defenses via HTTP; reports bypass rate by target/category |
+| Campaign runner | Probes defenses via HTTP; reports **R1 BR** and **Adapt BR** separately (never a blended “overall” headline) |
 | **Adaptive campaigns (H3)** | Multi-round: mutate successful bypass payloads (`POST /v1/campaigns/run-adaptive`) |
 | Pattern store | In-memory + optional Postgres `attack_patterns` for bypasses |
+| Local same-corpus CLI | `redteam/scripts/run_same_corpus_comparison.py` — stub vs hardened in-process stacks; optional probe concurrency (see redteam README) |
 
 **Port:** 8092 — see [redteam/README.md](./redteam/README.md)
 
