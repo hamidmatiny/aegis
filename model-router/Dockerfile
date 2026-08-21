@@ -5,7 +5,7 @@ RUN go mod download
 COPY model-router/ ./
 RUN CGO_ENABLED=0 go build -o /model-router ./cmd/model-router
 
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=builder /model-router /usr/local/bin/model-router
