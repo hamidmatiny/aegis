@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY dashboard/package.json dashboard/package-lock.json* ./
 RUN npm install
