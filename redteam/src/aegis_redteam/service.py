@@ -7,7 +7,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast, Any
+from typing import Any, cast
 
 from aegis_redteam.adaptive.variants import generate_adaptive_variants
 from aegis_redteam.clients.model_router import ModelRouterClient
