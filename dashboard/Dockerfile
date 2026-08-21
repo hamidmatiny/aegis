@@ -5,7 +5,7 @@ RUN npm install
 COPY dashboard/ .
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 RUN apk add --no-cache apache2-utils openssl
 COPY dashboard/nginx.conf /etc/nginx/conf.d/default.conf
 COPY dashboard/docker-entrypoint.sh /docker-entrypoint.sh
