@@ -143,7 +143,7 @@ curl -X POST localhost:8083/v1/approvals/appr-123456789/decide \
 |--------|---------|
 | `APPROVED` | Policy allowed; execute `sanitized_tool_call` |
 | `DENIED` | Policy blocked (e.g. tainted credentials) |
-| `AWAITING_HUMAN_APPROVAL` | Irreversible/high-risk; human must approve via `/v1/approvals/{id}/decide` |
+| `AWAITING_HUMAN_APPROVAL` | Policy returned `escalate_to_judge` (default pack: **IRREVERSIBLE** catalog tools only; not all HIGH/MEDIUM) |
 | `PENDING` | Reserved for async flows |
 | `EXECUTED` | Reserved for post-execution audit (future) |
 
@@ -161,7 +161,11 @@ credential scan (see "Taint tracking" below), not by caller declaration --
 this rule triggers on that detection alone (Stage E.1), independent of
 whatever `taint_level` the caller did or didn't set.
 
-Risk levels: `LOW`, `MEDIUM`, `HIGH`, `IRREVERSIBLE`.
+Risk levels: `LOW`, `MEDIUM`, `HIGH`, `IRREVERSIBLE`. **Catalog labels for
+MEDIUM/HIGH do not escalate by themselves** under the default pack — only
+IRREVERSIBLE matches `require-approval-irreversible`, plus any explicit
+per-tool rules. Content-only attacks that never call a tool are outside
+agent-gate's reach; see [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## End-to-end test
 

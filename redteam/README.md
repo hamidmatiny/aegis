@@ -145,9 +145,11 @@ docker compose up -d --build input-defense output-defense redteam
 
 **Reporting rule (H3 fix):** Do **not** blend R1 and adaptive bypass rates into a single “overall bypass rate” headline. R1 measures static catch rate on the full corpus; adaptive rounds measure evolutionary escape from prior bypass seeds (selection bias / ceiling effect). Default **3** rounds, hard cap **5** (`AEGIS_REDTEAM_ADAPTIVE_MAX_ROUNDS`).
 
+**Same-corpus CLI (local stacks):** `scripts/run_same_corpus_comparison.py` runs stub vs hardened in-process defenses and prints **R1 BR** / **Adapt BR** columns (no blended overall). Optional `--concurrency N` for parallel probe/detector work is tracked on the concurrency PR — use only after that lands on `main`; default remains serial (`N=1`).
+
 Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.45–0.70).
 
-**Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies → 24.5% overall BR). Compare live hardened stack via `scripts/run_before_after.py`.
+**Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies). Prefer reporting R1 and adaptive phases separately when comparing; see [RESULTS.md](../RESULTS.md). Compare live hardened stack via `scripts/run_before_after.py`.
 
 Full analysis: [RESULTS.md](../RESULTS.md)
 

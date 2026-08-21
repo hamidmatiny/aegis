@@ -20,7 +20,17 @@ Application → [SDK / Reverse Proxy] → Gateway (Go)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
 
-**Phase 2 evidence:** Adaptive red-team campaigns and detector ablation results are summarized in [RESULTS.md](./RESULTS.md) (Stage H3) — including the honest headline finding, up top. See [COMPARISON.md](./COMPARISON.md) for how AEGIS differs from NeMo Guardrails, Guardrails AI, and LLM Guard.
+**Phase 2 evidence:** Adaptive red-team campaigns and detector ablation are
+summarized in [RESULTS.md](./RESULTS.md). Report **R1 BR** and **Adapt BR**
+separately (see the campaign methodology note) — not a single blended
+“overall bypass” headline. See [COMPARISON.md](./COMPARISON.md) for how AEGIS
+differs from NeMo Guardrails, Guardrails AI, and LLM Guard, and
+[ARCHITECTURE.md](./ARCHITECTURE.md) for which layers are load-bearing for
+content vs tool-misuse outcomes.
+
+**Governed agent loop:** the [harness/](./harness/) package is a shipped
+starter loop + 7-tool library that will not execute a tool without an
+agent-gate allow decision — see [harness/README.md](./harness/README.md).
 
 ## Monorepo layout
 

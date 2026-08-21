@@ -41,6 +41,9 @@ Known, already-documented limitation: adaptive-attacker bypass rates against
 the detection layer are tracked openly in [RESULTS.md](./RESULTS.md) — that
 is expected, ongoing research, not something to report as a new finding
 unless you have a *specific reproducible bypass* not already covered there.
+When citing those results externally, use **R1 BR** and **Adapt BR**
+separately (see the methodology note in RESULTS / redteam README), not a
+blended “overall bypass rate.”
 
 Out of scope: denial-of-service testing, social engineering, physical attacks,
 third-party services, and accessing, modifying, or deleting data that is not
