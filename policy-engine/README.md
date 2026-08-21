@@ -157,6 +157,7 @@ Default tool rules (`policies/default.yaml`):
 | Rule | CEL | Action |
 |------|-----|--------|
 | `require-approval-irreversible` | `risk_level == 'IRREVERSIBLE'` | `escalate_to_judge` |
+| `escalate-medium-exfil-http-get` | `tool_name == 'http_get'` | `escalate_to_judge` |
 | `block-tainted-credentials` | any arg with `contains_credentials == true` | `block` |
 
 `contains_credentials` is set server-side by agent-gate's `mask.go`, which

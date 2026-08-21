@@ -1,6 +1,6 @@
 # Default policy pack for AEGIS
 id: default
-version: "0.2.0"
+version: "0.3.0"
 tenant_id: default
 description: Baseline CEL policy pack — input, output, and tool rules
 
@@ -53,6 +53,16 @@ tool_rules:
   - id: require-approval-irreversible
     name: Require human approval for irreversible actions
     cel: "tool_call.risk_level == 'IRREVERSIBLE'"
+    action: escalate_to_judge
+    enabled: true
+
+  # Defense-in-depth (reserved Adapt audit): cookie/session exfil narratives
+  # map to network tools. MEDIUM catalog entries previously fell through to
+  # settings.default_action allow — http_get is the first exfil-capable tool
+  # closed here; expand the CEL allow-list as more exfil tools are catalogued.
+  - id: escalate-medium-exfil-http-get
+    name: Escalate MEDIUM network exfiltration via http_get
+    cel: "tool_call.tool_name == 'http_get'"
     action: escalate_to_judge
     enabled: true
 
