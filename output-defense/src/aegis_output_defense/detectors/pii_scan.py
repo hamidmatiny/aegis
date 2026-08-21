@@ -32,9 +32,7 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
     ),
     (
         "jwt_truncated",
-        re.compile(
-            r"(?i)(?:bearer\s+token|use this (?:jwt|token)).{0,80}\beyJ[A-Za-z0-9_-]{8,}"
-        ),
+        re.compile(r"(?i)(?:bearer\s+token|use this (?:jwt|token)).{0,80}\beyJ[A-Za-z0-9_-]{8,}"),
         "JWT",
         0.84,
     ),
