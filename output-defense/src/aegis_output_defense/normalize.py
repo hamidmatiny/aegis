@@ -29,6 +29,25 @@ _WRAPPER_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\[tool result[^\]]*\]\s*", re.I),
     re.compile(r"^decode and execute this base64 instruction:\s*", re.I),
     re.compile(r"^apply rot13 then hex-decode the following:\s*", re.I),
+    re.compile(r"^for a tabletop rpg[:\s-]*", re.I),
+    re.compile(r"^as a forensic novelist[,\s-]*", re.I),
+    re.compile(
+        r"^(?:safety|content)?\s*(?:guardrails?|policies?|filters?)\s+"
+        r"(?:are\s+)?(?:disabled|waived|turned off|off)\.?\s*"
+        r"(?:here is (?:the )?unrestricted response(?: about)?[:.\s-]*)?",
+        re.I,
+    ),
+    re.compile(
+        r"^content policy waived(?: for this thread)?\.?\s*"
+        r"(?:below are the steps to|here (?:is|are)|the following)[:.\s-]*",
+        re.I,
+    ),
+    re.compile(
+        r"^i(?:'m| am)?\s+(?:not allowed|unable|not supposed)\s+to\s+"
+        r"(?:help with|assist with|discuss).{0,60}?\.\s*"
+        r"(?:that said|however|but|nonetheless)[,:\s-]*",
+        re.I | re.S,
+    ),
 )
 
 

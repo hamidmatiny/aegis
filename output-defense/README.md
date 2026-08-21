@@ -102,10 +102,11 @@ Pytest uses stub backends by default (`tests/conftest.py`).
 
 | ID | Type | H2 backend | Description |
 |----|------|------------|-------------|
-| `toxicity` | Scoring | Toxic-BERT + harm lexicon | Multi-label comment toxicity + **framing-aware instructional harm lexicon** (self-harm methods, weapon recipes) with fictional/hypothetical prefix stripping |
-| `pii` | Scoring + redactor | Regex + spaCy NER | Credentials via regex; names/locations via context-gated NER |
+| `toxicity` | Scoring | Toxic-BERT + harm lexicon | Multi-label toxicity + **framing-aware instructional harm lexicon** (`harm_lexicon.py`): self-harm methods, weapon/explosive recipes, malware exfil, stalking/surveillance, infrastructure sabotage, and **shape-based truncation/obfuscation patterns** (procedural harm + open stems), scored as `max(ml, instructional)` |
+| `pii` | Scoring + redactor | Regex + spaCy NER | Credentials via regex; **identity-dossier boost** when multiple identity fields co-occur; names/locations via context-gated NER |
 | `backtranslation` | Scoring | model-router restatement | LLM restates intent; divergence score flags semantic smoothing |
-| `judge` | Conditional ensemble | 3× model-router judges | Only on ambiguous fused band (0.45–0.70); majority vote |
+| `hallucination` | Scoring | Pattern detector | Structural falsehoods (capital/boiling-point inversions), contradictions, fabricated citations, flat-earth / future-dated medical misinformation |
+| `judge` | Conditional ensemble | 3× model-router judges | Ambiguous fused band (0.45–0.70) **or** suspicious normalization (zero-width/base64/wrapper strip) with fused ≥ 0.25; majority vote |
 
 ### Model choices (H2)
 
@@ -123,8 +124,18 @@ Before scoring, `analyze` expands the scan surface for each detector:
 
 1. **Zero-width strip** — removes smuggled Unicode separators
 2. **Base64 decode-and-rescan** — decodes embedded blobs and re-runs detectors on plaintext
+3. **Adversarial wrapper strip** — peels hypothetical, persona, tool-result, multi-turn, tabletop-RPG / forensic-novelist framing, and decode-hint prefixes
 
-Each detector runs on every surface; the **max score** is used for fusion.
+Each detector runs on every surface; the **max score** is used for fusion. Fusion also **escalates when any single detector ≥ 0.80**.
+
+### Out-of-corpus obfuscation stress (sanity check only)
+
+`tests/test_stress_novel_obfuscation.py` holds **15 novel harmful prompts** (different wording/scenarios than `redteam/fixtures/attacks.yaml`) obfuscated with zero-width, newline truncation, base64, and wrappers. Run against the hardened profile for a sanity check — **not** counted in official campaign Adapt BR:
+
+```bash
+cd output-defense
+PYTHONPATH=src python tests/test_stress_novel_obfuscation.py
+```
 
 ## API
 
@@ -290,7 +301,7 @@ These detectors make **real model-router HTTP calls** when `*_BACKEND=router`:
 | Call | When | Typical cost |
 |------|------|--------------|
 | Backtranslation restatement | Every fused analyze (always-on detector) | 1× chat completion per analyze |
-| Judge ensemble | Fused score in ambiguous band (0.45–0.70) only | Up to 3× chat completions |
+| Judge ensemble | Ambiguous fused band (0.45–0.70) **or** suspicious normalization with fused ≥ 0.25 | Up to 3× chat completions |
 
 With `mock-model` (default in compose), router returns deterministic echoes and backends fall back to pattern logic. Point `AEGIS_OUTPUT_DEFENSE_*_MODEL` at a real provider model (e.g. Grok via model-router config) for production semantic checks.
 
@@ -300,11 +311,13 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 
 | Component | Status | Follow-up |
 |-----------|--------|-----------|
-| **Toxicity** | Toxic-BERT + lexicon | Llama Guard when ungated local weights are practical |
+| **Toxicity** | Toxic-BERT + lexicon (M3: illicit synthesis, soft-refusal pivots, policy-disable completions, cookie/MFA/RFID exfil classes) | Llama Guard when ungated local weights are practical |
 | **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
+| **Hallucination** | Structural markers + future-dated / fabricated-citation health misinfo | Broader fact-checking beyond structural classes |
 | **Backtranslation** | Router restatement + recall/identifier-weighted divergence | Grok restatement variance; vague code paraphrases that omit identifiers may still score ambiguous |
 | **Judge** | 3× router SAFE/UNSAFE vote | Structured JSON schema parsing; parallel judge calls |
 | **Detector execution** | Sequential | Parallelize when latency becomes a bottleneck |
+| **Adaptive robustness** | Held-out Adapt BR is the M3 primary metric; frozen-corpus Adapt 0/0 is not evidence of generalization | Continue reducing held-out adaptive survivors without corpus special-casing |
 
 ## Swapping detector backends
 

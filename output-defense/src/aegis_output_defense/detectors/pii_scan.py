@@ -30,6 +30,18 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         "JWT",
         0.85,
     ),
+    (
+        "jwt_truncated",
+        re.compile(r"(?i)(?:bearer\s+token|use this (?:jwt|token)).{0,80}\beyJ[A-Za-z0-9_-]{8,}"),
+        "JWT",
+        0.84,
+    ),
+    (
+        "jwt_header_json",
+        re.compile(r'\{\s*"alg"\s*:\s*"[^"]{2,20}"\s*,\s*"typ"\s*:\s*"JWT"\s*\}'),
+        "JWT",
+        0.86,
+    ),
     ("phone", re.compile(r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "PHONE", 0.70),
     (
         "date_of_birth",

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 import time
 from datetime import UTC, datetime
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 from aegis_redteam.adaptive.variants import generate_adaptive_variants
 from aegis_redteam.clients.model_router import ModelRouterClient
@@ -100,7 +102,7 @@ class RedTeamService:
         return ProbeResponse(result=result)
 
     async def run_campaign(self, req: RunCampaignRequest) -> RunCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:
@@ -145,7 +147,7 @@ class RedTeamService:
     async def run_adaptive_campaign(
         self, req: RunAdaptiveCampaignRequest
     ) -> RunAdaptiveCampaignResponse:
-        fixtures = load_fixtures()
+        fixtures = load_fixtures(Path(req.fixtures_path) if req.fixtures_path else None)
         fixtures = [f for f in fixtures if f.is_attack]
 
         if req.targets:
@@ -168,29 +170,32 @@ class RedTeamService:
 
             if round_num == 1:
                 total_r1 = len(fixtures) * len(strategies)
-                done = 0
-                for fixture in fixtures:
-                    for strategy in strategies:
-                        mutated = apply_strategy(strategy, fixture.payload())
-                        result = await self._run_probe(
-                            attack_id=fixture.id,
-                            category=fixture.category,
-                            target=fixture.target,
-                            strategy=strategy,
-                            payload=mutated,
-                            metadata={"round": str(round_num), "phase": "baseline"},
-                        )
-                        round_results.append(result)
-                        done += 1
-                        bypassed = sum(1 for r in round_results if r.bypassed)
-                        print(
-                            f"\r  R1 [{campaign_id[-6:]}] {done}/{total_r1} probes"
-                            f" | bypasses: {bypassed}",
-                            end="",
-                            file=sys.stderr,
-                            flush=True,
-                        )
-                print(file=sys.stderr)
+                jobs: list[tuple[AttackFixture, str]] = [
+                    (fixture, strategy) for fixture in fixtures for strategy in strategies
+                ]
+
+                async def _baseline_job(
+                    fixture: AttackFixture,
+                    strategy: str,
+                    *,
+                    _round: int = round_num,
+                ) -> ProbeResult:
+                    mutated = apply_strategy(strategy, fixture.payload())
+                    return await self._run_probe(
+                        attack_id=fixture.id,
+                        category=fixture.category,
+                        target=fixture.target,
+                        strategy=strategy,
+                        payload=mutated,
+                        metadata={"round": str(_round), "phase": "baseline"},
+                    )
+
+                round_results = await self._run_probes_concurrent(
+                    [_baseline_job(f, s) for f, s in jobs],
+                    concurrency=req.probe_concurrency,
+                    progress_label=f"R1 [{campaign_id[-6:]}]",
+                    progress_total=total_r1,
+                )
             else:
                 prev_round = str(round_num - 1)
                 prior_round_probes = [
@@ -216,31 +221,34 @@ class RedTeamService:
                     file=sys.stderr,
                     flush=True,
                 )
-                for vi, variant in enumerate(variants, 1):
-                    result = await self._run_probe(
+
+                async def _adaptive_job(
+                    variant: Any,
+                    *,
+                    _round: int = round_num,
+                ) -> ProbeResult:
+                    return await self._run_probe(
                         attack_id=variant.attack_id,
                         category=variant.category,
                         target=variant.target,
                         strategy=variant.strategy,
                         payload=variant.payload,
                         metadata={
-                            "round": str(round_num),
+                            "round": str(_round),
                             "phase": "adaptive",
                             "mutation_kind": variant.mutation_kind,
                             "source_attack_id": variant.source_attack_id,
                             "source_strategy": variant.source_strategy,
                         },
                     )
-                    round_results.append(result)
-                    bypassed = sum(1 for r in round_results if r.bypassed)
-                    print(
-                        f"\r  R{round_num} {vi}/{variants_generated} variants"
-                        f" | bypasses: {bypassed}",
-                        end="",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                print(file=sys.stderr)
+
+                round_results = await self._run_probes_concurrent(
+                    [_adaptive_job(v) for v in variants],
+                    concurrency=req.probe_concurrency,
+                    progress_label=f"R{round_num}",
+                    progress_total=variants_generated,
+                    progress_unit="variants",
+                )
 
             for result in round_results:
                 if store:
@@ -289,6 +297,44 @@ class RedTeamService:
         self._campaigns[campaign_id] = report
         patterns_stored = sum(1 for r in all_results if r.bypassed) if store else 0
         return RunAdaptiveCampaignResponse(report=report, patterns_stored=patterns_stored)
+
+    async def _run_probes_concurrent(
+        self,
+        coros: list[Any],
+        *,
+        concurrency: int,
+        progress_label: str,
+        progress_total: int,
+        progress_unit: str = "probes",
+    ) -> list[ProbeResult]:
+        """Run independent probe coroutines with a concurrency cap; preserve order."""
+        if not coros:
+            return []
+        sem = asyncio.Semaphore(max(1, concurrency))
+        done = 0
+        bypassed = 0
+        lock = asyncio.Lock()
+
+        async def _wrap(coro: Any) -> ProbeResult:
+            nonlocal done, bypassed
+            async with sem:
+                result = cast(ProbeResult, await coro)
+            async with lock:
+                done += 1
+                if result.bypassed:
+                    bypassed += 1
+                print(
+                    f"\r  {progress_label} {done}/{progress_total} {progress_unit}"
+                    f" | bypasses: {bypassed}",
+                    end="",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            return result
+
+        results = await asyncio.gather(*[_wrap(c) for c in coros])
+        print(file=sys.stderr)
+        return list(results)
 
     async def _run_probe(
         self,

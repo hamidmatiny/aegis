@@ -145,7 +145,25 @@ docker compose up -d --build input-defense output-defense redteam
 
 **Reporting rule (H3 fix):** Do **not** blend R1 and adaptive bypass rates into a single “overall bypass rate” headline. R1 measures static catch rate on the full corpus; adaptive rounds measure evolutionary escape from prior bypass seeds (selection bias / ceiling effect). Default **3** rounds, hard cap **5** (`AEGIS_REDTEAM_ADAPTIVE_MAX_ROUNDS`).
 
-**Same-corpus CLI (local stacks):** `scripts/run_same_corpus_comparison.py` runs stub vs hardened in-process defenses and prints **R1 BR** / **Adapt BR** columns (no blended overall). Optional `--concurrency N` for parallel probe/detector work is tracked on the concurrency PR — use only after that lands on `main`; default remains serial (`N=1`).
+### Same-corpus comparison (local in-process stacks)
+
+`scripts/run_same_corpus_comparison.py` runs stub vs hardened in-process defenses and prints **R1 BR** / **Adapt BR** columns (no blended overall). Default probe concurrency remains serial (`N=1`).
+
+```bash
+# Lexical adaptive mutations only; report R1 BR and Adapt BR separately.
+python scripts/run_same_corpus_comparison.py --rounds 3 --warmup --no-router-mutations
+
+# Corpora: default (attacks.yaml), held_out, reserved
+python scripts/run_same_corpus_comparison.py --corpus reserved --rounds 3 --warmup --no-router-mutations
+
+# Probe-level concurrency (asyncio.Semaphore + gather). Default 1 (serial).
+# Ladder-tested 8/16/32 on mixed I/O; full frozen R1 serial vs 32 was probe-identical.
+python scripts/run_same_corpus_comparison.py --concurrency 32 --rounds 3 --warmup --no-router-mutations
+
+# Equivalence harness (does not change campaign defaults):
+python scripts/prove_probe_concurrency.py --limit-attacks 30 --concurrency 32 --profile hardened
+python scripts/ladder_probe_concurrency.py --limit-attacks 8 --levels 8 16 32
+```
 
 Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.45–0.70).
 

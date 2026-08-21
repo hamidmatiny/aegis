@@ -48,11 +48,13 @@ Intercepts and analyzes all user and retrieved content before it reaches the mod
 
 | Detector | Signal Type | Purpose |
 |----------|-------------|---------|
-| Heuristic/regex | Deterministic | Known injection markers, encoding tricks |
+| Heuristic/regex | Deterministic | Known injection markers, encoding tricks, paraphrased overrides, soft persona exfil |
 | Perplexity | Statistical | Token-level PPL anomaly (DistilGPT2; stub optional) |
 | Known-answer probe | Game-theoretic | Secret token reproduction test |
 | Transformer classifier | ML | Prompt-injection classifier (DeBERTa default; Llama-Prompt-Guard optional) |
 | Spotlighting transform | Structural | Delimit untrusted content |
+
+**Pipeline (M1/M2 hardening):** Before fusion, non-transform detectors run on **expanded scan surfaces** — original text, zero-width-stripped, base64-decoded, and adversarial-wrapper-stripped variants (`normalize.py`). The max score across surfaces is used. Fusion also **escalates when any single detector ≥ 0.80**, preventing dilution when siblings abstain.
 
 **Output:** `InputVerdict` with fused score, per-detector breakdown, optional transformed content.
 
@@ -80,10 +82,13 @@ Analyzes model responses before they reach the application.
 
 | Detector | Purpose |
 |----------|---------|
-| Toxicity/safety classifier | Harmful content (Toxic-BERT + lexicon; stub optional) |
-| PII/secret detector + redactor | Regex credentials + context-gated spaCy NER |
+| Toxicity/safety classifier | Harmful content (Toxic-BERT + **framing-aware instructional harm lexicon**; stub optional) |
+| PII/secret detector + redactor | Regex credentials + identity-dossier boost + context-gated spaCy NER |
 | Backtranslation consistency | model-router restatement divergence (stub optional) |
-| LLM-judge ensemble | 3× model-router judges on ambiguous band (stub optional) |
+| **Hallucination** | Structural falsehoods, contradictions, fabricated citations |
+| LLM-judge ensemble | 3× model-router judges on ambiguous band **or suspicious normalization** (stub optional) |
+
+**Pipeline (M1–M3 hardening):** Like input defense, scoring detectors run on expanded surfaces (zero-width strip, base64 decode, wrapper strip — including soft policy-disable / refusal-pivot wrappers). Fusion weights include `hallucination` and **escalate when any single detector ≥ 0.80**. The judge runs when fused score is ambiguous (0.45–0.70) **or** when obfuscation normalization fired (`zero_width_stripped`, `base64_decoded`, `wrapper_stripped`) and fused ≥ 0.25. The harm lexicon uses **shape-based** patterns (procedural harm, truncation stems, illicit synthesis, soft-refusal pivots, policy-disable completions) rather than corpus-specific templates. Milestone 3 validates against held-out Adapt BR, not frozen-corpus R1 wipeouts.
 
 **Output:** `OutputVerdict` with fused score, per-detector breakdown, optional `redacted_content`, optional `judge_votes`.
 

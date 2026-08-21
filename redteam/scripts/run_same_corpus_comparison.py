@@ -20,6 +20,9 @@ from dataclasses import dataclass
 
 from aegis_redteam.clients.model_router import ModelRouterClient
 from aegis_redteam.metrics import (
+    FIXTURES_PATH,
+    HELD_OUT_FIXTURES_PATH,
+    RESERVED_FIXTURES_PATH,
     format_round_table,
     load_fixtures,
 )
@@ -74,6 +77,21 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--stub-only", action="store_true", help="Run stub profile only")
     parser.add_argument("--hardened-only", action="store_true", help="Run hardened only")
+    parser.add_argument(
+        "--corpus",
+        choices=("default", "held_out", "reserved"),
+        default="default",
+        help=(
+            "Attack fixture corpus (default: attacks.yaml; held_out: attacks_held_out.yaml; "
+            "reserved: attacks_reserved.yaml)"
+        ),
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Probe-level concurrency within each round (1 = serial; try 8/16/32)",
+    )
     return parser.parse_args()
 
 
@@ -150,7 +168,17 @@ async def main() -> int:
         )
         return 1
 
-    attacks = [f for f in load_fixtures() if f.is_attack]
+    if args.concurrency < 1 or args.concurrency > 64:
+        print("Error: --concurrency must be between 1 and 64", file=sys.stderr)
+        return 1
+
+    if args.corpus == "held_out":
+        corpus_path = HELD_OUT_FIXTURES_PATH
+    elif args.corpus == "reserved":
+        corpus_path = RESERVED_FIXTURES_PATH
+    else:
+        corpus_path = FIXTURES_PATH
+    attacks = [f for f in load_fixtures(corpus_path) if f.is_attack]
     strategy_count = len(args.strategies) if args.strategies else len(list_strategies())
     expected_r1 = len(attacks) * strategy_count
 
@@ -173,6 +201,8 @@ async def main() -> int:
         use_router_mutations=use_router,
         max_router_blocked=settings.max_router_blocked,
         max_router_bypass=settings.max_router_bypass,
+        fixtures_path=str(corpus_path),
+        probe_concurrency=args.concurrency,
     )
 
     print(
@@ -205,8 +235,14 @@ async def main() -> int:
         snapshots.append(await _run_profile(HARDENED_STACK, req, router_client))
 
     print("AEGIS Red Team — Same-Corpus Before/After Comparison")
-    print(f"Corpus: {len(attacks)} attacks | Round-1 strategies: {strategy_count}")
-    print(f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}")
+    print(
+        f"Corpus: {corpus_path.name} ({len(attacks)} attacks) | "
+        f"Round-1 strategies: {strategy_count}"
+    )
+    print(
+        f"Adaptive rounds: {args.rounds} | Threshold: {settings.detection_threshold:.2f}"
+        f" | Probe concurrency: {args.concurrency}"
+    )
     print()
 
     if len(snapshots) == 2:
