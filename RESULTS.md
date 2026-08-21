@@ -18,7 +18,7 @@ on **held-out and reserved corpora**, not only the development corpus.
 |--------|------|----------------|-------------------|------------|---------------|
 | **Frozen** (`attacks.yaml`) | Development / saturated | **0.0%** (0/240) | **0/0** (no R1 survivors) | 0.8% (2/240) | 8.3% (1/12) |
 | **Held-out** (`attacks_held_out.yaml`) | Independent check (seen during M3) | **0.0%** (0/240) post-M3 | **0/0** post-M3 (was **73.7%** pre-M3) | 6.7% (16/240) | 8.3% (8/96) |
-| **Reserved** (`attacks_reserved.yaml`) | **Blind final grade** (unseen in development) | **26.2%** (63/240) | **60.5%** (508/840) | 32.5% (78/240) | 57.2% (540/944) |
+| **Reserved** (`attacks_reserved.yaml`) | **Blind final grade** (pre-M4; unseen in development) | **26.2%** (63/240) | **60.5%** (508/840) | 32.5% (78/240) | 57.2% (540/944) |
 
 **Plain language (reserved corpus — the number that counts today):**
 
@@ -58,7 +58,8 @@ BR is 0/0** (zero adaptive probes). That looks perfect and is **misleading**:
    Saturation here does not prove generalization.
 3. The **reserved** corpus was built independently for final grading and was
    not used to tune defenses. Its hardened Adapt BR **60.5% (508/840)** is the
-   honest adaptive grade for M2+M3 combined.
+   honest **pre-M4** adaptive grade for M2+M3 combined (see reserved subsection:
+   post-M4 reserved Adapt 0/0 is vacuous saturation, not adaptive proof).
 
 Held-out followed the same pattern: pre-M3 hardened Adapt **73.7% (448/608)**;
 after M3 pattern/class fixes, held-out hardened also reached R1 **0/240** /
@@ -68,7 +69,7 @@ Adapt **0/0**. Useful as a checkpoint, not as a substitute for a blind set.
 
 ## Multi-corpus detail tables
 
-### Reserved (blind grade) — 2026-08-20
+### Reserved (blind grade) — 2026-08-20 (pre-M4)
 
 | Profile | R1 probes | R1 bypass | R1 BR | Adapt probes | Adapt bypass | Adapt BR |
 |---------|-----------|-----------|-------|--------------|--------------|----------|
@@ -76,6 +77,14 @@ Adapt **0/0**. Useful as a checkpoint, not as a substitute for a blind set.
 | Phase 2 hardened | 240 | 63 | 26.2% | 840 | 508 | 60.5% |
 
 Hardened per-round: R1 63/240 → R2 147/252 (58.3%) → R3 361/588 (61.4%).
+
+**Why this PR cites the pre-M4 reserved grade:** These headline figures are the
+**pre-M4** reserved blind grade (honest adaptive comparison while seeds still
+survived round 1). After M4 class fixes, reserved can look like frozen/held-out:
+hardened **R1 0/240 → Adapt 0/0** — a **vacuous saturation / overfit artifact**,
+not proof of adaptive robustness (no R1 survivors means adaptive rounds never
+ran). We therefore intentionally publish the pre-M4 reserved R1/Adapt numbers
+here rather than the post-M4 0/0 disclosure as if it were a win.
 
 ### Held-out — pre-M3 vs post-M3
 
