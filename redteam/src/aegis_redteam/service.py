@@ -318,7 +318,7 @@ class RedTeamService:
         async def _wrap(coro: Any) -> ProbeResult:
             nonlocal done, bypassed
             async with sem:
-                result = await coro
+                result = cast(ProbeResult, await coro)
             async with lock:
                 done += 1
                 if result.bypassed:
@@ -334,7 +334,7 @@ class RedTeamService:
 
         results = await asyncio.gather(*[_wrap(c) for c in coros])
         print(file=sys.stderr)
-        return cast(list[ProbeResult], list(results))
+        return list(results)
 
     async def _run_probe(
         self,
