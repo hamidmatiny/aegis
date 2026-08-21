@@ -138,6 +138,10 @@ class RunCampaignResponse(BaseModel):
 class RunAdaptiveCampaignResponse(BaseModel):
     report: AdaptiveCampaignReport
     patterns_stored: int
+    aborted: bool = False
+    abort_reason: str | None = None
+    router_calls_used: int | None = None
+    probes_completed_before_abort: int | None = None
 
 
 class ProbeRequest(BaseModel):
