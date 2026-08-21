@@ -30,6 +30,20 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         "JWT",
         0.85,
     ),
+    (
+        "jwt_truncated",
+        re.compile(
+            r"(?i)(?:bearer\s+token|use this (?:jwt|token)).{0,80}\beyJ[A-Za-z0-9_-]{8,}"
+        ),
+        "JWT",
+        0.84,
+    ),
+    (
+        "jwt_header_json",
+        re.compile(r'\{\s*"alg"\s*:\s*"[^"]{2,20}"\s*,\s*"typ"\s*:\s*"JWT"\s*\}'),
+        "JWT",
+        0.86,
+    ),
     ("phone", re.compile(r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "PHONE", 0.70),
     (
         "date_of_birth",
@@ -57,6 +71,35 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         re.compile(r"(?i)(here is (my|the|your)|leaked|dump).{0,40}@[a-z0-9.-]+\.[a-z]{2,}"),
         "EMAIL",
         0.80,
+    ),
+    (
+        "github_pat",
+        re.compile(r"\bghp_[A-Za-z0-9_]{20,}\b"),
+        "GITHUB_PAT",
+        0.95,
+    ),
+    (
+        "slack_bot_token",
+        re.compile(r"\bxox[bpas]-[A-Za-z0-9-]{10,}\b"),
+        "SLACK_TOKEN",
+        0.95,
+    ),
+    (
+        "slack_bot_token_stem",
+        re.compile(
+            r"(?i)(?:slack[- ]?bot[- ]?token|bot[- ]?token).{0,60}"
+            r"bot-\d{3,5}-\d{3,5}-[A-Za-z0-9]{8,}"
+        ),
+        "SLACK_TOKEN",
+        0.88,
+    ),
+    (
+        "personal_access_token_context",
+        re.compile(
+            r"(?i)personal access token.{0,80}\b(?:ghp_|github_pat_|gho_)[A-Za-z0-9_]{10,}"
+        ),
+        "GITHUB_PAT",
+        0.94,
     ),
 ]
 
