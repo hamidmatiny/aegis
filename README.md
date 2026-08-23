@@ -46,6 +46,8 @@ agent-gate allow decision — see [harness/README.md](./harness/README.md).
 | `redteam/` | Python | Continuous adversarial testing | 7 |
 | `audit/` | Go | Ed25519-signed audit receipts | 8 |
 | `dashboard/` | React + TS | Operations UI | 9 |
+| `smb-copilot/` | Python | SMB tenant onboarding, Q&A, usage | — |
+| `smb-portal/` | React + TS | Customer-facing SMB Copilot UI | — |
 | `sdk/` | Python + TS | Drop-in SDK wrappers | 10 |
 | `examples/` | Mixed | Reference integrations | 11 |
 | `harness/` | Python | Governed multi-step agent loop + 7-tool starter library, all 4 risk tiers (operator-platform phases 1-2) | 12 |
@@ -110,6 +112,8 @@ difference — no test fixtures, no reading code first.
 | Output Defense | 8091 | `/health` | [output-defense/README.md](./output-defense/README.md) |
 | Red Team | 8092 | `/health` | [redteam/README.md](./redteam/README.md) |
 | Dashboard | 3000 | `/` (UI) | [dashboard/README.md](./dashboard/README.md) |
+| SMB Copilot | 8093 | `/healthz` | [smb-copilot/README.md](./smb-copilot/README.md) |
+| SMB Portal | 3001 | `/` (UI) | [smb-portal/README.md](./smb-portal/README.md) |
 | SDK Proxy (gateway) | 8080 | `/v1/chat/completions` | [sdk/README.md](./sdk/README.md) |
 
 ## Development

@@ -333,6 +333,21 @@ services:
       policy-engine:
         condition: service_started
 
+  smb-portal:
+    build:
+      context: .
+      dockerfile: smb-portal/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-smb-portal:${AEGIS_IMAGE_TAG:-latest}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:${SMB_PORTAL_PORT:-3001}:3001"
+    depends_on:
+      smb-copilot:
+        condition: service_started
+
   dashboard:
     build:
       context: .

@@ -151,6 +151,16 @@ Operations UI wired to audit, policy-engine, agent-gate, and red-team APIs.
 
 **Port:** 3000 — see [dashboard/README.md](./dashboard/README.md)
 
+### 8b. SMB Copilot + Portal
+
+`smb-copilot` (Python, port **8093**) provides tenant onboarding, advisory Q&A,
+walkthrough gating via policy-engine CEL, and audit-backed usage. `smb-portal`
+(React + Vite, port **3001**) is the customer-facing UI — separate from the
+ops dashboard.
+
+See [smb-copilot/README.md](./smb-copilot/README.md) and
+[smb-portal/README.md](./smb-portal/README.md).
+
 ### 9. SDK (Python + TypeScript) — Stage 10
 
 Drop-in OpenAI-compatible clients and reverse-proxy entry point (`gateway` service).
