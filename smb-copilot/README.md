@@ -2,7 +2,7 @@
 
 Scaffold for the SMB Copilot Python service (schema + health endpoint). Business logic lands in later phases.
 
-Schema lives in `deploy/postgres/init/002_smb_*.sql`–`006_smb_*.sql` so a fresh Postgres volume applies it automatically via `docker-entrypoint-initdb.d` (same path as `001_schema.sql`).
+Schema lives in `deploy/postgres/init/002_smb_*.sql`–`007_smb_*.sql` so a fresh Postgres volume applies it automatically via `docker-entrypoint-initdb.d` (same path as `001_schema.sql`).
 
 ## Install
 
@@ -31,5 +31,10 @@ curl http://127.0.0.1:8093/healthz
 | `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
 | `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
 | `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
+| `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`) |
+| `SMB_CHAT_MODEL` | Chat model id (default `mock-model`) |
+| `SMB_QA_RATE_LIMIT` | Max `/qa/ask` calls per tenant per window (default `5`) |
+| `SMB_QA_RATE_WINDOW_SEC` | Rate-limit window seconds (default `60`) |
+| `REDIS_URL` | Redis URL for per-tenant Q&A rate limiting |
 | `SMB_COPILOT_HOST` | Bind host (default `0.0.0.0`) |
 | `SMB_COPILOT_PORT` | Listen port (default `8093`) |

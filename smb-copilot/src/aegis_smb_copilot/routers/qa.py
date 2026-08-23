@@ -1,5 +1,1 @@
-"""Q&A routes (scaffold — filled in later phases)."""
-
-from fastapi import APIRouter
-
-router = APIRouter(prefix="/qa", tags=["qa"])
+"""Placeholder — Q&A routes live in ``aegis_smb_copilot.qa.router``."""

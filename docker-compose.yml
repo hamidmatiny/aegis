@@ -313,6 +313,11 @@ services:
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
       SMB_EMBEDDING_PROVIDER: ${SMB_EMBEDDING_PROVIDER:-mock}
       SMB_EMBEDDING_MODEL: ${SMB_EMBEDDING_MODEL:-mock-embedding}
+      SMB_CHAT_PROVIDER: ${SMB_CHAT_PROVIDER:-mock}
+      SMB_CHAT_MODEL: ${SMB_CHAT_MODEL:-mock-model}
+      SMB_QA_RATE_LIMIT: ${SMB_QA_RATE_LIMIT:-5}
+      SMB_QA_RATE_WINDOW_SEC: ${SMB_QA_RATE_WINDOW_SEC:-60}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-aegis_redis_dev}@redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy

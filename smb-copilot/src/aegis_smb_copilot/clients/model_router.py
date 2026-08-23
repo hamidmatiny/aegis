@@ -1,4 +1,4 @@
-"""HTTP client for model-router (embeddings only)."""
+"""HTTP client for model-router (embeddings + chat)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,14 @@ from aegis_smb_copilot.config import settings
 
 
 class ModelRouterError(RuntimeError):
-    """Raised when model-router returns a non-success embeddings response."""
+    """Raised when model-router returns a non-success response."""
+
+
+def _auth_headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if settings.internal_token:
+        headers["Authorization"] = f"Bearer {settings.internal_token}"
+    return headers
 
 
 def embed_texts(
@@ -29,15 +36,11 @@ def embed_texts(
     if settings.embedding_provider:
         payload["provider"] = settings.embedding_provider
 
-    headers = {"Content-Type": "application/json"}
-    if settings.internal_token:
-        headers["Authorization"] = f"Bearer {settings.internal_token}"
-
     url = settings.model_router_url.rstrip("/") + "/v1/embeddings"
     own_client = client is None
     http = client or httpx.Client(timeout=60.0)
     try:
-        resp = http.post(url, json=payload, headers=headers)
+        resp = http.post(url, json=payload, headers=_auth_headers())
     finally:
         if own_client:
             http.close()
@@ -55,7 +58,6 @@ def embed_texts(
         )
 
     vectors: list[list[float]] = []
-    # OpenAI may return data unordered; sort by index.
     ordered = sorted(data, key=lambda row: int(row.get("index", 0)))
     for row in ordered:
         emb = row.get("embedding")
@@ -63,3 +65,42 @@ def embed_texts(
             raise ModelRouterError(f"missing embedding in row: {row!r}")
         vectors.append([float(x) for x in emb])
     return vectors
+
+
+def chat_completion(
+    messages: list[dict[str, str]],
+    *,
+    client: httpx.Client | None = None,
+) -> str:
+    """Call ``POST /v1/chat/completions`` and return assistant text."""
+    payload: dict[str, Any] = {
+        "messages": messages,
+        "model": settings.chat_model,
+        "stream": False,
+    }
+    if settings.chat_provider:
+        payload["provider"] = settings.chat_provider
+
+    url = settings.model_router_url.rstrip("/") + "/v1/chat/completions"
+    own_client = client is None
+    http = client or httpx.Client(timeout=120.0)
+    try:
+        resp = http.post(url, json=payload, headers=_auth_headers())
+    finally:
+        if own_client:
+            http.close()
+
+    if resp.status_code >= 400:
+        raise ModelRouterError(
+            f"model-router chat HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+    body = resp.json()
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise ModelRouterError(f"model-router chat missing choices: {body!r}")
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ModelRouterError(f"model-router chat empty content: {body!r}")
+    return content.strip()

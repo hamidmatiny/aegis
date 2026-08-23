@@ -8,11 +8,12 @@ from fastapi import FastAPI
 from aegis_smb_copilot import __version__
 from aegis_smb_copilot.config import settings
 from aegis_smb_copilot.onboarding.router import router as onboarding_router
-from aegis_smb_copilot.routers import billing, qa
+from aegis_smb_copilot.qa.router import router as qa_router
+from aegis_smb_copilot.routers import billing
 
 app = FastAPI(title="AEGIS SMB Copilot", version=__version__)
 app.include_router(onboarding_router)
-app.include_router(qa.router)
+app.include_router(qa_router)
 app.include_router(billing.router)
 
 
