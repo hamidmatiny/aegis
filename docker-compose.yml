@@ -332,6 +332,8 @@ services:
         condition: service_started
       policy-engine:
         condition: service_started
+      audit:
+        condition: service_started
 
   smb-portal:
     build:

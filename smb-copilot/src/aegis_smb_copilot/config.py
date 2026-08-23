@@ -23,7 +23,10 @@ class Settings(BaseSettings):
         default="http://localhost:8084",
         validation_alias="AUDIT_SERVICE_URL",
     )
-    model_router_url: str = "http://localhost:8082"
+    model_router_url: str = Field(
+        default="http://localhost:8082",
+        validation_alias="MODEL_ROUTER_URL",
+    )
     redis_url: str = Field(
         default="redis://:aegis_redis_dev@127.0.0.1:6379/0",
         validation_alias="REDIS_URL",

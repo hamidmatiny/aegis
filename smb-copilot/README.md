@@ -104,3 +104,42 @@ without a matching signed receipt (never silently reconciled). `integrity` is
 |----------|---------|
 | `AUDIT_SERVICE_URL` | Audit service base URL (`GET /v1/receipts`, `/verify`) |
 | `AEGIS_INTERNAL_TOKEN` | Bearer token for audit (and policy-engine) calls |
+
+## Future: gateway as a single public entrypoint (proposal only)
+
+**Not implemented in this phase.** Gateway today registers handlers explicitly on
+an `http.ServeMux` in `gateway/internal/api/server.go`:
+
+```go
+func (s *Server) Register(mux *http.ServeMux) {
+    mux.HandleFunc("/health", s.handleHealth)
+    mux.HandleFunc("/ready", s.handleReady)
+    mux.HandleFunc("/v1/chat/completions", s.handleChatCompletions)
+    mux.HandleFunc("/v1/tools/evaluate", s.handleEvaluateTool)
+}
+```
+
+A minimal **additive** registration for SMB (human review before coding) would:
+
+1. Add env config on gateway, e.g. `AEGIS_SMB_COPILOT_URL` (default
+   `http://smb-copilot:8093`) and optionally `AEGIS_SMB_PORTAL_URL`.
+2. Construct a reverse proxy once at server init (`httputil.NewSingleHostReverseProxy`).
+3. Register path prefixes that strip the gateway prefix and forward:
+
+```go
+// Pseudocode — do not merge without review.
+smbProxy := httputil.NewSingleHostReverseProxy(smbCopilotURL)
+mux.Handle("/v1/smb/", http.StripPrefix("/v1/smb", smbProxy))
+// Optional static UI:
+portalProxy := httputil.NewSingleHostReverseProxy(smbPortalURL)
+mux.Handle("/smb/", portalProxy)
+```
+
+4. Preserve `Authorization` (tenant API key) and inject `AEGIS_INTERNAL_TOKEN`
+   only for any gateway→smb-copilot internal helpers — never expose that token
+   to browsers.
+5. Keep existing `/v1/chat/completions` and `/v1/tools/evaluate` unchanged.
+
+Until that lands, public demos should reach smb-portal on `:3001` (nginx proxies
+`/api/smb/` → smb-copilot) or call smb-copilot on `:8093` directly on localhost.
+

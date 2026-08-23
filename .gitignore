@@ -95,3 +95,4 @@ age-key.txt
 # material and "already covered by an unrelated-looking rule" is exactly
 # the kind of thing worth spelling out rather than leaving implicit.
 .pytest_policy_tenants/
+.venv-ci/
