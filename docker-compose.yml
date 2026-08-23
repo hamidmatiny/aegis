@@ -288,6 +288,34 @@ services:
       postgres:
         condition: service_healthy
 
+  smb-copilot:
+    build:
+      context: .
+      dockerfile: smb-copilot/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-smb-copilot:${AEGIS_IMAGE_TAG:-latest}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Localhost-only publish for health checks / gateway-adjacent local curl;
+    # gateway reaches the service as http://smb-copilot:8093 on the compose network.
+    ports:
+      - "127.0.0.1:${SMB_COPILOT_PORT:-8093}:8093"
+    environment:
+      SMB_COPILOT_PORT: "8093"
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      POLICY_ENGINE_URL: http://policy-engine:8081
+      AUDIT_SERVICE_URL: http://audit:8084
+      MODEL_ROUTER_URL: http://model-router:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   dashboard:
     build:
       context: .
