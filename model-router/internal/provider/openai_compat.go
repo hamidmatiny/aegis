@@ -169,6 +169,72 @@ func (p *OpenAICompat) ChatStream(ctx context.Context, req models.ChatRequest) (
 	return out, nil
 }
 
+func (p *OpenAICompat) Embed(ctx context.Context, req models.EmbeddingRequest) (*models.EmbeddingResponse, error) {
+	if !p.cfg.SupportsEmbeddings {
+		return nil, &EmbeddingNotSupportedError{Provider: p.cfg.ID}
+	}
+	if len(req.Input.Texts) == 0 {
+		return nil, fmt.Errorf("input required")
+	}
+	model := req.Model
+	if model == "" {
+		model = p.cfg.DefaultEmbeddingModel
+	}
+	if model == "" {
+		model = p.cfg.DefaultModel
+	}
+	payload := map[string]any{
+		"model": model,
+		"input": req.Input.Texts,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.cfg.BaseURL+"/embeddings", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	p.applyHeaders(httpReq)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return nil, classifyUpstreamError(p.cfg.ID, model, p.cfg.APIKeyEnv, resp.StatusCode, string(raw))
+	}
+
+	var parsed openAIEmbeddingResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, err
+	}
+	data := make([]models.EmbeddingData, len(parsed.Data))
+	for i, d := range parsed.Data {
+		data[i] = models.EmbeddingData{
+			Object:    "embedding",
+			Embedding: d.Embedding,
+			Index:     d.Index,
+		}
+		if data[i].Object == "" {
+			data[i].Object = "embedding"
+		}
+	}
+	return &models.EmbeddingResponse{
+		Object:   "list",
+		Data:     data,
+		Model:    parsed.Model,
+		Provider: p.cfg.ID,
+		Usage: models.EmbeddingUsage{
+			PromptTokens: parsed.Usage.PromptTokens,
+			TotalTokens:  parsed.Usage.TotalTokens,
+		},
+	}, nil
+}
+
 func (p *OpenAICompat) buildPayload(req models.ChatRequest, stream bool) map[string]any {
 	model := req.Model
 	if model == "" {
@@ -222,6 +288,20 @@ type openAIStreamChunk struct {
 		Delta        struct{ Content string } `json:"delta"`
 		FinishReason string                   `json:"finish_reason"`
 	} `json:"choices"`
+}
+
+type openAIEmbeddingResponse struct {
+	Object string `json:"object"`
+	Model  string `json:"model"`
+	Data   []struct {
+		Object    string    `json:"object"`
+		Embedding []float64 `json:"embedding"`
+		Index     int       `json:"index"`
+	} `json:"data"`
+	Usage struct {
+		PromptTokens int `json:"prompt_tokens"`
+		TotalTokens  int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 // UpstreamError wraps a non-2xx upstream response.

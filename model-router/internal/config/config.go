@@ -20,11 +20,13 @@ type Config struct {
 
 // ProviderEntry describes a single upstream in config YAML.
 type ProviderEntry struct {
-	Enabled      bool              `yaml:"enabled"`
-	BaseURL      string            `yaml:"base_url"`
-	APIKeyEnv    string            `yaml:"api_key_env"`
-	DefaultModel string            `yaml:"default_model"`
-	ExtraHeaders map[string]string `yaml:"extra_headers,omitempty"`
+	Enabled               bool              `yaml:"enabled"`
+	BaseURL               string            `yaml:"base_url"`
+	APIKeyEnv             string            `yaml:"api_key_env"`
+	DefaultModel          string            `yaml:"default_model"`
+	DefaultEmbeddingModel string            `yaml:"default_embedding_model,omitempty"`
+	SupportsEmbeddings    bool              `yaml:"supports_embeddings"`
+	ExtraHeaders          map[string]string `yaml:"extra_headers,omitempty"`
 }
 
 // RoutingConfig controls default provider selection and fallback chain.
@@ -84,12 +86,14 @@ func (c *Config) BuildRegistry(reg *provider.Registry) (map[string]provider.Prov
 			continue
 		}
 		p, err := reg.Build(provider.ProviderConfig{
-			ID:           id,
-			BaseURL:      entry.BaseURL,
-			APIKeyEnv:    entry.APIKeyEnv,
-			Enabled:      entry.Enabled,
-			DefaultModel: entry.DefaultModel,
-			ExtraHeaders: entry.ExtraHeaders,
+			ID:                    id,
+			BaseURL:               entry.BaseURL,
+			APIKeyEnv:             entry.APIKeyEnv,
+			Enabled:               entry.Enabled,
+			DefaultModel:          entry.DefaultModel,
+			DefaultEmbeddingModel: entry.DefaultEmbeddingModel,
+			SupportsEmbeddings:    entry.SupportsEmbeddings,
+			ExtraHeaders:          entry.ExtraHeaders,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("provider %q: %w", id, err)
@@ -142,6 +146,36 @@ func (c *Config) ResolveChain(reqProvider, reqModel string) []provider.RouteTarg
 		add(fb.Provider, model)
 	}
 	return chain
+}
+
+// ResolveEmbeddingTarget picks the provider/model for an embeddings request.
+// Unlike chat, embeddings do not walk the chat fallback chain into providers
+// without an embeddings API.
+func (c *Config) ResolveEmbeddingTarget(reqProvider, reqModel string) (providerID, model string) {
+	providerID = reqProvider
+	if providerID == "" {
+		providerID = c.Routing.DefaultProvider
+	}
+	model = reqModel
+	if model == "" {
+		if entry, ok := c.Providers[providerID]; ok {
+			if entry.DefaultEmbeddingModel != "" {
+				model = entry.DefaultEmbeddingModel
+			} else {
+				model = entry.DefaultModel
+			}
+		}
+		if model == "" {
+			model = c.Routing.DefaultModel
+		}
+	}
+	return providerID, model
+}
+
+// SupportsEmbeddings reports whether the named provider is configured for embeddings.
+func (c *Config) SupportsEmbeddings(providerID string) bool {
+	entry, ok := c.Providers[providerID]
+	return ok && entry.SupportsEmbeddings
 }
 
 // ConfigPath resolves the config file path from env or default.

@@ -2,12 +2,18 @@ package provider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/aegis-platform/aegis/model-router/internal/models"
 )
+
+// MockEmbeddingDims matches common OpenAI embedding width (and AEGIS infra_memory).
+const MockEmbeddingDims = 1536
 
 // Mock provides deterministic responses for dev/test without upstream API keys.
 type Mock struct {
@@ -18,6 +24,10 @@ func NewMock(cfg ProviderConfig) (Provider, error) {
 	if cfg.DefaultModel == "" {
 		cfg.DefaultModel = "mock-model"
 	}
+	if cfg.DefaultEmbeddingModel == "" {
+		cfg.DefaultEmbeddingModel = "mock-embedding"
+	}
+	cfg.SupportsEmbeddings = true
 	return &Mock{cfg: cfg}, nil
 }
 
@@ -54,6 +64,58 @@ func (p *Mock) ChatStream(_ context.Context, req models.ChatRequest) (<-chan mod
 		out <- models.StreamChunk{Done: true, Provider: p.cfg.ID, Model: pickModel(req, p.cfg.DefaultModel)}
 	}()
 	return out, nil
+}
+
+func (p *Mock) Embed(_ context.Context, req models.EmbeddingRequest) (*models.EmbeddingResponse, error) {
+	if len(req.Input.Texts) == 0 {
+		return nil, fmt.Errorf("input required")
+	}
+	model := req.Model
+	if model == "" {
+		model = p.cfg.DefaultEmbeddingModel
+	}
+	data := make([]models.EmbeddingData, len(req.Input.Texts))
+	promptTokens := 0
+	for i, text := range req.Input.Texts {
+		data[i] = models.EmbeddingData{
+			Object:    "embedding",
+			Index:     i,
+			Embedding: DeterministicEmbedding(text, MockEmbeddingDims),
+		}
+		n := len(strings.Fields(text))
+		if n == 0 {
+			n = 1
+		}
+		promptTokens += n
+	}
+	return &models.EmbeddingResponse{
+		Object:   "list",
+		Data:     data,
+		Model:    model,
+		Provider: p.cfg.ID,
+		Usage: models.EmbeddingUsage{
+			PromptTokens: promptTokens,
+			TotalTokens:  promptTokens,
+		},
+	}, nil
+}
+
+// DeterministicEmbedding expands a SHA-256 digest of text into dims float64s in [-1, 1].
+func DeterministicEmbedding(text string, dims int) []float64 {
+	if dims <= 0 {
+		dims = MockEmbeddingDims
+	}
+	out := make([]float64, dims)
+	seed := sha256.Sum256([]byte(text))
+	block := seed
+	for i := 0; i < dims; i++ {
+		if i%8 == 0 && i > 0 {
+			block = sha256.Sum256(append(block[:], byte(i/8)))
+		}
+		u := binary.BigEndian.Uint32(block[(i%8)*4 : (i%8)*4+4])
+		out[i] = (float64(u)/float64(math.MaxUint32))*2 - 1
+	}
+	return out
 }
 
 func (p *Mock) echo(req models.ChatRequest) string {

@@ -25,6 +25,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/ready", s.handleReady)
 	mux.HandleFunc("/v1/providers", s.handleListProviders)
 	mux.HandleFunc("/v1/chat/completions", s.handleChatCompletions)
+	mux.HandleFunc("/v1/embeddings", s.handleEmbeddings)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -99,6 +100,40 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleEmbeddings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+
+	var req models.EmbeddingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if len(req.Input.Texts) == 0 {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("input required (string or array of strings)"))
+		return
+	}
+
+	resp, err := s.router.Embed(r.Context(), req)
+	if err != nil {
+		writeRouterError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"object":   resp.Object,
+		"data":     resp.Data,
+		"model":    resp.Model,
+		"provider": resp.Provider,
+		"usage": map[string]int{
+			"prompt_tokens": resp.Usage.PromptTokens,
+			"total_tokens":  resp.Usage.TotalTokens,
+		},
+	})
+}
+
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models.ChatRequest) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -140,6 +175,19 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, req models
 }
 
 func writeRouterError(w http.ResponseWriter, err error) {
+	if embErr, ok := provider.AsEmbeddingNotSupportedError(err); ok {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error": embErr.Error(),
+			"aegis": map[string]any{
+				"model_error": map[string]any{
+					"provider":   embErr.Provider,
+					"error_type": embErr.ErrorType(),
+					"message":    embErr.Error(),
+				},
+			},
+		})
+		return
+	}
 	if modelErr, ok := provider.AsModelRetiredError(err); ok {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 			"error": modelErr.Error(),
