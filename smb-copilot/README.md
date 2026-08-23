@@ -2,7 +2,7 @@
 
 Scaffold for the SMB Copilot Python service (schema + health endpoint). Business logic lands in later phases.
 
-Schema lives in `deploy/postgres/init/002_smb_*.sql`–`004_smb_*.sql` so a fresh Postgres volume applies it automatically via `docker-entrypoint-initdb.d` (same path as `001_schema.sql`).
+Schema lives in `deploy/postgres/init/002_smb_*.sql`–`006_smb_*.sql` so a fresh Postgres volume applies it automatically via `docker-entrypoint-initdb.d` (same path as `001_schema.sql`).
 
 ## Install
 

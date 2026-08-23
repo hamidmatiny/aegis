@@ -1,5 +1,1 @@
-"""Onboarding routes (scaffold — filled in later phases)."""
-
-from fastapi import APIRouter
-
-router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+"""Placeholder — onboarding routes live in ``aegis_smb_copilot.onboarding.router``."""

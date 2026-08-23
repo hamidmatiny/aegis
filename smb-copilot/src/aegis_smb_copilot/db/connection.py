@@ -7,8 +7,6 @@ from typing import Any
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 
-from aegis_smb_copilot.config import settings
-
 _pool: ConnectionPool | None = None
 
 
@@ -20,9 +18,11 @@ def get_pool() -> ConnectionPool:
     """Return the process-wide connection pool, creating it on first use."""
     global _pool
     if _pool is None:
+        from aegis_smb_copilot.config import settings as live_settings
+
         _pool = ConnectionPool(
-            conninfo=settings.database_url,
-            kwargs={"autocommit": True},
+            conninfo=live_settings.database_url,
+            kwargs={"autocommit": True, "connect_timeout": 10},
             configure=_configure,
             open=True,
             min_size=1,
