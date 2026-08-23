@@ -35,11 +35,12 @@ func (r *Router) ListProviders() []models.ProviderInfo {
 
 	for id, entry := range r.cfg.Providers {
 		info := models.ProviderInfo{
-			ID:           id,
-			Enabled:      entry.Enabled,
-			BaseURL:      entry.BaseURL,
-			DefaultModel: entry.DefaultModel,
-			ModelStatus:  modelStatusNotChecked,
+			ID:                 id,
+			Enabled:            entry.Enabled,
+			BaseURL:            entry.BaseURL,
+			DefaultModel:       entry.DefaultModel,
+			SupportsEmbeddings: entry.SupportsEmbeddings,
+			ModelStatus:        modelStatusNotChecked,
 		}
 		if entry.APIKeyEnv != "" {
 			key := provider.ResolveAPIKey(provider.ProviderConfig{APIKeyEnv: entry.APIKeyEnv})
@@ -196,6 +197,26 @@ func (r *Router) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 		})
 	}
 	return nil, "", &models.RouterError{Message: "all providers in fallback chain failed", Attempts: attempts}
+}
+
+// Embed routes an embeddings request to a single provider that supports embeddings.
+func (r *Router) Embed(ctx context.Context, req models.EmbeddingRequest) (*models.EmbeddingResponse, error) {
+	providerID, model := r.cfg.ResolveEmbeddingTarget(req.Provider, req.Model)
+	if !r.cfg.SupportsEmbeddings(providerID) {
+		return nil, &provider.EmbeddingNotSupportedError{Provider: providerID}
+	}
+	p, ok := r.providers[providerID]
+	if !ok {
+		return nil, fmt.Errorf("provider %q not registered", providerID)
+	}
+	ep, ok := p.(provider.EmbeddingProvider)
+	if !ok {
+		return nil, &provider.EmbeddingNotSupportedError{Provider: providerID}
+	}
+	routed := req
+	routed.Provider = providerID
+	routed.Model = model
+	return ep.Embed(ctx, routed)
 }
 
 func (r *Router) tryWithRetry(ctx context.Context, p provider.Provider, req models.ChatRequest) (*models.ChatResponse, error) {

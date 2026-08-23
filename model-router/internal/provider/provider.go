@@ -14,6 +14,11 @@ type Provider interface {
 	Ping(ctx context.Context) error
 }
 
+// EmbeddingProvider is implemented by upstreams that expose an embeddings API.
+type EmbeddingProvider interface {
+	Embed(ctx context.Context, req models.EmbeddingRequest) (*models.EmbeddingResponse, error)
+}
+
 // Factory constructs a provider from runtime configuration.
 type Factory func(cfg ProviderConfig) (Provider, error)
 
@@ -25,13 +30,15 @@ type RouteTarget struct {
 
 // ProviderConfig holds connection settings for a single upstream.
 type ProviderConfig struct {
-	ID           string
-	BaseURL      string
-	APIKey       string
-	APIKeyEnv    string
-	Enabled      bool
-	DefaultModel string
-	ExtraHeaders map[string]string
+	ID                    string
+	BaseURL               string
+	APIKey                string
+	APIKeyEnv             string
+	Enabled               bool
+	DefaultModel          string
+	DefaultEmbeddingModel string
+	SupportsEmbeddings    bool
+	ExtraHeaders          map[string]string
 }
 
 // Registry holds provider factories keyed by provider ID.
