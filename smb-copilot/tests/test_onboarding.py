@@ -37,6 +37,10 @@ def _host_database_url() -> str:
 
 
 os.environ["DATABASE_URL"] = _host_database_url()
+os.environ.setdefault(
+    "AEGIS_POLICY_TENANTS_DIR",
+    str(Path(__file__).resolve().parents[2] / ".pytest_policy_tenants"),
+)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,6 +48,7 @@ from fastapi.testclient import TestClient
 from aegis_smb_copilot import config as config_mod
 from aegis_smb_copilot.db import connection as db_connection
 
+Path(os.environ["AEGIS_POLICY_TENANTS_DIR"]).mkdir(parents=True, exist_ok=True)
 config_mod.settings = config_mod.Settings()
 
 from aegis_smb_copilot.clients.model_router import embed_texts

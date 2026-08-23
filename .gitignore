@@ -94,3 +94,4 @@ age-key.txt
 # rules above, called out explicitly here since this is private-key
 # material and "already covered by an unrelated-looking rule" is exactly
 # the kind of thing worth spelling out rather than leaving implicit.
+.pytest_policy_tenants/

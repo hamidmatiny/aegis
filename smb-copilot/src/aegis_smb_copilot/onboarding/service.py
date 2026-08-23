@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
+from aegis_smb_copilot.billing.policy_files import write_free_tier_override
 from aegis_smb_copilot.clients.model_router import embed_texts
 from aegis_smb_copilot.db.connection import get_pool
 from aegis_smb_copilot.onboarding.schema import (
@@ -79,6 +80,8 @@ def register_tenant(slug: str, tier: str = "standard") -> RegisterResponse:
     tenant_id, out_slug, out_tier = row[0], row[1], row[2]
     if not isinstance(tenant_id, UUID):
         tenant_id = UUID(str(tenant_id))
+    # Policy-engine CEL override is the SoT for paid features (walkthrough).
+    write_free_tier_override(str(out_slug))
     return RegisterResponse(
         tenant_id=tenant_id,
         slug=str(out_slug),

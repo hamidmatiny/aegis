@@ -56,6 +56,10 @@ os.environ["DATABASE_URL"] = _host_database_url()
 os.environ["REDIS_URL"] = _host_redis_url()
 os.environ["SMB_QA_RATE_LIMIT"] = "2"
 os.environ["SMB_QA_RATE_WINDOW_SEC"] = "60"
+os.environ.setdefault(
+    "AEGIS_POLICY_TENANTS_DIR",
+    str(Path(__file__).resolve().parents[2] / ".pytest_policy_tenants"),
+)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -66,6 +70,7 @@ from aegis_smb_copilot.db import connection as db_connection
 from aegis_smb_copilot.qa import rate_limit as rate_limit_mod
 from aegis_smb_copilot.qa.schema import QA_DISCLAIMER, AskResponse
 
+Path(os.environ["AEGIS_POLICY_TENANTS_DIR"]).mkdir(parents=True, exist_ok=True)
 config_mod.settings = config_mod.Settings()
 rate_limit_mod.reset_redis_for_tests()
 

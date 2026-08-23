@@ -10,7 +10,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgres://aegis:aegis_dev@localhost:5432/aegis?sslmode=disable"
-    policy_engine_url: str = "http://localhost:8081"
+    policy_engine_url: str = Field(
+        default="http://localhost:8081",
+        validation_alias="POLICY_ENGINE_URL",
+    )
+    policy_tenants_dir: str = Field(
+        default="policy-engine/policies/tenants",
+        validation_alias="AEGIS_POLICY_TENANTS_DIR",
+        description="Writable path for per-tenant overrides.yaml (policy-engine tenants/).",
+    )
     audit_service_url: str = "http://localhost:8084"
     model_router_url: str = "http://localhost:8082"
     redis_url: str = Field(

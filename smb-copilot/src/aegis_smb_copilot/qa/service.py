@@ -16,7 +16,7 @@ from aegis_smb_copilot.qa.schema import (
 )
 
 
-def ask(tenant_id: UUID, question: str) -> AskResponse:
+def ask(tenant_id: UUID, question: str, *, walkthrough: bool = False) -> AskResponse:
     """Return advisory text grounded in tenant infra memory (no actions taken)."""
     memories = retrieve_infra_context(tenant_id, question)
     values = [m.normalized_value for m in memories]
@@ -28,11 +28,19 @@ def ask(tenant_id: UUID, question: str) -> AskResponse:
     cve_lines = [
         f"- {c.cve_id} [{c.severity}] on {c.matched_value}: {c.summary}" for c in cves
     ]
-    system = (
-        "You are AEGIS SMB Copilot, a free-tier advisory assistant for small businesses. "
-        "Answer only from the provided infrastructure profile and CVE notes. "
-        "Do not claim to have applied changes or run tools. Be concise and practical."
-    )
+    if walkthrough:
+        system = (
+            "You are AEGIS SMB Copilot providing a paid guided walkthrough. "
+            "Produce a numbered, step-by-step plan using only the provided "
+            "infrastructure profile and CVE notes. Do not claim to have applied "
+            "changes or run tools. Be concrete and practical."
+        )
+    else:
+        system = (
+            "You are AEGIS SMB Copilot, a free-tier advisory assistant for small businesses. "
+            "Answer only from the provided infrastructure profile and CVE notes. "
+            "Do not claim to have applied changes or run tools. Be concise and practical."
+        )
     user = (
         f"Question:\n{question.strip()}\n\n"
         f"Tenant infrastructure (retrieved):\n"
@@ -59,6 +67,7 @@ def ask(tenant_id: UUID, question: str) -> AskResponse:
             for m in memories
         ],
         cve_matches=[cve_hit_from_match(c) for c in cves],
+        walkthrough=walkthrough,
     )
 
 
