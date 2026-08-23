@@ -48,15 +48,17 @@ docker run --rm -v "$(pwd)/model-router:/app" -w /app golang:1.22-alpine go test
 
 ## Supported providers
 
-| ID | Upstream | Protocol |
-|----|----------|----------|
-| `openai` | OpenAI API | OpenAI-compatible |
-| `anthropic` | Anthropic Messages API | Native |
-| `gemini` | Google Generative Language API | Native |
-| `ollama` | Local Ollama | OpenAI-compatible (`/v1/chat/completions`) |
-| `vllm` | Local vLLM | OpenAI-compatible |
-| `grok` | xAI Grok API | OpenAI-compatible (`https://api.x.ai/v1`) — default model `grok-4.3` |
-| `mock` | Built-in stub | Dev/test without API keys |
+| ID | Upstream | Chat | Embeddings (`POST /v1/embeddings`) |
+|----|----------|------|-------------------------------------|
+| `openai` | OpenAI API | OpenAI-compatible | Yes (`text-embedding-3-small` default) |
+| `anthropic` | Anthropic Messages API | Native | **No** — HTTP 501 `embeddings_not_supported` |
+| `gemini` | Google Generative Language API | Native | **No** — HTTP 501 |
+| `ollama` | Local Ollama | OpenAI-compatible | Yes (OpenAI-compatible `/v1/embeddings`, e.g. `nomic-embed-text`) |
+| `vllm` | Local vLLM | OpenAI-compatible | Yes (when the served model supports embeddings) |
+| `grok` | xAI Grok API | OpenAI-compatible (`https://api.x.ai/v1`) — default model `grok-4.3` | **No** — HTTP 501 (no Grok embeddings API) |
+| `mock` | Built-in stub | Dev/test without API keys | Yes — deterministic 1536-dim hash vector |
+
+Set `supports_embeddings: true|false` (and optional `default_embedding_model`) per provider in `config/providers.yaml`. Embeddings requests never fall back into chat-only providers and never invent vectors.
 
 Alternative Grok model for build/tooling workloads: **`grok-build-0.1`** — set in `providers.yaml` or pass in the request `model` field.
 
@@ -99,9 +101,21 @@ curl -N -X POST localhost:8082/v1/chat/completions \
 
 # List providers (includes model_status probe)
 curl localhost:8082/v1/providers
+
+# Embeddings (OpenAI-compatible; defaults to mock when no provider set)
+curl -X POST localhost:8082/v1/embeddings \
+  -H "Authorization: Bearer $AEGIS_INTERNAL_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"mock-embedding","input":"test"}'
+
+# Embeddings against a chat-only provider → HTTP 501
+curl -X POST localhost:8082/v1/embeddings \
+  -H "Authorization: Bearer $AEGIS_INTERNAL_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"anthropic","input":"test"}'
 ```
 
-Response includes `aegis.fallback_used` and `aegis.attempted_providers` when fallback routing occurs.
+Response includes `aegis.fallback_used` and `aegis.attempted_providers` when fallback routing occurs (chat only).
 
 ### Model retired errors (HTTP 422)
 

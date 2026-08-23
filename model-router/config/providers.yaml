@@ -3,42 +3,54 @@ providers:
   mock:
     enabled: true
     default_model: mock-model
+    supports_embeddings: true
+    default_embedding_model: mock-embedding
 
   openai:
     enabled: true
     base_url: https://api.openai.com/v1
     api_key_env: OPENAI_API_KEY
     default_model: gpt-4o-mini
+    supports_embeddings: true
+    default_embedding_model: text-embedding-3-small
 
   anthropic:
     enabled: true
     base_url: https://api.anthropic.com/v1
     api_key_env: ANTHROPIC_API_KEY
     default_model: claude-3-5-haiku-20241022
+    supports_embeddings: false
 
   gemini:
     enabled: true
     base_url: https://generativelanguage.googleapis.com/v1beta
     api_key_env: GOOGLE_API_KEY
     default_model: gemini-1.5-flash
+    supports_embeddings: false
 
+  # Ollama exposes OpenAI-compatible /v1/embeddings when a local embed model is pulled.
   ollama:
     enabled: true
     base_url: http://host.docker.internal:11434/v1
     default_model: llama3
+    supports_embeddings: true
+    default_embedding_model: nomic-embed-text
 
+  # vLLM serves OpenAI-compatible /v1/embeddings for embedding-capable served models.
   vllm:
     enabled: false
     base_url: http://localhost:8000/v1
     default_model: meta-llama/Meta-Llama-3-8B-Instruct
+    supports_embeddings: true
 
-  # xAI Grok — OpenAI-compatible. Production default: grok-4.3
+  # xAI Grok — OpenAI-compatible chat only. No embeddings API.
   # Alternative for build/tooling workloads: grok-build-0.1
   grok:
     enabled: true
     base_url: https://api.x.ai/v1
     api_key_env: XAI_API_KEY
     default_model: grok-4.3
+    supports_embeddings: false
 
 routing:
   default_provider: mock
