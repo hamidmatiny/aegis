@@ -310,11 +310,16 @@ services:
       POLICY_ENGINE_URL: http://policy-engine:8081
       AUDIT_SERVICE_URL: http://audit:8084
       MODEL_ROUTER_URL: http://model-router:8082
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
+      SMB_EMBEDDING_PROVIDER: ${SMB_EMBEDDING_PROVIDER:-mock}
+      SMB_EMBEDDING_MODEL: ${SMB_EMBEDDING_MODEL:-mock-embedding}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      model-router:
+        condition: service_started
 
   dashboard:
     build:

@@ -6,6 +6,7 @@ import os
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import urlparse, urlunparse
 
 
@@ -43,17 +44,29 @@ from fastapi.testclient import TestClient
 from aegis_smb_copilot import config as config_mod
 from aegis_smb_copilot.db import connection as db_connection
 
-# Settings may have been imported elsewhere; re-bind from the forced env.
 config_mod.settings = config_mod.Settings()
 
+from aegis_smb_copilot.clients.model_router import embed_texts
 from aegis_smb_copilot.main import app
-from aegis_smb_copilot.onboarding.service import normalize_pair
+from aegis_smb_copilot.onboarding.service import normalize_pair, store_intake
+from aegis_smb_copilot.onboarding.schema import IntakeAnswer
+from aegis_smb_copilot.tenancy.auth import generate_api_key, hash_api_key
+
+
+def _fake_embed(texts: list[str], **_kwargs: object) -> list[list[float]]:
+    """Deterministic stand-in for model-router embeddings (1536 dims)."""
+    out: list[list[float]] = []
+    for i, text in enumerate(texts):
+        vec = [0.0] * 1536
+        vec[0] = float(len(text))
+        vec[1] = float(i + 1)
+        out.append(vec)
+    return out
 
 
 def _postgres_ready() -> bool:
     try:
         db_connection.close_pool()
-        # Avoid long pool retry loops when Postgres is down.
         pool = db_connection.ConnectionPool(
             conninfo=os.environ["DATABASE_URL"],
             kwargs={"autocommit": True, "connect_timeout": 3},
@@ -109,7 +122,65 @@ def test_intake_requires_auth(client: TestClient) -> None:
     assert resp.status_code == 401
 
 
-def test_register_and_intake_scoped_to_tenant(client: TestClient) -> None:
+def test_embed_texts_parses_model_router_response() -> None:
+    class _Resp:
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict:
+            return {
+                "object": "list",
+                "data": [
+                    {"embedding": [0.1, 0.2], "index": 1},
+                    {"embedding": [0.3, 0.4], "index": 0},
+                ],
+            }
+
+    class _Client:
+        def post(self, *_a: object, **_k: object) -> _Resp:
+            return _Resp()
+
+        def close(self) -> None:
+            return None
+
+    vectors = embed_texts(["a", "b"], client=_Client())  # type: ignore[arg-type]
+    assert vectors == [[0.3, 0.4], [0.1, 0.2]]
+
+
+@patch("aegis_smb_copilot.onboarding.service.embed_texts", side_effect=_fake_embed)
+def test_store_intake_populates_embedding(_mock_embed: object) -> None:
+    pool = db_connection.get_pool()
+    api_key = generate_api_key()
+    digest = hash_api_key(api_key)
+    slug = f"emb-{uuid.uuid4().hex[:10]}"
+    with pool.connection() as conn:
+        row = conn.execute(
+            "INSERT INTO tenants (slug, tier, api_key_hash) VALUES (%s, %s, %s) RETURNING id",
+            (slug, "standard", digest),
+        ).fetchone()
+    assert row is not None
+    tenant_id = row[0]
+
+    profile = store_intake(
+        tenant_id,
+        [IntakeAnswer(category="database", value="PostgreSQL 16.2")],
+    )
+    assert len(profile.items) == 1
+
+    with pool.connection() as conn:
+        emb_row = conn.execute(
+            "SELECT embedding FROM infra_memory WHERE id = %s AND tenant_id = %s",
+            (profile.items[0].id, tenant_id),
+        ).fetchone()
+    assert emb_row is not None
+    emb = emb_row[0].to_list()
+    assert len(emb) == 1536
+    assert emb[0] == float(len("database:postgres-16.2.x"))
+    assert emb[1] == 1.0
+
+
+@patch("aegis_smb_copilot.onboarding.service.embed_texts", side_effect=_fake_embed)
+def test_register_and_intake_scoped_to_tenant(_mock_embed: object, client: TestClient) -> None:
     slug = f"acme-{uuid.uuid4().hex[:10]}"
     reg = client.post("/onboarding/register", json={"slug": slug, "tier": "standard"})
     assert reg.status_code == 201, reg.text
@@ -145,7 +216,9 @@ def test_register_and_intake_scoped_to_tenant(client: TestClient) -> None:
     assert len(rows) == 2
     for row in rows:
         assert str(row[0]) == tenant_id
-        assert row[3] is None  # embeddings deferred to Phase 3
+        assert row[3] is not None
+        emb = row[3].to_list()
+        assert len(emb) == 1536
 
     other = client.post(
         "/onboarding/register",

@@ -27,6 +27,9 @@ curl http://127.0.0.1:8093/healthz
 | `DATABASE_URL` | Postgres connection string (pgvector-enabled) |
 | `POLICY_ENGINE_URL` | Policy engine base URL |
 | `AUDIT_SERVICE_URL` | Audit service base URL |
-| `MODEL_ROUTER_URL` | Model router base URL |
+| `MODEL_ROUTER_URL` | Model router base URL (embeddings via `POST /v1/embeddings`) |
+| `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
+| `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
+| `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
 | `SMB_COPILOT_HOST` | Bind host (default `0.0.0.0`) |
 | `SMB_COPILOT_PORT` | Listen port (default `8093`) |

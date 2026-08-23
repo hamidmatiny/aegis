@@ -1,10 +1,11 @@
-"""Normalize intake answers and persist infra_memory rows (no embeddings yet)."""
+"""Normalize intake answers and persist infra_memory rows with embeddings."""
 
 from __future__ import annotations
 
 import re
 from uuid import UUID
 
+from aegis_smb_copilot.clients.model_router import embed_texts
 from aegis_smb_copilot.db.connection import get_pool
 from aegis_smb_copilot.onboarding.schema import (
     InfraProfile,
@@ -55,6 +56,11 @@ def normalize_pair(category: str, value: str) -> tuple[str, str]:
     return cat, token
 
 
+def embedding_text(category: str, normalized_value: str) -> str:
+    """Canonical text embedded for an infra_memory row."""
+    return f"{category}:{normalized_value}"
+
+
 def register_tenant(slug: str, tier: str = "standard") -> RegisterResponse:
     api_key = generate_api_key()
     digest = hash_api_key(api_key)
@@ -82,7 +88,7 @@ def register_tenant(slug: str, tier: str = "standard") -> RegisterResponse:
 
 
 def store_intake(tenant_id: UUID, answers: list[IntakeAnswer]) -> InfraProfile:
-    """Normalize answers and insert infra_memory rows for ``tenant_id`` only."""
+    """Normalize answers, insert infra_memory rows, then embed via model-router."""
     pairs: list[tuple[str, str]] = []
     for answer in answers:
         pairs.append(normalize_pair(answer.category, answer.value))
@@ -113,4 +119,49 @@ def store_intake(tenant_id: UUID, answers: list[IntakeAnswer]) -> InfraProfile:
                     )
                 )
 
+            texts = [embedding_text(i.category, i.normalized_value) for i in items]
+            vectors = embed_texts(texts)
+            for item, vector in zip(items, vectors, strict=True):
+                conn.execute(
+                    """
+                    UPDATE infra_memory
+                    SET embedding = %s
+                    WHERE id = %s AND tenant_id = %s
+                    """,
+                    (vector, item.id, tenant_id),
+                )
+
     return InfraProfile(tenant_id=tenant_id, items=items)
+
+
+def backfill_missing_embeddings(*, dry_run: bool = False, limit: int | None = None) -> int:
+    """Embed infra_memory rows where embedding IS NULL. Returns pending/updated count."""
+    pool = get_pool()
+    with pool.connection() as conn:
+        sql = (
+            "SELECT id, tenant_id, category, normalized_value "
+            "FROM infra_memory WHERE embedding IS NULL "
+            "ORDER BY created_at ASC"
+        )
+        if limit is not None:
+            rows = conn.execute(sql + " LIMIT %s", (limit,)).fetchall()
+        else:
+            rows = conn.execute(sql).fetchall()
+
+        if dry_run or not rows:
+            return len(rows)
+
+        texts = [embedding_text(str(r[2]), str(r[3])) for r in rows]
+        vectors = embed_texts(texts)
+        with conn.transaction():
+            for row, vector in zip(rows, vectors, strict=True):
+                row_id, tenant_id = row[0], row[1]
+                conn.execute(
+                    """
+                    UPDATE infra_memory
+                    SET embedding = %s
+                    WHERE id = %s AND tenant_id = %s AND embedding IS NULL
+                    """,
+                    (vector, row_id, tenant_id),
+                )
+        return len(rows)
