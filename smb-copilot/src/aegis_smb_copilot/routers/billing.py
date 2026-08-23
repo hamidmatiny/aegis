@@ -1,5 +1,5 @@
-"""Billing routes (scaffold). Walkthrough entitlement lives in policy-engine CEL."""
+"""Deprecated scaffold — prefer ``aegis_smb_copilot.billing.router``."""
 
-from fastapi import APIRouter
+from aegis_smb_copilot.billing.router import router
 
-router = APIRouter(prefix="/billing", tags=["billing"])
+__all__ = ["router"]

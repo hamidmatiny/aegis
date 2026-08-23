@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from aegis_smb_copilot.billing.usage_recorder import (
+    EVENT_QA_ASK,
+    EVENT_WALKTHROUGH_GRANT,
+    record_usage_event,
+)
 from aegis_smb_copilot.clients.model_router import chat_completion
 from aegis_smb_copilot.qa.cve_match import match_cves
 from aegis_smb_copilot.qa.retrieval import retrieve_infra_context
@@ -54,6 +59,11 @@ def ask(tenant_id: UUID, question: str, *, walkthrough: bool = False) -> AskResp
             {"role": "user", "content": user},
         ]
     )
+
+    # Always bill an ask; walkthrough grants are an additional paid event.
+    record_usage_event(tenant_id, EVENT_QA_ASK)
+    if walkthrough:
+        record_usage_event(tenant_id, EVENT_WALKTHROUGH_GRANT)
 
     return AskResponse(
         answer=answer,

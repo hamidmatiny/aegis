@@ -290,3 +290,175 @@ def test_check_walkthrough_calls_policy_engine(policy_dir: Path) -> None:
     assert kwargs["json"]["tool_call"]["tool_name"] == "walkthrough"
     assert "headers" in kwargs
 
+
+# ---------------------------------------------------------------------------
+# Usage / receipts (Phase 6)
+# ---------------------------------------------------------------------------
+
+
+def test_usage_summary_flags_missing_receipt(client: TestClient) -> None:
+    """usage_events without a matching signed receipt surface as discrepancies."""
+    slug = f"use-{uuid.uuid4().hex[:10]}"
+    reg = client.post("/onboarding/register", json={"slug": slug})
+    assert reg.status_code == 201, reg.text
+    api_key = reg.json()["api_key"]
+    tenant_id = uuid.UUID(reg.json()["tenant_id"])
+
+    # Insert an orphan usage row (no audit receipt).
+    pool = db_connection.get_pool()
+    with pool.connection() as conn:
+        conn.execute(
+            "INSERT INTO usage_events (tenant_id, event_type, audit_receipt_id) VALUES (%s, %s, NULL)",
+            (tenant_id, "qa_ask"),
+        )
+
+    with patch(
+        "aegis_smb_copilot.billing.usage.fetch_receipts",
+        return_value=[],
+    ):
+        resp = client.get(
+            "/billing/usage",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["qa_ask_count"] == 1
+    assert data["walkthrough_grant_count"] == 0
+    assert data["integrity"] == "discrepancies_present"
+    assert len(data["discrepancies"]) == 1
+    assert data["discrepancies"][0]["reason"] == "missing_audit_receipt_id"
+
+
+def test_usage_summary_counts_matched_events(client: TestClient) -> None:
+    slug = f"ok-{uuid.uuid4().hex[:10]}"
+    reg = client.post("/onboarding/register", json={"slug": slug})
+    assert reg.status_code == 201
+    api_key = reg.json()["api_key"]
+    tenant_id = uuid.UUID(reg.json()["tenant_id"])
+    receipt_id = str(uuid.uuid4())
+
+    pool = db_connection.get_pool()
+    with pool.connection() as conn:
+        conn.execute(
+            "INSERT INTO usage_events (tenant_id, event_type, audit_receipt_id) VALUES (%s, %s, %s)",
+            (tenant_id, "qa_ask", receipt_id),
+        )
+        conn.execute(
+            "INSERT INTO usage_events (tenant_id, event_type, audit_receipt_id) VALUES (%s, %s, %s)",
+            (tenant_id, "walkthrough_grant", receipt_id),
+        )
+
+    from aegis_smb_copilot.billing.audit_client import AuditReceipt
+
+    fake = AuditReceipt(
+        receipt_id=receipt_id,
+        event_type="MODEL_ROUTER",
+        tenant_id=str(tenant_id),
+        created_at="2026-08-23T00:00:00Z",
+        signer_key_id="dev-key-1",
+        signature="sig",
+        payload_hash="hash",
+        metadata={},
+        raw={},
+    )
+    with patch(
+        "aegis_smb_copilot.billing.usage.fetch_receipts",
+        return_value=[fake],
+    ):
+        resp = client.get(
+            "/billing/usage",
+            headers={"X-API-Key": api_key},
+        )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["qa_ask_count"] == 1
+    assert data["walkthrough_grant_count"] == 1
+    assert data["receipts_matched"] == 2
+    assert data["integrity"] == "ok"
+    assert data["discrepancies"] == []
+
+
+def test_receipts_endpoint_returns_signed_entries(client: TestClient) -> None:
+    slug = f"rcp-{uuid.uuid4().hex[:10]}"
+    reg = client.post("/onboarding/register", json={"slug": slug})
+    assert reg.status_code == 201
+    api_key = reg.json()["api_key"]
+    tenant_id = uuid.UUID(reg.json()["tenant_id"])
+
+    from aegis_smb_copilot.billing.audit_client import AuditReceipt, VerifyResult
+
+    rid = str(uuid.uuid4())
+    fake = AuditReceipt(
+        receipt_id=rid,
+        event_type="MODEL_ROUTER",
+        tenant_id=str(tenant_id),
+        created_at="2026-08-23T12:00:00Z",
+        signer_key_id="dev-key-1",
+        signature="abc",
+        payload_hash="def",
+        metadata={"usage_event_type": "qa_ask"},
+        raw={},
+    )
+    with (
+        patch(
+            "aegis_smb_copilot.billing.usage.fetch_receipts",
+            return_value=[fake],
+        ),
+        patch(
+            "aegis_smb_copilot.billing.usage.verify_receipt",
+            return_value=VerifyResult(receipt_id=rid, valid=True),
+        ),
+    ):
+        resp = client.get(
+            "/billing/receipts",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["count"] == 1
+    assert data["receipts"][0]["receipt_id"] == rid
+    assert data["receipts"][0]["signature_valid"] is True
+    assert data["receipts"][0]["signature"] == "abc"
+
+
+def test_ask_records_usage_event(client: TestClient) -> None:
+    slug = f"asku-{uuid.uuid4().hex[:10]}"
+    reg = client.post("/onboarding/register", json={"slug": slug})
+    assert reg.status_code == 201
+    api_key = reg.json()["api_key"]
+    tenant_id = uuid.UUID(reg.json()["tenant_id"])
+
+    with (
+        patch(
+            "aegis_smb_copilot.qa.service.retrieve_infra_context",
+            return_value=[],
+        ),
+        patch(
+            "aegis_smb_copilot.qa.service.match_cves",
+            return_value=[],
+        ),
+        patch(
+            "aegis_smb_copilot.qa.service.chat_completion",
+            return_value="Use TLS.",
+        ),
+        patch(
+            "aegis_smb_copilot.billing.usage_recorder._request_signed_receipt",
+            return_value=str(uuid.uuid4()),
+        ),
+    ):
+        resp = client.post(
+            "/qa/ask",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"question": "How do I harden TLS?"},
+        )
+    assert resp.status_code == 200, resp.text
+
+    pool = db_connection.get_pool()
+    with pool.connection() as conn:
+        row = conn.execute(
+            "SELECT event_type, audit_receipt_id FROM usage_events WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchone()
+    assert row is not None
+    assert row[0] == "qa_ask"
+    assert row[1] is not None

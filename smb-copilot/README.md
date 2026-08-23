@@ -82,3 +82,25 @@ pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
 - Compose mounts `policy-engine/policies` into smb-copilot so register can write
   override files; policy-engine still mounts that tree read-only and hot-reloads.
 - Walkthrough responses are still advisory text only (no action-taking).
+
+
+## Billing / usage (audit-backed)
+
+Tier state for walkthroughs still comes from policy-engine CEL overrides. Usage
+counts come from `usage_events`, cross-checked against Ed25519-signed audit
+receipts (read-only from smb-copilot — signing stays in the audit service).
+
+```bash
+# After a few /qa/ask calls:
+curl -s http://127.0.0.1:8093/billing/usage -H "Authorization: Bearer $API_KEY"
+curl -s http://127.0.0.1:8093/billing/receipts -H "Authorization: Bearer $API_KEY"
+```
+
+`GET /billing/usage` includes a `discrepancies` array for any `usage_events` row
+without a matching signed receipt (never silently reconciled). `integrity` is
+`ok` or `discrepancies_present`.
+
+| Variable | Purpose |
+|----------|---------|
+| `AUDIT_SERVICE_URL` | Audit service base URL (`GET /v1/receipts`, `/verify`) |
+| `AEGIS_INTERNAL_TOKEN` | Bearer token for audit (and policy-engine) calls |

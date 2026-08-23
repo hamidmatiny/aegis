@@ -19,7 +19,10 @@ class Settings(BaseSettings):
         validation_alias="AEGIS_POLICY_TENANTS_DIR",
         description="Writable path for per-tenant overrides.yaml (policy-engine tenants/).",
     )
-    audit_service_url: str = "http://localhost:8084"
+    audit_service_url: str = Field(
+        default="http://localhost:8084",
+        validation_alias="AUDIT_SERVICE_URL",
+    )
     model_router_url: str = "http://localhost:8082"
     redis_url: str = Field(
         default="redis://:aegis_redis_dev@127.0.0.1:6379/0",
