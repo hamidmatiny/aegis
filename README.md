@@ -6,6 +6,15 @@ AEGIS sits between your application and any LLM provider, enforcing defense-in-d
 
 **Live demo:** [defenseaegis.org](https://defenseaegis.org) — no signup, no API key, runs on a mock model so it's free to poke at. Try a benign request next to a prompt-injection attempt and watch AEGIS catch the difference.
 
+## AEGIS SMB Copilot
+
+On top of the defense substrate above, this repo also ships a **working Phase 1 MVP** of an AI-assisted IT diagnostics / helpdesk product for small businesses:
+
+- [`smb-copilot/`](./smb-copilot/README.md) — FastAPI backend (onboarding, free-tier Q&A grounded in a short infra inventory, paid-walkthrough gate via policy-engine CEL, audit-backed usage)
+- [`smb-portal/`](./smb-portal/README.md) — customer-facing React UI (separate from the ops [`dashboard/`](./dashboard/README.md))
+
+It reuses the same policy-engine, model-router, audit, and Postgres pieces as the gateway path. There are **no live paying customers yet** — this is pre-revenue product scaffolding, not a commercial deployment with revenue or SLAs.
+
 ## Architecture
 
 ```
@@ -18,7 +27,7 @@ Application → [SDK / Reverse Proxy] → Gateway (Go)
                                          └── Audit (Go + Postgres)
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system design (including how SMB Copilot sits beside the gateway path).
 
 **Phase 2 evidence:** Adaptive red-team campaigns and detector ablation are
 summarized in [RESULTS.md](./RESULTS.md). Report **R1 BR** and **Adapt BR**

@@ -38,6 +38,8 @@ jobs:
           - output-defense
           - redteam
           - dashboard
+          - smb-copilot
+          - smb-portal
           - sdk-proxy
     steps:
       - uses: actions/checkout@v4

@@ -153,10 +153,37 @@ Operations UI wired to audit, policy-engine, agent-gate, and red-team APIs.
 
 ### 8b. SMB Copilot + Portal
 
-`smb-copilot` (Python, port **8093**) provides tenant onboarding, advisory Q&A,
-walkthrough gating via policy-engine CEL, and audit-backed usage. `smb-portal`
-(React + Vite, port **3001**) is the customer-facing UI — separate from the
-ops dashboard.
+Product surface for AEGIS-for-SMB Phase 1 (IT diagnostics / helpdesk MVP). It
+**reuses** policy-engine, model-router, audit, Postgres, and Redis from the same
+compose stack, but it is **not** on the gateway’s defended-chat path: the browser
+talks to `smb-portal`, which proxies to `smb-copilot`, which calls peer services
+directly.
+
+```mermaid
+flowchart LR
+    Browser --> Portal[smb-portal :3001]
+    Portal -->|/api/smb| Copilot[smb-copilot :8093]
+    Copilot --> PG[(Postgres + pgvector)]
+    Copilot --> Redis[(Redis rate limit)]
+    Copilot --> PE[Policy Engine CEL]
+    Copilot --> MR[Model Router]
+    Copilot --> Audit[Audit receipts]
+    PE --> Copilot
+    MR --> Copilot
+    Audit --> Copilot
+```
+
+| Piece | Role |
+|-------|------|
+| **smb-portal** (React + Vite, **3001**) | Customer UI: onboarding, chat + mandatory disclaimer, walkthrough paywall, usage chart. Separate from the ops dashboard (§8). |
+| **smb-copilot** (Python FastAPI, **8093**) | Tenant register / intake → infra_memory embeddings; free `/qa/ask`; `walkthrough:true` gated by tenant CEL override (`smb-deny-walkthrough`); `usage_events` cross-checked against signed audit receipts. |
+| **policy-engine** | Source of truth for paid walkthrough entitlement (tenant `overrides.yaml`), not a DB `tier` column alone. |
+| **model-router** | Embeddings for infra memory + chat completions for advisory answers (often `mock` in local compose). |
+| **audit** | Ed25519-signed receipts; smb-copilot reads them for billing integrity and surfaces discrepancies instead of silently reconciling. |
+
+Schema is applied from `deploy/postgres/init/002_smb_*.sql`–`007_smb_*.sql` on
+fresh volumes. This path is pre-revenue MVP scaffolding — no claim of live
+paying customers.
 
 See [smb-copilot/README.md](./smb-copilot/README.md) and
 [smb-portal/README.md](./smb-portal/README.md).

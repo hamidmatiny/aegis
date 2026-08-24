@@ -1,10 +1,18 @@
 # AEGIS SMB Copilot
 
-Python service for SMB tenant onboarding, infra-memory Q&A, and paid-tier
-walkthrough gating via policy-engine CEL overrides.
+Python FastAPI service that powers the **AEGIS-for-SMB Phase 1 MVP**: tenant
+onboarding with a short infra inventory, free-tier advisory Q&A grounded in that
+inventory (embeddings via model-router), a paid-walkthrough gate enforced by
+policy-engine CEL overrides, and usage attribution cross-checked against
+Ed25519-signed audit receipts.
 
-Schema lives in `deploy/postgres/init/002_smb_*.sql`–`007_smb_*.sql` so a fresh
-Postgres volume applies it automatically via `docker-entrypoint-initdb.d`.
+This is the backend for the customer UI in [`smb-portal/`](../smb-portal/README.md).
+It is **not** the ops dashboard and does not sit on the gateway’s defended-chat
+path — it calls policy-engine, model-router, and audit as peer services.
+
+Part of the [AEGIS](../README.md) monorepo. Schema lives in
+`deploy/postgres/init/002_smb_*.sql`–`007_smb_*.sql` so a fresh Postgres volume
+applies it automatically via `docker-entrypoint-initdb.d`.
 
 ## Install
 
@@ -12,14 +20,33 @@ Postgres volume applies it automatically via `docker-entrypoint-initdb.d`.
 cd smb-copilot
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev]"
+```
+
+## Run (standalone)
+
+With Postgres, Redis, policy-engine, model-router, and audit reachable (compose
+or otherwise):
+
+```bash
+export DATABASE_URL=postgresql://aegis:aegis@127.0.0.1:5432/aegis
+export REDIS_URL=redis://127.0.0.1:6379/0
+export POLICY_ENGINE_URL=http://127.0.0.1:8081
+export MODEL_ROUTER_URL=http://127.0.0.1:8082
+export AUDIT_SERVICE_URL=http://127.0.0.1:8084
+export AEGIS_INTERNAL_TOKEN=test-internal-token   # must match peer services
+export AEGIS_POLICY_TENANTS_DIR=../policy-engine/policies/tenants
+python -m aegis_smb_copilot.main
+# listens on 0.0.0.0:8093 by default
+curl http://127.0.0.1:8093/healthz
 ```
 
 ## Run (compose)
 
 ```bash
+# from repo root
 cp .env.example .env   # if needed
-docker compose up -d --build postgres redis policy-engine model-router smb-copilot
+docker compose up -d --build postgres redis policy-engine model-router audit smb-copilot
 curl http://127.0.0.1:8093/healthz
 ```
 
@@ -32,7 +59,7 @@ curl http://127.0.0.1:8093/healthz
 | `AEGIS_POLICY_TENANTS_DIR` | Writable `policies/tenants` path for free-tier `overrides.yaml` |
 | `AUDIT_SERVICE_URL` | Audit service base URL |
 | `MODEL_ROUTER_URL` | Model router base URL (embeddings + chat) |
-| `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
+| `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router / audit / policy-engine calls |
 | `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
 | `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
 | `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`) |
@@ -62,11 +89,19 @@ curl -s -X POST http://127.0.0.1:8093/qa/ask \
   -H "Authorization: Bearer $API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"question":"Walk me through hardening postgres","walkthrough":true}'
+
+# Usage / receipts (after a few /qa/ask calls)
+curl -s http://127.0.0.1:8093/billing/usage -H "Authorization: Bearer $API_KEY"
+curl -s http://127.0.0.1:8093/billing/receipts -H "Authorization: Bearer $API_KEY"
 ```
 
 Free tenants receive a structured **upsell** JSON (`type: upsell`), not a bare 403.
 Paid tenants: set `smb-deny-walkthrough` to `enabled: false` in that tenant's
 `overrides.yaml`, then `curl -X POST http://127.0.0.1:8081/v1/reload`.
+
+`GET /billing/usage` includes a `discrepancies` array for any `usage_events` row
+without a matching signed receipt (never silently reconciled). `integrity` is
+`ok` or `discrepancies_present`.
 
 ## Tests
 
@@ -82,25 +117,5 @@ pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
 - Compose mounts `policy-engine/policies` into smb-copilot so register can write
   override files; policy-engine still mounts that tree read-only and hot-reloads.
 - Walkthrough responses are still advisory text only (no action-taking).
-
-
-## Billing / usage (audit-backed)
-
-Tier state for walkthroughs still comes from policy-engine CEL overrides. Usage
-counts come from `usage_events`, cross-checked against Ed25519-signed audit
-receipts (read-only from smb-copilot — signing stays in the audit service).
-
-```bash
-# After a few /qa/ask calls:
-curl -s http://127.0.0.1:8093/billing/usage -H "Authorization: Bearer $API_KEY"
-curl -s http://127.0.0.1:8093/billing/receipts -H "Authorization: Bearer $API_KEY"
-```
-
-`GET /billing/usage` includes a `discrepancies` array for any `usage_events` row
-without a matching signed receipt (never silently reconciled). `integrity` is
-`ok` or `discrepancies_present`.
-
-| Variable | Purpose |
-|----------|---------|
-| `AUDIT_SERVICE_URL` | Audit service base URL (`GET /v1/receipts`, `/verify`) |
-| `AEGIS_INTERNAL_TOKEN` | Bearer token for audit (and policy-engine) calls |
+- There are no live paying customers; billing here means usage attribution and
+  receipt integrity, not a payment processor.

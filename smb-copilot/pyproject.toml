@@ -1,7 +1,7 @@
 [project]
 name = "aegis-smb-copilot"
 version = "0.1.0"
-description = "AEGIS SMB Copilot service (scaffold)"
+description = "AEGIS SMB Copilot — FastAPI backend for tenant onboarding, infra-memory Q&A, walkthrough gating, and audit-backed usage"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
