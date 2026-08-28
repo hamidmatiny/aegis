@@ -183,6 +183,8 @@ def test_walkthrough_denied_returns_upsell(client: TestClient) -> None:
     assert data["feature"] == "walkthrough"
     assert data["message"]
     assert data["upgrade_hint"]
+    assert "overrides.yaml" not in data["upgrade_hint"]
+    assert "/v1/reload" not in data["upgrade_hint"]
     assert data["policy_action"] == "block"
     assert "disclaimer" not in data or data.get("disclaimer")  # upsell has no answer path
 

@@ -3,6 +3,9 @@
 Mirrors gateway/agent-gate header conventions:
 Authorization: Bearer <key> or X-API-Key: <key>.
 Keys are stored as SHA-256 hex digests on ``tenants.api_key_hash``.
+
+Customer cookie sessions (``aegis_smb_session``) also resolve to a tenant_id.
+Admin sessions are rejected on tenant-scoped routes.
 """
 
 from __future__ import annotations
@@ -12,8 +15,9 @@ import secrets
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
+from aegis_smb_copilot.auth.sessions import customer_tenant_id, session_from_request
 from aegis_smb_copilot.db.connection import get_pool
 
 API_KEY_PREFIX = "aegis_smb_"
@@ -42,10 +46,24 @@ def extract_api_key(
 
 
 def require_tenant(
+    request: Request,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> UUID:
-    """Resolve the request API key to a ``tenant_id`` or raise 401."""
+    """Resolve customer session or API key to a ``tenant_id``, or raise 401/403."""
+    session = session_from_request(request)
+    if session is not None:
+        if session.role == "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "type": "wrong_role",
+                    "message": "admin session cannot access tenant API routes",
+                },
+            )
+        if session.role == "customer":
+            return customer_tenant_id(session)
+
     key = extract_api_key(authorization=authorization, x_api_key=x_api_key)
     if not key:
         raise HTTPException(

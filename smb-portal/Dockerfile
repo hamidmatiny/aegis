@@ -1,5 +1,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG VITE_BASE_PATH=/
+ARG VITE_API_BASE=/api/smb
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+ENV VITE_API_BASE=$VITE_API_BASE
 COPY smb-portal/package.json smb-portal/package-lock.json* ./
 RUN npm install
 COPY smb-portal/ .

@@ -161,6 +161,22 @@ fill "AEGIS_AGENT_GATE_REVIEWER_KEYS" "echo aegis_\$(random_hex 32)"
 # .env like POSTGRES_PASSWORD is.
 fill "AEGIS_INTERNAL_TOKEN" "echo aegis_internal_\$(random_hex 32)"
 
+# SMB Copilot operator admin (env-only identity, not a DB row) and session signing.
+fill "ADMIN_USERNAME" "echo smbadmin"
+if [ "$ROTATE" = true ] || [ -z "$(current_value ADMIN_PASSWORD_HASH)" ]; then
+  SMB_ADMIN_PASS="$(random_hex 16)"
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import bcrypt" 2>/dev/null; then
+    SMB_ADMIN_HASH="$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'${SMB_ADMIN_PASS}', bcrypt.gensalt(rounds=12)).decode())")"
+  else
+    echo "ERROR: python3 with bcrypt is required to generate ADMIN_PASSWORD_HASH" >&2
+    echo "       Install smb-copilot deps (pip install bcrypt) and re-run." >&2
+    exit 1
+  fi
+  upsert_env "ADMIN_PASSWORD" "$SMB_ADMIN_PASS"
+  upsert_env "ADMIN_PASSWORD_HASH" "$SMB_ADMIN_HASH"
+fi
+fill "SMB_SESSION_SECRET" "echo smb_session_\$(random_hex 32)"
+
 # --- Added: three secrets that used to ship on public, unrotated
 # defaults from .env.example (found during a security review) ---
 
@@ -248,6 +264,8 @@ AGENT_GATE_REVIEWER_KEY="$(current_value AEGIS_AGENT_GATE_REVIEWER_KEYS)"
 INTERNAL_TOKEN="$(current_value AEGIS_INTERNAL_TOKEN)"
 REDIS_PW="$(current_value REDIS_PASSWORD)"
 PG_PW_DISPLAY="$(current_value POSTGRES_PASSWORD)"
+SMB_ADMIN_USER="$(current_value ADMIN_USERNAME)"
+SMB_ADMIN_PASS="$(current_value ADMIN_PASSWORD)"
 
 cat <<MSG
 
@@ -267,6 +285,8 @@ generated — pass --rotate to force fresh values for everything):
                                               just one service)
   Postgres password:       $PG_PW_DISPLAY
   Redis password:          $REDIS_PW   (not wired into any service yet, reserved)
+  SMB Copilot admin login: $SMB_ADMIN_USER / $SMB_ADMIN_PASS   (POST /auth/admin-login)
+  SMB session secret:      (see SMB_SESSION_SECRET in .env — not printed here)
   Audit signing key:       (regenerated if it was still the public dev default;
                             see AEGIS_AUDIT_SIGNING_KEY in .env — not printed here
                             since, unlike the others, it's a real cryptographic

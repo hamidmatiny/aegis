@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Union
 
 from fastapi import APIRouter, HTTPException, status
@@ -14,6 +15,7 @@ from aegis_smb_copilot.qa.service import ask
 from aegis_smb_copilot.tenancy.auth import TenantId
 
 router = APIRouter(prefix="/qa", tags=["qa"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -69,6 +71,15 @@ def ask_question(
                 },
             ) from exc
         if not decision.allowed:
+            logger.info(
+                "walkthrough denied for tenant slug=%s action=%s reason=%s — "
+                "operator: flip smb-deny-walkthrough in policies/tenants/%s/overrides.yaml "
+                "then POST policy-engine /v1/reload",
+                decision.tenant_slug,
+                decision.action,
+                decision.block_reason or "policy block",
+                decision.tenant_slug,
+            )
             return WalkthroughUpsellResponse(policy_action=decision.action)
 
     return ask(tenant_id, body.question, walkthrough=body.walkthrough)

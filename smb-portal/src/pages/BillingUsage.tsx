@@ -1,22 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { loadSession, smbApi } from "../api/client";
+import { smbApi } from "../api/client";
 import type { UsageSummary } from "../api/types";
+import { useAuth } from "../auth/AuthContext";
 import { UsageChart } from "../components/UsageChart";
 
 export function BillingUsage() {
-  const session = loadSession();
-  const tenantId = session?.tenantId ?? null;
-  const apiKey = session?.apiKey ?? null;
-  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const { usage: cachedUsage, me } = useAuth();
+  const [usage, setUsage] = useState<UsageSummary | null>(cachedUsage);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedUsage);
 
   useEffect(() => {
-    if (!tenantId || !apiKey) {
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
@@ -33,20 +27,7 @@ export function BillingUsage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantId, apiKey]);
-
-  if (!session) {
-    return (
-      <section className="page">
-        <header className="page-hero">
-          <h1>Usage</h1>
-          <p>
-            <Link to="/onboarding">Register a tenant</Link> to view billing usage.
-          </p>
-        </header>
-      </section>
-    );
-  }
+  }, [me?.role]);
 
   return (
     <section className="page">

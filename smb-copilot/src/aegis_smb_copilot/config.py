@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     qa_rate_window_sec: int = Field(default=60, validation_alias="SMB_QA_RATE_WINDOW_SEC")
     host: str = Field(default="0.0.0.0", validation_alias="SMB_COPILOT_HOST")
     port: int = Field(default=8093, validation_alias="SMB_COPILOT_PORT")
+    session_secret: str = Field(
+        default="dev-insecure-session-secret-change-me",
+        validation_alias="SMB_SESSION_SECRET",
+    )
+    cookie_secure: bool = Field(default=False, validation_alias="SMB_COOKIE_SECURE")
+    cookie_path: str = Field(default="/", validation_alias="SMB_COOKIE_PATH")
+    admin_username: str = Field(default="", validation_alias="ADMIN_USERNAME")
+    admin_password_hash: str = Field(default="", validation_alias="ADMIN_PASSWORD_HASH")
 
 
 settings = Settings()

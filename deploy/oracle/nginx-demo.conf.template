@@ -33,6 +33,7 @@
 
 limit_req_zone $binary_remote_addr zone=aegis_demo:10m rate=6r/m;
 limit_req_zone $binary_remote_addr zone=aegis_demo_gate:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=aegis_smb_auth:10m rate=3r/m;
 
 server {
     listen 80;
@@ -87,6 +88,34 @@ server {
         proxy_set_header Authorization "Bearer ${AEGIS_DEMO_AGENT_GATE_REVIEWER_KEY}";
         proxy_set_header Content-Type "application/json";
         proxy_pass http://agent-gate:8083/v1/approvals/$1/decide;
+    }
+
+    # SMB Copilot public auth endpoints — stricter than the rest of the demo
+    # surface because register/login are open to credential-stuffing abuse.
+    location ~ ^/smb/api/smb/auth/(register|login|admin-login)$ {
+        limit_req zone=aegis_smb_auth burst=2 nodelay;
+        limit_req_status 429;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://smb-copilot:8093/auth/$1;
+    }
+
+    # SMB Copilot API (session cookies + tenant routes).
+    location /smb/api/smb/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://smb-copilot:8093/;
+    }
+
+    # SMB Portal customer UI (React SPA under /smb/).
+    location /smb/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://smb-portal:3001/;
     }
 
     # Static demo webpage (deploy/oracle/demo-web/index.html) — everything

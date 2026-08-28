@@ -33,7 +33,6 @@ export function ChatPanel({ walkthroughMode = false }: Props) {
         navigate("/walkthrough", {
           state: {
             message: resp.message,
-            upgradeHint: resp.upgrade_hint,
             question: text,
           },
         });
