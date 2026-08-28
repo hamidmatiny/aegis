@@ -58,28 +58,62 @@ current_value() {
   # `x="$(current_value ...)"` assignment and trip `set -e`, killing the
   # whole script -- even though "key not found yet" isn't actually an
   # error here, just an empty result.
-  grep "^${1}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true
+  local raw
+  raw="$(grep "^${1}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+  # Values written as KEY='...' for Docker Compose .env interpolation (bcrypt
+  # hashes contain "$" that Compose would otherwise treat as variable refs).
+  if [[ "$raw" == \'*\' && "$raw" == *\' ]]; then
+    raw="${raw:1:${#raw}-2}"
+  fi
+  printf '%s' "$raw"
+}
+
+# True when VALUE must be single-quoted in .env so Docker Compose / shell
+# parsers do not treat $, #, whitespace, or quotes specially.
+needs_env_quoting() {
+  case "$1" in
+    *[$\#\ \']* | *"\\"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# format_env_assignment KEY VALUE: prints KEY=VALUE or KEY='VALUE' with
+# single-quote escaping for Compose-safe .env lines.
+format_env_assignment() {
+  local key="$1" value="$2"
+  if needs_env_quoting "$value"; then
+    local escaped="${value//\'/\'\\\'\'}"
+    printf "%s='%s'" "$key" "$escaped"
+  else
+    printf '%s=%s' "$key" "$value"
+  fi
 }
 
 upsert_env() {
-  local key="$1" value="$2" tmp
+  local key="$1" value="$2" tmp line file_line
+  line="$(format_env_assignment "$key" "$value")"
   if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
     tmp="$(mktemp)"
-    awk -v k="$key" -v v="$value" -F= 'BEGIN{OFS="="} $1==k{print k,v; next} {print}' "$ENV_FILE" > "$tmp"
+    while IFS= read -r file_line || [ -n "$file_line" ]; do
+      if [[ "$file_line" == "${key}="* ]]; then
+        printf '%s\n' "$line"
+      else
+        printf '%s\n' "$file_line"
+      fi
+    done < "$ENV_FILE" > "$tmp"
     mv "$tmp" "$ENV_FILE"
   elif grep -q "^# ${key}=" "$ENV_FILE" 2>/dev/null; then
     tmp="$(mktemp)"
-    # Match on PREFIX ("# KEY=" followed by anything), not an exact
-    # full-line match -- a commented placeholder that ships with a real
-    # default value after the "=" (e.g. "# KEY=some-default-value", as
-    # .env.example uses for AEGIS_AUDIT_SIGNING_KEY) would never match
-    # the old $0=="# "k"=" exact comparison, so it silently never got
-    # uncommented/replaced. index() here matches on prefix instead.
-    awk -v k="$key" -v v="$value" -v prefix="# ${key}=" \
-      'BEGIN{OFS="="} index($0, prefix) == 1 {print k,v; next} {print}' "$ENV_FILE" > "$tmp"
+    while IFS= read -r file_line || [ -n "$file_line" ]; do
+      if [[ "$file_line" == "# ${key}="* ]]; then
+        printf '%s\n' "$line"
+      else
+        printf '%s\n' "$file_line"
+      fi
+    done < "$ENV_FILE" > "$tmp"
     mv "$tmp" "$ENV_FILE"
   else
-    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+    printf '%s\n' "$line" >> "$ENV_FILE"
   fi
 }
 
