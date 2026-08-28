@@ -16,13 +16,12 @@ QA_DISCLAIMER = (
 )
 
 UPSELL_MESSAGE = (
-    "Guided walkthroughs are a paid feature. Your tenant is on the free tier, "
-    "which includes advisory Q&A only."
+    "This is a paid feature — upgrade your plan to unlock guided walkthroughs. "
+    "Your current plan includes advisory Q&A only."
 )
 UPSELL_HINT = (
-    "Upgrade by setting smb-deny-walkthrough to enabled: false in "
-    "policy-engine/policies/tenants/<slug>/overrides.yaml, then reload "
-    "policy-engine (POST /v1/reload)."
+    "Contact your administrator or upgrade your subscription to enable guided "
+    "walkthroughs for your organization."
 )
 
 

@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { clearSession, loadSession } from "../api/client";
+import { clearGuestSession, loadGuestSession } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
-const links = [
+const customerLinks = [
   { to: "/onboarding", label: "Onboarding" },
   { to: "/chat", label: "Q&A" },
   { to: "/walkthrough", label: "Walkthrough" },
@@ -9,7 +10,18 @@ const links = [
 ];
 
 export function Layout() {
-  const session = loadSession();
+  const { me, usage, logout } = useAuth();
+  const guest = loadGuestSession();
+
+  async function handleSignOut() {
+    if (me?.role === "customer") {
+      await logout();
+      window.location.href = "/";
+      return;
+    }
+    clearGuestSession();
+    window.location.href = "/";
+  }
 
   return (
     <div className="shell">
@@ -18,36 +30,43 @@ export function Layout() {
           <p className="brand">AEGIS SMB Portal</p>
           <p className="brand-tag">Infrastructure advisory for small teams</p>
         </div>
-        <nav className="nav">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="session-chip">
-          {session ? (
-            <>
-              <span>
-                Tenant <strong>{session.slug}</strong>
-              </span>
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => {
-                  clearSession();
-                  window.location.href = "/onboarding";
-                }}
+        {me?.role !== "admin" ? (
+          <nav className="nav">
+            {customerLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
               >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        ) : null}
+        <div className="session-chip">
+          {me?.role === "customer" ? (
+            <>
+              <span className="badge">
+                {me.tier} · {usage?.qa_ask_count ?? 0} Q&A
+              </span>
+              <span>
+                <strong>{me.email}</strong>
+              </span>
+              <button type="button" className="linkish" onClick={handleSignOut}>
                 Sign out
               </button>
             </>
+          ) : guest ? (
+            <>
+              <span>
+                Guest · tenant <strong>{guest.slug}</strong>
+              </span>
+              <button type="button" className="linkish" onClick={handleSignOut}>
+                Clear guest session
+              </button>
+            </>
           ) : (
-            <span>Not registered</span>
+            <span>Guest — not signed in</span>
           )}
         </div>
       </header>

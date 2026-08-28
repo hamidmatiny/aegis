@@ -25,6 +25,10 @@ services:
         condition: service_started
       agent-gate:
         condition: service_started
+      smb-copilot:
+        condition: service_started
+      smb-portal:
+        condition: service_started
     restart: unless-stopped
 
   gateway:
@@ -43,3 +47,20 @@ services:
     restart: unless-stopped
   postgres:
     restart: unless-stopped
+  redis:
+    restart: unless-stopped
+
+  smb-copilot:
+    restart: unless-stopped
+    environment:
+      SMB_COOKIE_SECURE: ${SMB_COOKIE_SECURE:-true}
+      SMB_COOKIE_PATH: ${SMB_COOKIE_PATH:-/smb/}
+
+  smb-portal:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: smb-portal/Dockerfile
+      args:
+        VITE_BASE_PATH: /smb/
+        VITE_API_BASE: /smb/api/smb

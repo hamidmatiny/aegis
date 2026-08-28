@@ -58,28 +58,62 @@ current_value() {
   # `x="$(current_value ...)"` assignment and trip `set -e`, killing the
   # whole script -- even though "key not found yet" isn't actually an
   # error here, just an empty result.
-  grep "^${1}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true
+  local raw
+  raw="$(grep "^${1}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+  # Values written as KEY='...' for Docker Compose .env interpolation (bcrypt
+  # hashes contain "$" that Compose would otherwise treat as variable refs).
+  if [[ "$raw" == \'*\' && "$raw" == *\' ]]; then
+    raw="${raw:1:${#raw}-2}"
+  fi
+  printf '%s' "$raw"
+}
+
+# True when VALUE must be single-quoted in .env so Docker Compose / shell
+# parsers do not treat $, #, whitespace, or quotes specially.
+needs_env_quoting() {
+  case "$1" in
+    *[$\#\ \']* | *"\\"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# format_env_assignment KEY VALUE: prints KEY=VALUE or KEY='VALUE' with
+# single-quote escaping for Compose-safe .env lines.
+format_env_assignment() {
+  local key="$1" value="$2"
+  if needs_env_quoting "$value"; then
+    local escaped="${value//\'/\'\\\'\'}"
+    printf "%s='%s'" "$key" "$escaped"
+  else
+    printf '%s=%s' "$key" "$value"
+  fi
 }
 
 upsert_env() {
-  local key="$1" value="$2" tmp
+  local key="$1" value="$2" tmp line file_line
+  line="$(format_env_assignment "$key" "$value")"
   if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
     tmp="$(mktemp)"
-    awk -v k="$key" -v v="$value" -F= 'BEGIN{OFS="="} $1==k{print k,v; next} {print}' "$ENV_FILE" > "$tmp"
+    while IFS= read -r file_line || [ -n "$file_line" ]; do
+      if [[ "$file_line" == "${key}="* ]]; then
+        printf '%s\n' "$line"
+      else
+        printf '%s\n' "$file_line"
+      fi
+    done < "$ENV_FILE" > "$tmp"
     mv "$tmp" "$ENV_FILE"
   elif grep -q "^# ${key}=" "$ENV_FILE" 2>/dev/null; then
     tmp="$(mktemp)"
-    # Match on PREFIX ("# KEY=" followed by anything), not an exact
-    # full-line match -- a commented placeholder that ships with a real
-    # default value after the "=" (e.g. "# KEY=some-default-value", as
-    # .env.example uses for AEGIS_AUDIT_SIGNING_KEY) would never match
-    # the old $0=="# "k"=" exact comparison, so it silently never got
-    # uncommented/replaced. index() here matches on prefix instead.
-    awk -v k="$key" -v v="$value" -v prefix="# ${key}=" \
-      'BEGIN{OFS="="} index($0, prefix) == 1 {print k,v; next} {print}' "$ENV_FILE" > "$tmp"
+    while IFS= read -r file_line || [ -n "$file_line" ]; do
+      if [[ "$file_line" == "# ${key}="* ]]; then
+        printf '%s\n' "$line"
+      else
+        printf '%s\n' "$file_line"
+      fi
+    done < "$ENV_FILE" > "$tmp"
     mv "$tmp" "$ENV_FILE"
   else
-    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+    printf '%s\n' "$line" >> "$ENV_FILE"
   fi
 }
 
@@ -160,6 +194,22 @@ fill "AEGIS_AGENT_GATE_REVIEWER_KEYS" "echo aegis_\$(random_hex 32)"
 # every internal call, so it has to be filled here, once, and shared via
 # .env like POSTGRES_PASSWORD is.
 fill "AEGIS_INTERNAL_TOKEN" "echo aegis_internal_\$(random_hex 32)"
+
+# SMB Copilot operator admin (env-only identity, not a DB row) and session signing.
+fill "ADMIN_USERNAME" "echo smbadmin"
+if [ "$ROTATE" = true ] || [ -z "$(current_value ADMIN_PASSWORD_HASH)" ]; then
+  SMB_ADMIN_PASS="$(random_hex 16)"
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import bcrypt" 2>/dev/null; then
+    SMB_ADMIN_HASH="$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'${SMB_ADMIN_PASS}', bcrypt.gensalt(rounds=12)).decode())")"
+  else
+    echo "ERROR: python3 with bcrypt is required to generate ADMIN_PASSWORD_HASH" >&2
+    echo "       Install smb-copilot deps (pip install bcrypt) and re-run." >&2
+    exit 1
+  fi
+  upsert_env "ADMIN_PASSWORD" "$SMB_ADMIN_PASS"
+  upsert_env "ADMIN_PASSWORD_HASH" "$SMB_ADMIN_HASH"
+fi
+fill "SMB_SESSION_SECRET" "echo smb_session_\$(random_hex 32)"
 
 # --- Added: three secrets that used to ship on public, unrotated
 # defaults from .env.example (found during a security review) ---
@@ -248,6 +298,8 @@ AGENT_GATE_REVIEWER_KEY="$(current_value AEGIS_AGENT_GATE_REVIEWER_KEYS)"
 INTERNAL_TOKEN="$(current_value AEGIS_INTERNAL_TOKEN)"
 REDIS_PW="$(current_value REDIS_PASSWORD)"
 PG_PW_DISPLAY="$(current_value POSTGRES_PASSWORD)"
+SMB_ADMIN_USER="$(current_value ADMIN_USERNAME)"
+SMB_ADMIN_PASS="$(current_value ADMIN_PASSWORD)"
 
 cat <<MSG
 
@@ -267,6 +319,8 @@ generated — pass --rotate to force fresh values for everything):
                                               just one service)
   Postgres password:       $PG_PW_DISPLAY
   Redis password:          $REDIS_PW   (not wired into any service yet, reserved)
+  SMB Copilot admin login: $SMB_ADMIN_USER / $SMB_ADMIN_PASS   (POST /auth/admin-login)
+  SMB session secret:      (see SMB_SESSION_SECRET in .env — not printed here)
   Audit signing key:       (regenerated if it was still the public dev default;
                             see AEGIS_AUDIT_SIGNING_KEY in .env — not printed here
                             since, unlike the others, it's a real cryptographic

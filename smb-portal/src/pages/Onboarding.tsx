@@ -1,15 +1,19 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { saveSession, smbApi } from "../api/client";
+import { saveGuestSession, smbApi } from "../api/client";
 import type { IntakeAnswer } from "../api/types";
+import { useAuth } from "../auth/AuthContext";
 import { IntakeForm } from "../components/IntakeForm";
 
 export function Onboarding() {
   const navigate = useNavigate();
+  const { me } = useAuth();
+  const isCustomer = me?.role === "customer";
+
   const [slug, setSlug] = useState("");
   const [apiKeyOnce, setApiKeyOnce] = useState<string | null>(null);
-  const [registered, setRegistered] = useState(false);
+  const [registered, setRegistered] = useState(isCustomer);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -21,7 +25,7 @@ export function Onboarding() {
     try {
       const cleaned = slug.trim().toLowerCase();
       const resp = await smbApi.register(cleaned);
-      saveSession({
+      saveGuestSession({
         apiKey: resp.api_key,
         tenantId: resp.tenant_id,
         slug: resp.slug,
@@ -41,6 +45,8 @@ export function Onboarding() {
     try {
       await smbApi.intake(answers);
       setProfileSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -51,14 +57,15 @@ export function Onboarding() {
       <header className="page-hero">
         <h1>Onboarding</h1>
         <p>
-          Register a tenant, store the API key once, then capture a normalized
-          infrastructure profile for advisory Q&A.
+          {isCustomer
+            ? "Complete your infrastructure intake for advisory Q&A."
+            : "Register a guest tenant, store the API key once, then capture a normalized infrastructure profile."}
         </p>
       </header>
 
       {!registered ? (
         <div className="panel">
-          <h2>Create tenant</h2>
+          <h2>Create guest tenant</h2>
           <form className="stack form" onSubmit={handleRegister}>
             <label className="field">
               <span>Slug</span>
@@ -74,9 +81,12 @@ export function Onboarding() {
             </label>
             {error ? <p className="error">{error}</p> : null}
             <button type="submit" disabled={busy || !slug.trim()}>
-              {busy ? "Registering…" : "Register"}
+              {busy ? "Registering…" : "Register as guest"}
             </button>
           </form>
+          <p className="muted">
+            Prefer an account? <Link to="/register">Sign up with email</Link>.
+          </p>
         </div>
       ) : (
         <>
@@ -85,8 +95,8 @@ export function Onboarding() {
               <h2>API key (shown once)</h2>
               <p className="mono">{apiKeyOnce}</p>
               <p className="muted">
-                Stored in this browser session for portal calls. Copy it now if
-                you need it elsewhere.
+                Stored in this browser session for guest portal calls. Copy it now
+                if you need it elsewhere.
               </p>
             </div>
           ) : null}

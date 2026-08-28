@@ -1,27 +1,29 @@
 import { Link, useLocation } from "react-router-dom";
-import { loadSession } from "../api/client";
+import { loadGuestSession } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { ChatPanel } from "../components/ChatPanel";
 
 type PaywallState = {
   message?: string;
-  upgradeHint?: string;
   question?: string;
 };
 
 export function WalkthroughPaywall() {
-  const session = loadSession();
+  const { me } = useAuth();
+  const guest = loadGuestSession();
   const location = useLocation();
   const state = (location.state ?? {}) as PaywallState;
   const denied = Boolean(state.message);
+  const hasAccess = me?.role === "customer" || guest;
 
-  if (!session) {
+  if (!hasAccess) {
     return (
       <section className="page">
         <header className="page-hero">
           <h1>Guided walkthrough</h1>
           <p>
-            <Link to="/onboarding">Complete onboarding</Link> to request a
-            walkthrough.
+            <Link to="/login">Sign in</Link> or{" "}
+            <Link to="/onboarding">complete guest onboarding</Link> first.
           </p>
         </header>
       </section>
@@ -32,10 +34,7 @@ export function WalkthroughPaywall() {
     <section className="page">
       <header className="page-hero">
         <h1>Guided walkthrough</h1>
-        <p>
-          Paid-tier feature gated by policy-engine CEL. Free tenants see an
-          upgrade path instead of a bare error.
-        </p>
+        <p>Paid-tier feature. Free plans receive an upgrade prompt instead of an error.</p>
       </header>
 
       {denied ? (
@@ -47,10 +46,9 @@ export function WalkthroughPaywall() {
           ) : null}
           <div className="upgrade-box">
             <p>
-              <strong>Upgrade call-to-action:</strong> enable paid walkthroughs
-              for this tenant in policy-engine, then reload policy.
+              Guided walkthroughs are not included on your current plan. Upgrade
+              your subscription or contact your administrator to unlock this feature.
             </p>
-            <p className="mono small">{state.upgradeHint}</p>
           </div>
           <div className="row-actions">
             <Link className="button secondary" to="/chat">
@@ -64,8 +62,8 @@ export function WalkthroughPaywall() {
       ) : (
         <div className="panel">
           <p className="muted">
-            Submit a walkthrough request. If your tenant is free-tier, you will
-            land on the upgrade paywall.
+            Submit a walkthrough request. If your tenant is on the free tier, you
+            will see the upgrade prompt.
           </p>
           <ChatPanel walkthroughMode />
         </div>
