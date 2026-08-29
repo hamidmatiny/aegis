@@ -70,16 +70,22 @@ def embed_texts(
 def chat_completion(
     messages: list[dict[str, str]],
     *,
+    model: str | None = None,
+    provider: str | None = None,
+    max_tokens: int | None = None,
     client: httpx.Client | None = None,
 ) -> str:
     """Call ``POST /v1/chat/completions`` and return assistant text."""
     payload: dict[str, Any] = {
         "messages": messages,
-        "model": settings.chat_model,
+        "model": model or settings.chat_model,
         "stream": False,
     }
-    if settings.chat_provider:
-        payload["provider"] = settings.chat_provider
+    chosen_provider = provider if provider is not None else settings.chat_provider
+    if chosen_provider:
+        payload["provider"] = chosen_provider
+    if max_tokens is not None:
+        payload["max_tokens"] = max_tokens
 
     url = settings.model_router_url.rstrip("/") + "/v1/chat/completions"
     own_client = client is None

@@ -9,6 +9,7 @@ from aegis_smb_copilot.billing.usage_recorder import (
     EVENT_WALKTHROUGH_GRANT,
     record_usage_event,
 )
+from aegis_smb_copilot import config
 from aegis_smb_copilot.clients.model_router import chat_completion
 from aegis_smb_copilot.qa.cve_match import match_cves
 from aegis_smb_copilot.qa.retrieval import retrieve_infra_context
@@ -53,11 +54,20 @@ def ask(tenant_id: UUID, question: str, *, walkthrough: bool = False) -> AskResp
         + "\n\nRelevant CVE flags:\n"
         + ("\n".join(cve_lines) if cve_lines else "(none)")
     )
+    if walkthrough:
+        chat_model = config.settings.chat_model_walkthrough
+        max_tokens = config.settings.qa_max_tokens_walkthrough
+    else:
+        chat_model = config.settings.chat_model
+        max_tokens = config.settings.qa_max_tokens_free
+
     answer = chat_completion(
         [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
-        ]
+        ],
+        model=chat_model,
+        max_tokens=max_tokens,
     )
 
     # Always bill an ask; walkthrough grants are an additional paid event.

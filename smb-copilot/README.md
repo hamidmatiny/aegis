@@ -35,8 +35,11 @@ curl http://127.0.0.1:8093/healthz
 | `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
 | `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
 | `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
-| `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`) |
-| `SMB_CHAT_MODEL` | Chat model id (default `mock-model`) |
+| `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`; for production recommend `grok`) |
+| `SMB_CHAT_MODEL` | Free-tier chat model (default `mock-model`; recommend `grok-4-fast` with `SMB_CHAT_PROVIDER=grok` — ~$0.20/M input, ~$0.50/M output) |
+| `SMB_CHAT_MODEL_WALKTHROUGH` | Paid walkthrough model (defaults to `SMB_CHAT_MODEL` if unset; recommend a stronger model such as `grok-4` for paid tier only) |
+| `SMB_QA_MAX_TOKENS_FREE` | Max output tokens for free-tier `/qa/ask` (default `500`) |
+| `SMB_QA_MAX_TOKENS_WALKTHROUGH` | Max output tokens for paid walkthrough answers (default `1200`) |
 | `SMB_QA_RATE_LIMIT` | Max `/qa/ask` calls per tenant per window (default `5`) |
 | `SMB_QA_RATE_WINDOW_SEC` | Rate-limit window seconds (default `60`) |
 | `REDIS_URL` | Redis URL for per-tenant Q&A rate limiting |

@@ -1,6 +1,6 @@
 """Service configuration from environment."""
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     )
     chat_provider: str = Field(default="mock", validation_alias="SMB_CHAT_PROVIDER")
     chat_model: str = Field(default="mock-model", validation_alias="SMB_CHAT_MODEL")
+    chat_model_walkthrough: str = Field(
+        default="",
+        validation_alias="SMB_CHAT_MODEL_WALKTHROUGH",
+        description="Paid walkthrough model; falls back to SMB_CHAT_MODEL when unset.",
+    )
+    qa_max_tokens_free: int = Field(default=500, validation_alias="SMB_QA_MAX_TOKENS_FREE")
+    qa_max_tokens_walkthrough: int = Field(
+        default=1200,
+        validation_alias="SMB_QA_MAX_TOKENS_WALKTHROUGH",
+    )
     qa_top_k: int = Field(default=5, validation_alias="SMB_QA_TOP_K")
     qa_rate_limit: int = Field(default=5, validation_alias="SMB_QA_RATE_LIMIT")
     qa_rate_window_sec: int = Field(default=60, validation_alias="SMB_QA_RATE_WINDOW_SEC")
@@ -49,6 +59,12 @@ class Settings(BaseSettings):
     cookie_path: str = Field(default="/", validation_alias="SMB_COOKIE_PATH")
     admin_username: str = Field(default="", validation_alias="ADMIN_USERNAME")
     admin_password_hash: str = Field(default="", validation_alias="ADMIN_PASSWORD_HASH")
+
+    @model_validator(mode="after")
+    def default_walkthrough_model(self) -> Settings:
+        if not self.chat_model_walkthrough.strip():
+            object.__setattr__(self, "chat_model_walkthrough", self.chat_model)
+        return self
 
 
 settings = Settings()
