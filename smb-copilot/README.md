@@ -81,7 +81,7 @@ pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
 
 ## Known limitations
 
-- **CVE matching** uses a curated seed table (`cve_reference`), not a live NVD/synced feed — see `deploy/postgres/init/007_smb_cve_reference.sql` and startup migration `010_smb_cve_reference_expand.sql`.
+- **CVE matching** uses a **curated seed table** (`cve_reference`), not a live NVD or vendor-synced feed. Initial rows live in `deploy/postgres/init/007_smb_cve_reference.sql`; expanded coverage in `008_smb_cve_reference_expand.sql` and startup migration `010_smb_cve_reference_expand.sql`. Rows prefixed `GENERIC-ADVISORY-*` are operational guidance without a specific CVE ID.
 - Tier / walkthrough entitlement is **only** policy-engine CEL overrides — do not
   treat `tenants.tier` as the feature flag.
 - Compose mounts `policy-engine/policies` into smb-copilot so register can write
