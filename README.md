@@ -1,10 +1,21 @@
 # AEGIS
 
-**AI-native defense platform** for LLM applications and agentic systems.
+**AI-native defense platform** for LLM applications and agentic systems — and the foundation for **AEGIS-for-SMB**, a guided security copilot for small businesses.
 
 AEGIS sits between your application and any LLM provider, enforcing defense-in-depth against prompt injection, jailbreaks, data exfiltration, tool/MCP abuse, and supply-chain tampering — with full tamper-evident audit trails.
 
 **Live demo:** [defenseaegis.org](https://defenseaegis.org) — no signup, no API key, runs on a mock model so it's free to poke at. Try a benign request next to a prompt-injection attempt and watch AEGIS catch the difference.
+
+## AEGIS-for-SMB
+
+Small businesses get the same defense primitives (policy-engine, audit receipts, CEL tenant overrides) through a self-serve product: onboarding intake, infra-memory Q&A, usage-based billing, and a paid walkthrough tier.
+
+| Product | URL | Audience |
+|---------|-----|----------|
+| Security gateway demo | [defenseaegis.org](https://defenseaegis.org) | Developers evaluating the platform |
+| SMB Copilot portal | [defenseaegis.org/smb](https://defenseaegis.org/smb) (when deployed) | SMB operators |
+
+Implementation: [`smb-copilot/`](./smb-copilot/) (FastAPI backend), [`smb-portal/`](./smb-portal/) (React customer UI). See each service README for ports, env vars, and smoke tests.
 
 ## Architecture
 

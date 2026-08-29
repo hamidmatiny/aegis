@@ -150,6 +150,9 @@ jobs:
           # audit, input-defense, output-defense all refuse to start
           # without it now).
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          # SMB Copilot session signing (Phase 9); required at compose
+          # interpolation time — same throwaway pattern as above.
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose up -d --build --wait
       - name: Run smoke tests
         env:
@@ -168,6 +171,7 @@ jobs:
           # compose uses ${AEGIS_INTERNAL_TOKEN:?...} — interpolation still
           # runs on `down`, so the token must be present here too.
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose down -v
 
   chaos:
@@ -187,6 +191,7 @@ jobs:
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose up -d --build --wait
       - name: Run chaos / fault-injection tests
         # Unlike the benchmark job, this is pass/fail correctness against
@@ -202,6 +207,7 @@ jobs:
           AEGIS_API_KEYS: ci-test-api-key-not-a-secret
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: |
           chmod +x scripts/chaos-test.sh
           ./scripts/chaos-test.sh
@@ -209,6 +215,7 @@ jobs:
         if: always()
         env:
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose down -v
 
   benchmark:
@@ -248,6 +255,7 @@ jobs:
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose up -d --build --wait
       - name: Run benchmark
         env:
@@ -260,6 +268,7 @@ jobs:
         if: always()
         env:
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: docker compose down -v
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@v4
