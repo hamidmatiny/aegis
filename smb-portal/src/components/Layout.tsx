@@ -3,10 +3,10 @@ import { clearGuestSession, loadGuestSession } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 const customerLinks = [
-  { to: "/onboarding", label: "Onboarding" },
+  { to: "/onboarding", label: "Setup" },
   { to: "/chat", label: "Q&A" },
   { to: "/walkthrough", label: "Walkthrough" },
-  { to: "/billing", label: "Usage" },
+  { to: "/billing", label: "Billing" },
 ];
 
 export function Layout() {
@@ -23,56 +23,73 @@ export function Layout() {
     window.location.href = "/";
   }
 
-  return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand-block">
-          <p className="brand">AEGIS SMB Portal</p>
-          <p className="brand-tag">Infrastructure advisory for small teams</p>
-        </div>
-        {me?.role !== "admin" ? (
-          <nav className="nav">
-            {customerLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-              >
-                {link.label}
-              </NavLink>
-            ))}
+  const showSidebar = me?.role === "customer" || guest;
+
+  if (!showSidebar) {
+    return (
+      <div className="app-shell marketing-shell">
+        <header className="marketing-header">
+          <NavLink to="/" className="brand-mark">
+            AEGIS
+          </NavLink>
+          <nav className="marketing-nav">
+            <NavLink to="/login">Sign in</NavLink>
+            <NavLink to="/register" className="btn-primary btn-sm">
+              Sign up
+            </NavLink>
           </nav>
-        ) : null}
-        <div className="session-chip">
+        </header>
+        <main className="page-content marketing-content">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <NavLink to="/chat" className="brand-mark">
+            AEGIS
+          </NavLink>
+          <p className="brand-sub">SMB Copilot</p>
+        </div>
+        <nav className="sidebar-nav">
+          {customerLinks.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
           {me?.role === "customer" ? (
             <>
-              <span className="badge">
-                {me.tier} · {usage?.qa_ask_count ?? 0} Q&A
-              </span>
-              <span>
-                <strong>{me.email}</strong>
-              </span>
-              <button type="button" className="linkish" onClick={handleSignOut}>
-                Sign out
-              </button>
+              <p className="sidebar-user">
+                <span className="plan-pill">{me.tier}</span>
+                <span className="truncate">{me.email}</span>
+              </p>
+              <p className="muted small">{usage?.qa_ask_count ?? 0} Q&A this period</p>
             </>
           ) : guest ? (
-            <>
-              <span>
-                Guest · tenant <strong>{guest.slug}</strong>
-              </span>
-              <button type="button" className="linkish" onClick={handleSignOut}>
-                Clear guest session
-              </button>
-            </>
-          ) : (
-            <span>Guest — not signed in</span>
-          )}
+            <p className="sidebar-user">
+              Guest · <strong>{guest.slug}</strong>
+            </p>
+          ) : null}
+          <button type="button" className="text-btn" onClick={handleSignOut}>
+            Sign out
+          </button>
         </div>
-      </header>
-      <main className="content">
-        <Outlet />
-      </main>
+      </aside>
+      <div className="main-column">
+        <main className="page-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

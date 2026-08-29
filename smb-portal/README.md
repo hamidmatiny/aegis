@@ -14,7 +14,17 @@ npm run build
 npm run lint
 ```
 
-## Compose
+## Compose (production demo)
+
+Root domain serves smb-portal directly (no `/smb/` prefix). API at `/api/smb/*`.
+
+```bash
+cp .env.example .env   # repo root
+docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml up -d --build
+# Portal: https://defenseaegis.org/ (or http://127.0.0.1 when testing locally)
+```
+
+## Compose (local dev stack)
 
 ```bash
 cp .env.example .env   # repo root

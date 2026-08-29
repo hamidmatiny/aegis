@@ -1,6 +1,6 @@
 # Deploy AEGIS SMB Copilot to defenseaegis.org
 
-Run these steps on the Oracle VM (or any host using the demo overlay). Assumes Phase 9 auth and Phase 10 billing/chat changes are merged to `main`.
+Run these steps on the Oracle VM (or any host using the demo overlay). Assumes Phase 9 auth, Phase 10 billing, and Phase 11 site relaunch are merged to `main`.
 
 ## 1. Pull latest and credentials
 
@@ -40,10 +40,10 @@ SMB_QA_MAX_TOKENS_WALKTHROUGH=1200
 # ADMIN_PASSWORD_HASH='...'
 # SMB_SESSION_SECRET=...
 
-# SMB portal/cookie (public demo under /smb/)
-SMB_PORTAL_BASE_URL=https://defenseaegis.org/smb
+# SMB portal/cookie (root domain is the SMB front door — Phase 11)
+SMB_PORTAL_BASE_URL=https://defenseaegis.org
 SMB_COOKIE_SECURE=true
-SMB_COOKIE_PATH=/smb/
+SMB_COOKIE_PATH=/
 
 # Stripe (owner creates Product/Price + webhook in Stripe Dashboard)
 STRIPE_SECRET_KEY=sk_live_...          # owner
@@ -60,15 +60,15 @@ docker compose run --rm --no-deps smb-copilot \
 # Must print: $2b$12  (not empty, not truncated)
 ```
 
-## 3. Render nginx and rebuild portal with /smb/ base
+## 3. Render nginx and rebuild portal (root paths)
 
 ```bash
 # From repo root — setup.sh envsubst's nginx-demo.conf.template
 ./deploy/oracle/setup.sh
 
-# Rebuild smb-portal with public path prefix
+# Rebuild smb-portal — root-relative paths (defaults in docker-compose.demo.yml)
 docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml \
-  build --build-arg VITE_BASE_PATH=/smb/ --build-arg VITE_API_BASE=/smb/api/smb smb-portal
+  build smb-portal
 ```
 
 ## 4. Bring up the stack
@@ -83,7 +83,7 @@ docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml \
 **Webhook URL (public):**
 
 ```
-https://defenseaegis.org/smb/api/smb/billing/webhook
+https://defenseaegis.org/api/smb/billing/webhook
 ```
 
 Events to subscribe: `checkout.session.completed`
@@ -97,29 +97,30 @@ docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml re
 ## 6. Public verification (not localhost)
 
 ```bash
-# Guest landing
-curl -sI https://defenseaegis.org/smb/ | head -5
+# SMB landing at root
+curl -sI https://defenseaegis.org/ | head -5
 
-# Health (via portal proxy path — copilot internal)
-curl -s https://defenseaegis.org/smb/api/smb/healthz
+# Health (via API path)
+curl -s https://defenseaegis.org/api/smb/healthz
 
 # Admin login rate-limited path exists (expect 401 with bad creds, not 404)
-curl -s -w "\nHTTP %{http_code}\n" -X POST https://defenseaegis.org/smb/api/smb/auth/admin-login \
+curl -s -w "\nHTTP %{http_code}\n" -X POST https://defenseaegis.org/api/smb/auth/admin-login \
   -H 'Content-Type: application/json' \
   -d '{"username":"wrong","password":"wrong"}'
 ```
 
 Manual browser checks:
 
-1. Open `https://defenseaegis.org/smb/` — guest landing with Sign in / Continue as guest.
+1. Open `https://defenseaegis.org/` — signup-first SMB landing; “Continue as guest” is a secondary link.
 2. Register a customer account, complete intake, ask a Q&A question — answer must **not** be a `[mock:...]` echo when Grok is configured.
-3. `/smb/billing` — Upgrade via Stripe (test mode first).
-4. `/smb/admin/login` — operator console reachable; not linked from public nav.
+3. `/billing` — Upgrade via Stripe (test mode first).
+4. `/admin/login` — operator console; engine demo at `/admin/engine-demo` (not linked from public nav).
 
-## 7. Nginx locations (already in template)
+## 7. Nginx locations (Phase 11)
 
-- `/smb/` → smb-portal
-- `/smb/api/smb/` → smb-copilot
-- `/smb/api/smb/auth/register|login|admin-login` → stricter rate limit (`aegis_smb_auth` zone)
+- `/` → smb-portal (public front door)
+- `/api/smb/` → smb-copilot
+- `/api/smb/auth/register|login|admin-login` → stricter rate limit (`aegis_smb_auth` zone)
+- `/v1/chat/completions`, `/agent-gate/*` → gateway/agent-gate (engine demo, admin-only UI)
 
-Existing gateway/agent-gate demo routes are unchanged.
+Gateway/agent-gate routes remain for the relocated engine showcase (`/admin/engine-demo`).

@@ -1,0 +1,364 @@
+.engine-demo {
+  --bg: #0b0e14;
+  --panel: #131722;
+  --panel-2: #0f131c;
+  --border: #232838;
+  --text: #e6e9f0;
+  --muted: #8b93a7;
+  --accent: #5b8cff;
+  --allow: #2fbf71;
+  --transform: #d9a441;
+  --escalate: #e2793b;
+  --block: #e25555;
+  --skip: #4a5064;
+  --mock: #b285f0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.engine-demo a {
+  color: var(--accent);
+}
+
+.engine-demo code {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.88em;
+}
+
+.engine-demo .examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.engine-demo .examples button,
+.engine-demo .gate-actions button,
+.engine-demo .layer-examples button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.engine-demo .examples button {
+  border-radius: 999px;
+}
+
+.engine-demo .examples button:hover,
+.engine-demo .gate-actions button:hover,
+.engine-demo .layer-examples button:hover {
+  border-color: var(--accent);
+}
+
+.engine-demo textarea {
+  width: 100%;
+  min-height: 96px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.engine-demo .send-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.engine-demo .send-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.engine-demo .send-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.engine-demo .rate-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.engine-demo .trace-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 1.5rem 0 10px;
+}
+
+.engine-demo .trace-stages {
+  display: flex;
+  flex-direction: column;
+}
+
+.engine-demo .trace-stage {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-left: 2px solid var(--border);
+  padding-left: 16px;
+  position: relative;
+}
+
+.engine-demo .trace-stage::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--skip);
+  border: 2px solid var(--bg);
+}
+
+.engine-demo .trace-stage.status-passed::before {
+  background: var(--allow);
+}
+
+.engine-demo .trace-stage.status-blocked::before {
+  background: var(--block);
+}
+
+.engine-demo .trace-stage.status-skipped {
+  opacity: 0.45;
+}
+
+.engine-demo .stage-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.engine-demo .stage-badge.ALLOW,
+.engine-demo .stage-badge.allow,
+.engine-demo .stage-badge.PASSED {
+  background: rgba(47, 191, 113, 0.15);
+  color: var(--allow);
+}
+
+.engine-demo .stage-badge.BLOCK,
+.engine-demo .stage-badge.block,
+.engine-demo .stage-badge.BLOCKED {
+  background: rgba(226, 85, 85, 0.15);
+  color: var(--block);
+}
+
+.engine-demo .stage-badge.SKIPPED {
+  background: rgba(74, 80, 100, 0.25);
+  color: var(--skip);
+}
+
+.engine-demo .stage-badge.MOCK {
+  background: rgba(178, 133, 240, 0.18);
+  color: var(--mock);
+}
+
+.engine-demo .stage-badge.LIVE {
+  background: rgba(47, 191, 113, 0.15);
+  color: var(--allow);
+}
+
+.engine-demo .trace-stage-detail {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.engine-demo .detector-line {
+  display: block;
+}
+
+.engine-demo .backend-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.engine-demo .reply-box {
+  margin-top: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.engine-demo .gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.engine-demo .gate-actions button {
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.engine-demo .status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.engine-demo .status-badge.APPROVED {
+  background: rgba(47, 191, 113, 0.15);
+  color: var(--allow);
+}
+
+.engine-demo .status-badge.DENIED {
+  background: rgba(226, 85, 85, 0.15);
+  color: var(--block);
+}
+
+.engine-demo .status-badge.AWAITING_HUMAN_APPROVAL {
+  background: rgba(226, 121, 59, 0.15);
+  color: var(--escalate);
+}
+
+.engine-demo .review-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.engine-demo .review-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+}
+
+.engine-demo .approve-btn {
+  background: var(--allow);
+}
+
+.engine-demo .deny-btn {
+  background: var(--block);
+}
+
+.engine-demo .layer-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.engine-demo .layer-examples .run-all {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.engine-demo .ci-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.engine-demo .ci-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.engine-demo .ci-icon.pass {
+  color: var(--allow);
+}
+
+.engine-demo .ci-icon.fail {
+  color: var(--block);
+}
+
+.engine-demo .ci-icon.pending {
+  color: var(--muted);
+}
+
+.engine-demo .ci-row-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.engine-demo .ci-row-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.engine-demo .ci-row-detail {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.engine-demo .ci-row.expanded .ci-row-detail {
+  display: block;
+}
+
+.engine-demo .ci-substeps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.engine-demo .ci-substep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.engine-demo .section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0 1.25rem;
+}
+
+.engine-demo .sub {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0 0 1rem;
+}
+
+.engine-demo .error-text {
+  color: var(--block);
+  margin-top: 12px;
+}

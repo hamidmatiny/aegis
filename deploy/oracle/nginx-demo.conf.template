@@ -92,7 +92,7 @@ server {
 
     # SMB Copilot public auth endpoints — stricter than the rest of the demo
     # surface because register/login are open to credential-stuffing abuse.
-    location ~ ^/smb/api/smb/auth/(register|login|admin-login)$ {
+    location ~ ^/api/smb/auth/(register|login|admin-login)$ {
         limit_req zone=aegis_smb_auth burst=2 nodelay;
         limit_req_status 429;
 
@@ -103,26 +103,25 @@ server {
     }
 
     # SMB Copilot API (session cookies + tenant routes).
-    location /smb/api/smb/ {
+    location /api/smb/ {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_pass http://smb-copilot:8093/;
     }
 
-    # SMB Portal customer UI (React SPA under /smb/).
-    location /smb/ {
+    # Static assets still served from demo-web (security.txt, icons for
+    # engine-demo admin page, etc.) — exact-match locations above win first.
+    location = /security.html {
+        try_files $uri =404;
+    }
+
+    # SMB Portal is the public front door (React SPA at /).
+    location / {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_pass http://smb-portal:3001/;
-    }
-
-    # Static demo webpage (deploy/oracle/demo-web/index.html) — everything
-    # else 404s, this proxy intentionally exposes nothing beyond the page
-    # and the routes above.
-    location / {
-        try_files $uri $uri/ =404;
     }
     # ###LOCATIONS_END###
 }

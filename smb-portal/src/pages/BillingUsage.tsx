@@ -58,32 +58,41 @@ export function BillingUsage() {
   }
 
   return (
-    <section className="page">
-      <header className="page-hero">
-        <h1>Usage & billing</h1>
-        <p>
-          Counts from <code>usage_events</code>, cross-checked against signed
-          audit receipts. Upgrade unlocks guided walkthroughs via Stripe Checkout.
+    <section className="page dashboard-page">
+      <header className="page-header">
+        <h1>Billing</h1>
+        <p className="page-subtitle">
+          Your plan, usage, and payment settings in one place.
         </p>
       </header>
 
       {isCustomer ? (
-        <div className="panel billing-actions">
-          {isPaid ? (
-            <>
-              <p className="ok">Plan: <strong>Premium</strong> — walkthroughs enabled.</p>
-              <button type="button" className="button secondary" disabled={billingBusy} onClick={handleManageBilling}>
+        <div className="card plan-card">
+          <div className="plan-card-head">
+            <div>
+              <p className="eyebrow">Current plan</p>
+              <h2 className="plan-name">{isPaid ? "Premium" : "Free"}</h2>
+              <p className="plan-desc">
+                {isPaid
+                  ? "Guided walkthroughs and higher token limits are active."
+                  : "Upgrade for guided walkthroughs and higher token limits."}
+              </p>
+            </div>
+            {isPaid ? (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={billingBusy}
+                onClick={handleManageBilling}
+              >
                 {billingBusy ? "Opening…" : "Manage billing"}
               </button>
-            </>
-          ) : (
-            <>
-              <p>Free plan — upgrade for guided walkthroughs and higher token limits.</p>
-              <button type="button" className="button" disabled={billingBusy} onClick={handleUpgrade}>
-                {billingBusy ? "Redirecting…" : "Upgrade via Stripe"}
+            ) : (
+              <button type="button" className="btn-primary" disabled={billingBusy} onClick={handleUpgrade}>
+                {billingBusy ? "Redirecting…" : "Upgrade"}
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -92,38 +101,38 @@ export function BillingUsage() {
 
       {usage ? (
         <>
-          <div className="stat-row">
-            <div className="stat">
-              <span>Q&A asks</span>
-              <strong>{usage.qa_ask_count}</strong>
+          <div className="metric-grid">
+            <div className="card metric-card">
+              <p className="metric-label">Q&A asks</p>
+              <p className="metric-value">{usage.qa_ask_count}</p>
             </div>
-            <div className="stat">
-              <span>Walkthrough grants</span>
-              <strong>{usage.walkthrough_grant_count}</strong>
+            <div className="card metric-card">
+              <p className="metric-label">Walkthrough grants</p>
+              <p className="metric-value">{usage.walkthrough_grant_count}</p>
             </div>
-            <div className="stat">
-              <span>Receipts matched</span>
-              <strong>{usage.receipts_matched}</strong>
+            <div className="card metric-card">
+              <p className="metric-label">Receipts matched</p>
+              <p className="metric-value">{usage.receipts_matched}</p>
             </div>
-            <div className={`stat ${usage.integrity === "ok" ? "ok-stat" : "warn-stat"}`}>
-              <span>Integrity</span>
-              <strong>{usage.integrity}</strong>
+            <div className={`card metric-card${usage.integrity === "ok" ? " metric-ok" : " metric-warn"}`}>
+              <p className="metric-label">Integrity</p>
+              <p className="metric-value metric-value-sm">{usage.integrity}</p>
             </div>
           </div>
 
-          <div className="panel">
-            <h2>Usage chart</h2>
+          <div className="card">
+            <h2 className="card-title">Usage over time</h2>
             <UsageChart usage={usage} />
           </div>
 
           {usage.integrity !== "ok" || usage.discrepancies.length > 0 ? (
-            <div className="panel discrepancy-panel" role="alert">
-              <h2>Discrepancies</h2>
-              <p>
-                These <code>usage_events</code> rows have no matching signed
-                audit receipt and should be investigated — not billed blindly.
+            <div className="card alert-card" role="alert">
+              <h2 className="card-title">Discrepancies</h2>
+              <p className="card-desc">
+                These usage events have no matching signed audit receipt — they should be
+                investigated, not billed blindly.
               </p>
-              <ul>
+              <ul className="discrepancy-list">
                 {usage.discrepancies.map((d) => (
                   <li key={d.usage_event_id}>
                     <strong>{d.event_type}</strong> · {d.reason}
@@ -135,7 +144,7 @@ export function BillingUsage() {
               </ul>
             </div>
           ) : (
-            <div className="panel ok-panel">
+            <div className="card success-card">
               <p>All usage events matched signed audit receipts.</p>
             </div>
           )}

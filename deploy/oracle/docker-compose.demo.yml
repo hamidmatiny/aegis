@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
     environment:
       SMB_COOKIE_SECURE: ${SMB_COOKIE_SECURE:-true}
-      SMB_COOKIE_PATH: ${SMB_COOKIE_PATH:-/smb/}
+      SMB_COOKIE_PATH: ${SMB_COOKIE_PATH:-/}
 
   smb-portal:
     restart: unless-stopped
@@ -62,5 +62,5 @@ services:
       context: .
       dockerfile: smb-portal/Dockerfile
       args:
-        VITE_BASE_PATH: /smb/
-        VITE_API_BASE: /smb/api/smb
+        VITE_BASE_PATH: /
+        VITE_API_BASE: /api/smb

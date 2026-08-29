@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { AdminGuard, CustomerGuard, GuestOnly } from "./auth/RouteGuards";
+import { AdminLayout } from "./components/AdminLayout";
 import { Layout } from "./components/Layout";
+import { EngineDemo } from "./pages/EngineDemo";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminLogin } from "./pages/AdminLogin";
 import { BillingUsage } from "./pages/BillingUsage";
@@ -51,7 +53,10 @@ export default function App() {
 
         <Route path="admin/login" element={<AdminLogin />} />
         <Route element={<AdminGuard />}>
-          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="engine-demo" element={<EngineDemo />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
