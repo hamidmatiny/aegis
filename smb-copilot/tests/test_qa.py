@@ -192,6 +192,41 @@ def test_retrieval_scoped_to_tenant(_e1: object, _e2: object) -> None:
 @patch("aegis_smb_copilot.qa.service.chat_completion", return_value="Advisory answer.")
 @patch("aegis_smb_copilot.qa.retrieval.embed_texts", side_effect=_fake_embed)
 @patch("aegis_smb_copilot.onboarding.service.embed_texts", side_effect=_fake_embed)
+def test_ask_passes_token_cap_and_model_by_tier(
+    _e1: object, _e2: object, mock_chat: object
+) -> None:
+    pool = db_connection.get_pool()
+    slug = f"qa-cap-{uuid.uuid4().hex[:8]}"
+    with pool.connection() as conn:
+        row = conn.execute(
+            "INSERT INTO tenants (slug, tier, api_key_hash) VALUES (%s,'standard',%s) RETURNING id",
+            (slug, hash_api_key(generate_api_key())),
+        ).fetchone()
+    assert row is not None
+    tenant_id = row[0]
+    store_intake(tenant_id, [IntakeAnswer(category="database", value="PostgreSQL 16.2")])
+
+    config_mod.settings = config_mod.Settings(
+        SMB_QA_MAX_TOKENS_FREE=500,
+        SMB_QA_MAX_TOKENS_WALKTHROUGH=1200,
+        SMB_CHAT_MODEL="grok-4-fast",
+        SMB_CHAT_MODEL_WALKTHROUGH="grok-4",
+    )
+
+    ask(tenant_id, "Free question?")
+    free_call = mock_chat.call_args
+    assert free_call.kwargs["max_tokens"] == 500
+    assert free_call.kwargs["model"] == "grok-4-fast"
+
+    ask(tenant_id, "Walk me through hardening", walkthrough=True)
+    paid_call = mock_chat.call_args
+    assert paid_call.kwargs["max_tokens"] == 1200
+    assert paid_call.kwargs["model"] == "grok-4"
+
+
+@patch("aegis_smb_copilot.qa.service.chat_completion", return_value="Advisory answer.")
+@patch("aegis_smb_copilot.qa.retrieval.embed_texts", side_effect=_fake_embed)
+@patch("aegis_smb_copilot.onboarding.service.embed_texts", side_effect=_fake_embed)
 def test_ask_includes_mandatory_disclaimer(
     _e1: object, _e2: object, _chat: object
 ) -> None:

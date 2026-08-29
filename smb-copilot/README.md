@@ -33,10 +33,14 @@ curl http://127.0.0.1:8093/healthz
 | `AUDIT_SERVICE_URL` | Audit service base URL |
 | `MODEL_ROUTER_URL` | Model router base URL (embeddings + chat) |
 | `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
-| `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
-| `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
-| `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`) |
-| `SMB_CHAT_MODEL` | Chat model id (default `mock-model`) |
+| `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`; for production use `openai`, `ollama`, or `vllm` — Grok does **not** support embeddings) |
+| `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`; recommend `text-embedding-3-small` with `SMB_EMBEDDING_PROVIDER=openai`) |
+| `OPENAI_API_KEY` | Required when `SMB_EMBEDDING_PROVIDER=openai` (embeddings are very cheap — typically fractions of a cent per intake row) |
+| `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`; for production recommend `grok`) |
+| `SMB_CHAT_MODEL` | Free-tier chat model (default `mock-model`; recommend `grok-4-fast` with `SMB_CHAT_PROVIDER=grok` — ~$0.20/M input, ~$0.50/M output) |
+| `SMB_CHAT_MODEL_WALKTHROUGH` | Paid walkthrough model (defaults to `SMB_CHAT_MODEL` if unset; recommend a stronger model such as `grok-4` for paid tier only) |
+| `SMB_QA_MAX_TOKENS_FREE` | Max output tokens for free-tier `/qa/ask` (default `500`) |
+| `SMB_QA_MAX_TOKENS_WALKTHROUGH` | Max output tokens for paid walkthrough answers (default `1200`) |
 | `SMB_QA_RATE_LIMIT` | Max `/qa/ask` calls per tenant per window (default `5`) |
 | `SMB_QA_RATE_WINDOW_SEC` | Rate-limit window seconds (default `60`) |
 | `REDIS_URL` | Redis URL for per-tenant Q&A rate limiting |
@@ -77,6 +81,7 @@ pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
 
 ## Known limitations
 
+- **CVE matching** uses a **curated seed table** (`cve_reference`), not a live NVD or vendor-synced feed. Initial rows live in `deploy/postgres/init/007_smb_cve_reference.sql`; expanded coverage in `008_smb_cve_reference_expand.sql` and startup migration `010_smb_cve_reference_expand.sql`. Rows prefixed `GENERIC-ADVISORY-*` are operational guidance without a specific CVE ID.
 - Tier / walkthrough entitlement is **only** policy-engine CEL overrides — do not
   treat `tenants.tier` as the feature flag.
 - Compose mounts `policy-engine/policies` into smb-copilot so register can write
@@ -102,5 +107,7 @@ without a matching signed receipt (never silently reconciled). `integrity` is
 
 | Variable | Purpose |
 |----------|---------|
-| `AUDIT_SERVICE_URL` | Audit service base URL (`GET /v1/receipts`, `/verify`) |
-| `AEGIS_INTERNAL_TOKEN` | Bearer token for audit (and policy-engine) calls |
+| `SMB_PORTAL_BASE_URL` | Portal base URL for Stripe Checkout success/cancel redirects (default `http://127.0.0.1:3001`) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (server-side only) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_PRICE_ID_STANDARD` | Stripe Price ID for the standard/premium subscription |

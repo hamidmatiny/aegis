@@ -48,3 +48,11 @@ class ReceiptsResponse(BaseModel):
     end_time: str | None = None
     count: int
     receipts: list[SignedReceipt]
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+
+
+class PortalResponse(BaseModel):
+    portal_url: str
