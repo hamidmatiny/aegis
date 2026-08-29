@@ -33,8 +33,9 @@ curl http://127.0.0.1:8093/healthz
 | `AUDIT_SERVICE_URL` | Audit service base URL |
 | `MODEL_ROUTER_URL` | Model router base URL (embeddings + chat) |
 | `AEGIS_INTERNAL_TOKEN` | Shared internal token for model-router calls |
-| `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`) |
-| `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`) |
+| `SMB_EMBEDDING_PROVIDER` | Embeddings provider id (default `mock`; for production use `openai`, `ollama`, or `vllm` — Grok does **not** support embeddings) |
+| `SMB_EMBEDDING_MODEL` | Embeddings model id (default `mock-embedding`; recommend `text-embedding-3-small` with `SMB_EMBEDDING_PROVIDER=openai`) |
+| `OPENAI_API_KEY` | Required when `SMB_EMBEDDING_PROVIDER=openai` (embeddings are very cheap — typically fractions of a cent per intake row) |
 | `SMB_CHAT_PROVIDER` | Chat provider for `/qa/ask` (default `mock`; for production recommend `grok`) |
 | `SMB_CHAT_MODEL` | Free-tier chat model (default `mock-model`; recommend `grok-4-fast` with `SMB_CHAT_PROVIDER=grok` — ~$0.20/M input, ~$0.50/M output) |
 | `SMB_CHAT_MODEL_WALKTHROUGH` | Paid walkthrough model (defaults to `SMB_CHAT_MODEL` if unset; recommend a stronger model such as `grok-4` for paid tier only) |
@@ -80,6 +81,7 @@ pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
 
 ## Known limitations
 
+- **CVE matching** uses a curated seed table (`cve_reference`), not a live NVD/synced feed — see `deploy/postgres/init/007_smb_cve_reference.sql` and startup migration `010_smb_cve_reference_expand.sql`.
 - Tier / walkthrough entitlement is **only** policy-engine CEL overrides — do not
   treat `tenants.tier` as the feature flag.
 - Compose mounts `policy-engine/policies` into smb-copilot so register can write
