@@ -1,21 +1,22 @@
+/* AEGIS brand: dark posture (matches demo-web + dashboard), accent from logo/live site. */
 :root {
-  color-scheme: light;
-  --ink: #0a2540;
-  --muted: #425466;
-  --paper: #f6f9fc;
-  --panel: #ffffff;
-  --line: #e3e8ee;
-  --accent: #635bff;
-  --accent-hover: #5851ea;
-  --accent-soft: #f2f0ff;
-  --danger: #df1b41;
-  --ok: #09825d;
-  --warn-bg: #fff8e6;
-  --danger-bg: #fde8ec;
-  --ok-bg: #e6f9f0;
-  --shadow: 0 2px 5px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.02);
+  color-scheme: dark;
+  --ink: #e6e9f0;
+  --muted: #8b93a7;
+  --paper: #0b0e14;
+  --panel: #131722;
+  --line: #232838;
+  --accent: #5b8cff;
+  --accent-hover: #7ca0ff;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+  --danger: #e25555;
+  --ok: #2fbf71;
+  --warn-bg: rgba(217, 164, 65, 0.12);
+  --danger-bg: rgba(226, 85, 85, 0.12);
+  --ok-bg: rgba(47, 191, 113, 0.12);
+  --shadow: none;
   --radius: 8px;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   color: var(--ink);
   background: var(--paper);
   line-height: 1.5;
@@ -73,17 +74,38 @@ code,
 
 .brand-mark {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
   color: var(--ink);
   text-decoration: none;
 }
 
+.brand-logo {
+  display: block;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.brand-word {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+
 .brand-sub {
-  margin: 0.2rem 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .sidebar-nav {
@@ -192,7 +214,16 @@ code,
   box-shadow: var(--shadow);
 }
 
-.card + .card {
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.card + .card,
+.panel + .panel {
   margin-top: 1rem;
 }
 
@@ -244,7 +275,8 @@ code,
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 0.65rem 0.75rem;
-  background: var(--panel);
+  background: var(--paper);
+  color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -252,11 +284,14 @@ code,
 .composer textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.25);
+  color: var(--ink);
 }
 
 .btn-primary,
-button.btn-primary {
+button.btn-primary,
+button:not(.text-btn):not(.linkish):not(.sidebar-link):not(.skip-btn),
+.button {
   appearance: none;
   border: 0;
   border-radius: var(--radius);
@@ -272,11 +307,15 @@ button.btn-primary {
   justify-content: center;
 }
 
-.btn-primary:hover {
+.btn-primary:hover,
+button:not(.text-btn):not(.linkish):not(.sidebar-link):not(.skip-btn):hover,
+.button:hover {
   background: var(--accent-hover);
 }
 
-.btn-primary:disabled {
+.btn-primary:disabled,
+button:disabled,
+.button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -347,6 +386,21 @@ button.secondary,
 
 .landing-page {
   padding-top: 1rem;
+}
+
+.landing-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.landing-logo {
+  border-radius: 10px;
+}
+
+.landing-brand-row .eyebrow {
+  margin: 0;
 }
 
 .landing-hero {

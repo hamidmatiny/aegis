@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { clearGuestSession, loadGuestSession } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { BrandMark } from "./BrandMark";
 
 const customerLinks = [
   { to: "/onboarding", label: "Setup" },
@@ -29,9 +30,7 @@ export function Layout() {
     return (
       <div className="app-shell marketing-shell">
         <header className="marketing-header">
-          <NavLink to="/" className="brand-mark">
-            AEGIS
-          </NavLink>
+          <BrandMark to="/" />
           <nav className="marketing-nav">
             <NavLink to="/login">Sign in</NavLink>
             <NavLink to="/register" className="btn-primary btn-sm">
@@ -50,10 +49,7 @@ export function Layout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <NavLink to="/chat" className="brand-mark">
-            AEGIS
-          </NavLink>
-          <p className="brand-sub">SMB Copilot</p>
+          <BrandMark to="/chat" subtitle="SMB Copilot" />
         </div>
         <nav className="sidebar-nav">
           {customerLinks.map((link) => (

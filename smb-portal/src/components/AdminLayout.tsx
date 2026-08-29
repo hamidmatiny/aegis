@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { BrandMark } from "./BrandMark";
 
 const adminLinks = [
   { to: "/admin", label: "Tenants", end: true },
@@ -18,8 +19,7 @@ export function AdminLayout() {
     <div className="app-shell admin-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <p className="brand-mark">AEGIS</p>
-          <p className="brand-sub">Operator console</p>
+          <BrandMark to="/admin" subtitle="Operator console" />
         </div>
         <nav className="sidebar-nav">
           {adminLinks.map((link) => (

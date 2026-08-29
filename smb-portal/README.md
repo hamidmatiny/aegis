@@ -14,6 +14,22 @@ npm run build
 npm run lint
 ```
 
+## E2E (route guards)
+
+Requires smb-copilot on `:8093` and `ADMIN_PASSWORD` in the repo-root `.env` for admin cells.
+
+```bash
+cd smb-portal
+npx playwright install chromium   # once
+npm run test:e2e
+```
+
+Each test case uses a **fresh browser context** (no shared cookies). See `e2e/route-guards.spec.ts`.
+
+## Brand
+
+Dark posture aligned with `deploy/oracle/demo-web` and `dashboard/`. Accent `#5b8cff` (logo + live demo). Logo assets in `public/` are copies of `deploy/oracle/demo-web/icon.svg` and favicons.
+
 ## Compose (production demo)
 
 Root domain serves smb-portal directly (no `/smb/` prefix). API at `/api/smb/*`.

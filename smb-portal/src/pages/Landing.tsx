@@ -19,7 +19,10 @@ export function Landing() {
   return (
     <section className="page landing-page">
       <div className="landing-hero">
-        <p className="eyebrow">AEGIS for small business</p>
+        <div className="landing-brand-row">
+          <img src="/icon.svg" alt="AEGIS" width={48} height={48} className="landing-logo" />
+          <p className="eyebrow">AEGIS for small business</p>
+        </div>
         <h1>Security guidance built for owners, not security engineers</h1>
         <p className="lead">
           Tell us what you run. Ask questions in plain English. Get answers tied to

@@ -123,7 +123,7 @@ export function AsrTrendsPage() {
                   <YAxis unit="%" stroke="#94a3b8" />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="overall" name="Overall" stroke="#3b82f6" />
+                  <Line type="monotone" dataKey="overall" name="Overall" stroke="#5b8cff" />
                   <Line type="monotone" dataKey="input" name="Input defense" stroke="#22c55e" />
                   <Line type="monotone" dataKey="output" name="Output defense" stroke="#f59e0b" />
                 </LineChart>
