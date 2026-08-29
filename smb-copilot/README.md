@@ -107,5 +107,7 @@ without a matching signed receipt (never silently reconciled). `integrity` is
 
 | Variable | Purpose |
 |----------|---------|
-| `AUDIT_SERVICE_URL` | Audit service base URL (`GET /v1/receipts`, `/verify`) |
-| `AEGIS_INTERNAL_TOKEN` | Bearer token for audit (and policy-engine) calls |
+| `SMB_PORTAL_BASE_URL` | Portal base URL for Stripe Checkout success/cancel redirects (default `http://127.0.0.1:3001`) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (server-side only) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_PRICE_ID_STANDARD` | Stripe Price ID for the standard/premium subscription |

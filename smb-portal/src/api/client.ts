@@ -168,6 +168,11 @@ export const smbApi = {
     return fetchJSON<UsageSummary>(`/billing/usage${suffix}`);
   },
 
+  checkout: () =>
+    fetchJSON<{ checkout_url: string }>("/billing/checkout", { method: "POST" }),
+
+  billingPortal: () => fetchJSON<{ portal_url: string }>("/billing/portal"),
+
   adminListTenants: () =>
     fetchJSON<{
       tenants: Array<{

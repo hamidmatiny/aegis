@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     cookie_path: str = Field(default="/", validation_alias="SMB_COOKIE_PATH")
     admin_username: str = Field(default="", validation_alias="ADMIN_USERNAME")
     admin_password_hash: str = Field(default="", validation_alias="ADMIN_PASSWORD_HASH")
+    stripe_secret_key: str = Field(default="", validation_alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: str = Field(default="", validation_alias="STRIPE_WEBHOOK_SECRET")
+    stripe_price_id_standard: str = Field(default="", validation_alias="STRIPE_PRICE_ID_STANDARD")
+    portal_base_url: str = Field(
+        default="http://127.0.0.1:3001",
+        validation_alias="SMB_PORTAL_BASE_URL",
+    )
 
     @model_validator(mode="after")
     def default_walkthrough_model(self) -> Settings:
