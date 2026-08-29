@@ -162,6 +162,8 @@ jobs:
           AEGIS_AGENT_GATE_API_KEYS: ci-test-agent-gate-key-not-a-secret
           AEGIS_AGENT_GATE_REVIEWER_KEYS: ci-test-agent-gate-reviewer-key-not-a-secret
           AEGIS_INTERNAL_TOKEN: ci-test-internal-token-not-a-secret
+          # scripts/integration invokes docker compose for health checks.
+          SMB_SESSION_SECRET: ci-test-smb-session-secret-not-a-secret
         run: |
           chmod +x scripts/integration
           ./scripts/integration
