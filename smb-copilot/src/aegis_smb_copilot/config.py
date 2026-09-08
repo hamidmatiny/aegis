@@ -1,5 +1,7 @@
 """Service configuration from environment."""
 
+from __future__ import annotations
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

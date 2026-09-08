@@ -9,6 +9,9 @@ export function CustomerGuard() {
   if (loading) {
     return <p className="muted page-pad">Loading session…</p>;
   }
+  if (me?.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
   if (me?.role === "customer" || guest) {
     return <Outlet />;
   }

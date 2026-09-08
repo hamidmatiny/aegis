@@ -1,15 +1,19 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { smbApi } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const { refresh } = useAuth();
+  const { me, loading, refresh } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!loading && me?.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
