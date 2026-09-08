@@ -9,6 +9,10 @@ export function BillingUsage() {
   const [usage, setUsage] = useState<UsageSummary | null>(cachedUsage);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!cachedUsage);
+  const [billingBusy, setBillingBusy] = useState(false);
+
+  const isCustomer = me?.role === "customer";
+  const isPaid = isCustomer && me.tier === "premium";
 
   useEffect(() => {
     let cancelled = false;
@@ -29,15 +33,59 @@ export function BillingUsage() {
     };
   }, [me?.role]);
 
+  async function handleUpgrade() {
+    setBillingBusy(true);
+    setError(null);
+    try {
+      const { checkout_url } = await smbApi.checkout();
+      window.location.href = checkout_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBillingBusy(false);
+    }
+  }
+
+  async function handleManageBilling() {
+    setBillingBusy(true);
+    setError(null);
+    try {
+      const { portal_url } = await smbApi.billingPortal();
+      window.location.href = portal_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBillingBusy(false);
+    }
+  }
+
   return (
     <section className="page">
       <header className="page-hero">
-        <h1>Usage & integrity</h1>
+        <h1>Usage & billing</h1>
         <p>
           Counts from <code>usage_events</code>, cross-checked against signed
-          audit receipts. Discrepancies are never hidden.
+          audit receipts. Upgrade unlocks guided walkthroughs via Stripe Checkout.
         </p>
       </header>
+
+      {isCustomer ? (
+        <div className="panel billing-actions">
+          {isPaid ? (
+            <>
+              <p className="ok">Plan: <strong>Premium</strong> — walkthroughs enabled.</p>
+              <button type="button" className="button secondary" disabled={billingBusy} onClick={handleManageBilling}>
+                {billingBusy ? "Opening…" : "Manage billing"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p>Free plan — upgrade for guided walkthroughs and higher token limits.</p>
+              <button type="button" className="button" disabled={billingBusy} onClick={handleUpgrade}>
+                {billingBusy ? "Redirecting…" : "Upgrade via Stripe"}
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
 
       {loading ? <p className="muted">Loading usage…</p> : null}
       {error ? <p className="error">{error}</p> : null}

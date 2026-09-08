@@ -324,6 +324,13 @@ services:
       SMB_SESSION_SECRET: ${SMB_SESSION_SECRET:?SMB_SESSION_SECRET must be set -- run scripts/generate-credentials.sh}
       SMB_COOKIE_SECURE: ${SMB_COOKIE_SECURE:-false}
       SMB_COOKIE_PATH: ${SMB_COOKIE_PATH:-/}
+      SMB_CHAT_MODEL_WALKTHROUGH: ${SMB_CHAT_MODEL_WALKTHROUGH:-}
+      SMB_QA_MAX_TOKENS_FREE: ${SMB_QA_MAX_TOKENS_FREE:-500}
+      SMB_QA_MAX_TOKENS_WALKTHROUGH: ${SMB_QA_MAX_TOKENS_WALKTHROUGH:-1200}
+      SMB_PORTAL_BASE_URL: ${SMB_PORTAL_BASE_URL:-http://127.0.0.1:3001}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID_STANDARD: ${STRIPE_PRICE_ID_STANDARD:-}
     volumes:
       # Writable so register can drop free-tier overrides.yaml; policy-engine
       # mounts the same host tree read-only and hot-reloads / POST /v1/reload.

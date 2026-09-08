@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, status
+import logging
+
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from aegis_smb_copilot.billing.audit_client import AuditServiceError
-from aegis_smb_copilot.billing.schema import ReceiptsResponse, UsageSummaryResponse
+from aegis_smb_copilot.billing.schema import (
+    CheckoutResponse,
+    PortalResponse,
+    ReceiptsResponse,
+    UsageSummaryResponse,
+)
+from aegis_smb_copilot.billing.stripe_service import (
+    StripeNotConfiguredError,
+    construct_webhook_event,
+    create_billing_portal_session,
+    create_checkout_session,
+    handle_checkout_session_completed,
+)
 from aegis_smb_copilot.billing.usage import build_usage_summary, list_signed_receipts
 from aegis_smb_copilot.tenancy.auth import TenantId
 
 router = APIRouter(prefix="/billing", tags=["billing"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/usage", response_model=UsageSummaryResponse)
@@ -68,3 +83,57 @@ def get_receipts(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"type": "invalid_time_range", "message": str(exc)},
         ) from exc
+
+
+@router.post("/checkout", response_model=CheckoutResponse)
+def start_checkout(tenant_id: TenantId) -> CheckoutResponse:
+    """Start Stripe Checkout for a subscription upgrade (customer account required)."""
+    try:
+        url = create_checkout_session(tenant_id)
+    except StripeNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"type": "stripe_not_configured", "message": str(exc)},
+        ) from exc
+    return CheckoutResponse(checkout_url=url)
+
+
+@router.get("/portal", response_model=PortalResponse)
+def billing_portal(tenant_id: TenantId) -> PortalResponse:
+    """Stripe Billing Portal for self-serve subscription management."""
+    try:
+        url = create_billing_portal_session(tenant_id)
+    except StripeNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"type": "stripe_not_configured", "message": str(exc)},
+        ) from exc
+    return PortalResponse(portal_url=url)
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request) -> dict[str, str]:
+    """Stripe webhook — signature verified; upgrades tier on checkout.session.completed."""
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature")
+    try:
+        event = construct_webhook_event(payload, signature)
+    except StripeNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"type": "stripe_not_configured", "message": str(exc)},
+        ) from exc
+
+    if event.type == "checkout.session.completed":
+        session = event.data.object
+        session_dict = dict(session) if not isinstance(session, dict) else session
+        try:
+            handle_checkout_session_completed(session_dict)
+        except ValueError as exc:
+            logger.warning("ignored checkout.session.completed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"type": "invalid_session", "message": str(exc)},
+            ) from exc
+
+    return {"status": "ok"}
