@@ -76,7 +76,7 @@ Paid tenants: set `smb-deny-walkthrough` to `enabled: false` in that tenant's
 
 ```bash
 cd smb-copilot && source .venv/bin/activate
-pytest tests/test_billing.py tests/test_qa.py tests/test_onboarding.py -v
+pytest tests/test_billing.py tests/test_stripe_billing.py tests/test_qa.py tests/test_onboarding.py -v
 ```
 
 ## Known limitations

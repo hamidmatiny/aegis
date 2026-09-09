@@ -61,6 +61,7 @@ os.environ["STRIPE_PRICE_ID_STANDARD"] = "price_test_standard"
 os.environ["SMB_PORTAL_BASE_URL"] = "http://127.0.0.1:3001"
 
 import pytest
+import stripe
 from fastapi.testclient import TestClient
 
 from aegis_smb_copilot import config as config_mod
@@ -131,12 +132,46 @@ def _register_customer(client: TestClient) -> dict:
     return resp.json()
 
 
-def _checkout_event(tenant_id: str) -> dict:
-    return {
-        "metadata": {"tenant_id": tenant_id},
-        "customer": "cus_test_123",
-        "subscription": "sub_test_456",
-    }
+def _checkout_session(tenant_id: str) -> object:
+    """Object that mirrors production stripe 15.x Session for the router path.
+
+    Production ``event.data.object`` is a StripeObject where
+    ``isinstance(..., dict)`` is False and ``dict(obj)`` raises — requiring
+    ``.to_dict()``. A bare dict (old helper) or a stripe 14.x Session
+    (still a dict subclass) would skip that branch and hide the regression.
+    """
+
+    class _NonDictStripeSession:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+
+        def to_dict(self) -> dict[str, object]:
+            return self._payload
+
+    # Also construct a real Session so SDK wiring stays covered; prefer the
+    # non-dict stand-in as event.data.object so the router must call to_dict().
+    _ = stripe.checkout.Session.construct_from(
+        {
+            "id": "cs_test_regression",
+            "object": "checkout.session",
+            "metadata": {"tenant_id": tenant_id},
+            "customer": "cus_test_123",
+            "subscription": "sub_test_456",
+        },
+        "sk_test_x",
+    )
+    stand_in = _NonDictStripeSession(
+        {
+            "id": "cs_test_regression",
+            "object": "checkout.session",
+            "metadata": {"tenant_id": tenant_id},
+            "customer": "cus_test_123",
+            "subscription": "sub_test_456",
+        }
+    )
+    assert not isinstance(stand_in, dict)
+    assert hasattr(stand_in, "to_dict")
+    return stand_in
 
 
 def test_webhook_rejects_invalid_signature(client: TestClient) -> None:
@@ -170,7 +205,7 @@ def test_webhook_checkout_completed_flips_tier_once(
     tenant_id = reg["tenant_id"]
     event = MagicMock()
     event.type = "checkout.session.completed"
-    event.data.object = _checkout_event(tenant_id)
+    event.data.object = _checkout_session(tenant_id)
 
     with patch(
         "aegis_smb_copilot.billing.stripe_service.stripe.Webhook.construct_event",
