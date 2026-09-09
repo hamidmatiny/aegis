@@ -126,7 +126,13 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
 
     if event.type == "checkout.session.completed":
         session = event.data.object
-        session_dict = dict(session) if not isinstance(session, dict) else session
+        # stripe-python 15.x Session is NOT a Mapping — dict(session) raises
+        # TypeError and isinstance(session, dict) is False. On 14.x Session
+        # still subclasses dict, so isinstance alone is unreliable; prefer
+        # .to_dict() whenever the object exposes it (plain dicts do not).
+        session_dict = (
+            session if type(session) is dict else session.to_dict()
+        )
         try:
             handle_checkout_session_completed(session_dict)
         except ValueError as exc:
