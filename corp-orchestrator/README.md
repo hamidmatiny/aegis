@@ -44,6 +44,7 @@ python -m aegis_corp_orchestrator.main
 | `MODEL_ROUTER_URL` | model-router base |
 | `AGENT_GATE_URL` | agent-gate base |
 | `AEGIS_AGENT_GATE_API_KEYS` | Service key (first entry) for evaluate |
+| `AEGIS_AGENT_GATE_REVIEWER_KEYS` | Reviewer key for deferred `POST /v1/tasks/{id}/decide` |
 | `AUDIT_SERVICE_URL` | audit base |
 | `AEGIS_INTERNAL_TOKEN` | Internal Bearer (also accepted on `/v1/*` for ops) |
 | `CORP_FORCE_MOCK_LLM` | Default `true` — scripted tool calls + no API spend; set `false` for real models |
@@ -53,6 +54,12 @@ python -m aegis_corp_orchestrator.main
 | `CORP_GITHUB_ACTIONS_URL` | Actions API URL |
 | `CORP_INPUT_DEFENSE_URL` / `CORP_OUTPUT_DEFENSE_URL` | Red team probe targets |
 | `CORP_ORCHESTRATOR_PORT` | Default `8094` |
+
+## Auth
+
+`/v1/*` requires an **admin** SMB session cookie (`aegis_smb_session`), verified by the
+shared `aegis_smb_session.require_admin_session` package (same check as smb-copilot).
+Ops may also send `Authorization: Bearer $AEGIS_INTERNAL_TOKEN`. Customer sessions are rejected.
 
 ## HTTP
 
@@ -70,12 +77,27 @@ curl -s -X POST http://127.0.0.1:8094/v1/tasks/run \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"department":"engineering","team":"core_infra"}'
 
-# Run one default task per department
-curl -s -X POST http://127.0.0.1:8094/v1/tasks/run-all-departments \
+# Run one default task per agent (12)
+curl -s -X POST http://127.0.0.1:8094/v1/tasks/run-all-agents \
   -H "Authorization: Bearer $TOKEN"
+
+# List / decide deferred approvals (after AWAITING_HUMAN_APPROVAL parks a task)
+curl -s http://127.0.0.1:8094/v1/tasks/pending -H "Authorization: Bearer $TOKEN"
+curl -s -X POST http://127.0.0.1:8094/v1/tasks/<task_id>/decide \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"approved":true,"comment":"ok from owner"}'
 ```
 
-BEV UI: smb-portal `/admin/company` (AdminGuard) → `/api/corp/v1/bev/*`.
+BEV UI: smb-portal `/admin/company` (AdminGuard) → pending list with **Approve & execute**.
+
+## Deferred approval
+
+Scheduled runs use a short `approval_timeout_seconds=5` so they fail closed. When a tool
+is escalated, the task is stored as `status=escalated` with `pending_approval` JSON
+(`tool_name`, `arguments`, `approval_request_id`, `risk_level`). The owner can approve
+later via BEV or `POST /v1/tasks/{id}/decide`, which calls agent-gate
+`POST /v1/approvals/{id}/decide` (or re-issues evaluate if the original id expired),
+then executes the tool through harness `_execute_after_gate`.
 
 ## Default schedules
 
@@ -94,13 +116,27 @@ BEV UI: smb-portal `/admin/company` (AdminGuard) → `/api/corp/v1/bev/*`.
 | trust / safety_privacy | `0 */12 * * *` |
 | sales / growth | `0 8 * * *` |
 
-## IRREVERSIBLE demos
+## IRREVERSIBLE / HIGH demos
 
 ```bash
+export AEGIS_AGENT_GATE_API_KEYS=... AEGIS_AGENT_GATE_REVIEWER_KEYS=... AEGIS_INTERNAL_TOKEN=...
 python corp-orchestrator/scripts/demo_irreversible_gates.py
 ```
 
-Demonstrates agent-gate `escalate_to_judge` for `corp_apply_cve_write` and `corp_publish_outreach`.
+Confirms `AWAITING_HUMAN_APPROVAL` for:
+`corp_apply_cve_write`, `corp_publish_outreach`, `corp_propose_cve_write`,
+`corp_draft_outreach`, `corp_redteam_run` — then parks a pending apply, waits, approves,
+and shows the tool actually executing.
+
+## Real LLM one-shot (budget-sensitive)
+
+Requires a **working** `XAI_API_KEY` in model-router. Keep the scheduler off:
+
+```bash
+CORP_FORCE_MOCK_LLM=false CORP_SCHEDULER_ENABLED=false \
+  docker compose up -d --force-recreate --no-deps corp-orchestrator
+python corp-orchestrator/scripts/verify_real_llm_agents.py
+```
 
 ## Phase 13 open questions
 

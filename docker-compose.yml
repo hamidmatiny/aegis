@@ -366,6 +366,7 @@ services:
       MODEL_ROUTER_URL: http://model-router:8082
       AGENT_GATE_URL: http://agent-gate:8083
       AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
+      AEGIS_AGENT_GATE_REVIEWER_KEYS: ${AEGIS_AGENT_GATE_REVIEWER_KEYS:-}
       AUDIT_SERVICE_URL: http://audit:8084
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
       SMB_SESSION_SECRET: ${SMB_SESSION_SECRET:?SMB_SESSION_SECRET must be set -- run scripts/generate-credentials.sh}

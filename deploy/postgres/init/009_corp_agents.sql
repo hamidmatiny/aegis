@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS tasks (
         CHECK (status IN ('queued', 'running', 'done', 'failed', 'escalated')),
     result TEXT,
     audit_receipt_id TEXT,
+    pending_approval JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at TIMESTAMPTZ
 );

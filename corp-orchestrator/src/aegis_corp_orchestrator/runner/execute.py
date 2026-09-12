@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from aegis_corp_orchestrator.db.connection import get_pool
 from aegis_corp_orchestrator.runner.mock_model import ScriptedToolModelClient, script_for_department
 from aegis_corp_orchestrator.tools.catalog import build_registry
 from aegis_harness.clients import AgentGateClient, ModelRouterClient
+from aegis_harness.errors import ApprovalTimeoutError
 from aegis_harness.loop import run_agent
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
 
     with pool.connection() as conn:
         conn.execute(
-            "UPDATE tasks SET status = 'running' WHERE task_id = %s",
+            "UPDATE tasks SET status = 'running', pending_approval = NULL WHERE task_id = %s",
             (task_id,),
         )
         conn.execute(
@@ -125,8 +127,10 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
 
     final_status = "done"
     result_text = ""
+    pending_approval: dict[str, Any] | None = None
     try:
-        # Short approval timeout so IRREVERSIBLE tools don't hang scheduled runs
+        # Short wait so scheduled runs fail closed; pending call is parked for
+        # later BEV/API approval (owner may review once a day).
         outcome = await run_agent(
             system_prompt=system_prompt,
             user_message=str(task_input),
@@ -143,12 +147,36 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
         result_text = outcome.final_answer or json.dumps(
             {"transcript_turns": outcome.turns_used, "notes": "empty final_answer"},
         )
-        # Detect escalation markers in transcript
         for turn in outcome.transcript:
             blob = json.dumps(turn, default=str)
             if "AWAITING_HUMAN_APPROVAL" in blob or "escalated_task_id" in blob:
                 final_status = "escalated"
                 break
+    except ApprovalTimeoutError as exc:
+        logger.info(
+            "task %s parked pending approval for tool=%s approval_id=%s",
+            task_id,
+            exc.tool_name,
+            exc.approval_request_id,
+        )
+        final_status = "escalated"
+        pending_approval = {
+            "tool_name": exc.tool_name,
+            "arguments": exc.arguments,
+            "approval_request_id": exc.approval_request_id,
+            "risk_level": exc.risk_level,
+            "parked_at": datetime.now(timezone.utc).isoformat(),
+        }
+        result_text = json.dumps(
+            {
+                "status": "escalated",
+                "message": (
+                    "Tool call awaiting human approval. Use POST "
+                    f"/v1/tasks/{task_id}/decide or BEV Approve."
+                ),
+                "pending_approval": pending_approval,
+            }
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("task %s failed", task_id)
         final_status = "failed"
@@ -162,6 +190,7 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
             "department": department,
             "team": team,
             "status": final_status,
+            "pending_tool": (pending_approval or {}).get("tool_name"),
         }
     )
 
@@ -175,10 +204,21 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
         conn.execute(
             """
             UPDATE tasks
-            SET status = %s, result = %s, audit_receipt_id = %s, completed_at = now()
+            SET status = %s,
+                result = %s,
+                audit_receipt_id = %s,
+                pending_approval = %s::jsonb,
+                completed_at = CASE WHEN %s = 'escalated' THEN NULL ELSE now() END
             WHERE task_id = %s
             """,
-            (final_status, result_text, receipt_id, task_id),
+            (
+                final_status,
+                result_text,
+                receipt_id,
+                json.dumps(pending_approval) if pending_approval else None,
+                final_status,
+                task_id,
+            ),
         )
         conn.execute(
             "UPDATE agents SET status = %s, updated_at = now() WHERE agent_id = %s",
@@ -190,6 +230,7 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
         "agent_id": str(agent_id),
         "status": final_status,
         "result": result_text[:2000],
+        "pending_approval": pending_approval,
         "audit_receipt_id": receipt_id,
         "provider": provider,
         "model": model,

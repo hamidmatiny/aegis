@@ -483,5 +483,9 @@ def build_registry(allowed_tools: list[str]) -> ToolRegistry:
     return registry
 
 
+def get_tool(name: str) -> Tool | None:
+    return _ALL_TOOLS.get(name)
+
+
 def all_tool_names() -> list[str]:
     return sorted(_ALL_TOOLS.keys())

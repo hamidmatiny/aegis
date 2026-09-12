@@ -81,7 +81,8 @@ def bev_department(department: str, _admin: Any = Depends(require_admin)) -> dic
         for a in agents:
             recent = conn.execute(
                 """
-                SELECT task_id, input, status, result, created_at, completed_at
+                SELECT task_id, input, status, result, pending_approval,
+                       created_at, completed_at
                 FROM tasks WHERE agent_id = %s
                 ORDER BY created_at DESC LIMIT 1
                 """,
@@ -94,8 +95,9 @@ def bev_department(department: str, _admin: Any = Depends(require_admin)) -> dic
                     "input": recent[1],
                     "status": recent[2],
                     "result": recent[3],
-                    "created_at": recent[4].isoformat() if recent[4] else None,
-                    "completed_at": recent[5].isoformat() if recent[5] else None,
+                    "pending_approval": recent[4],
+                    "created_at": recent[5].isoformat() if recent[5] else None,
+                    "completed_at": recent[6].isoformat() if recent[6] else None,
                 }
             out_agents.append(
                 {

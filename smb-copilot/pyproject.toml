@@ -15,6 +15,7 @@ dependencies = [
     "pyyaml>=6.0.0",
     "redis>=5.0.0",
     "bcrypt>=4.2.0",
+    "aegis-smb-session>=0.1.0",
     # Cap the major range. Production hit a StripeObject behavior change in
     # stripe-python 15.x (Session no longer dict()-able); unbounded ">=11"
     # silently pulled that in. Allow current 15.x with the .to_dict() fix;

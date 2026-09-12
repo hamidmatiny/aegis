@@ -1,0 +1,16 @@
+[project]
+name = "aegis-smb-session"
+version = "0.1.0"
+description = "Shared SMB admin/customer session cookie verification (smb-copilot + corp-orchestrator)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "redis>=5.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aegis_smb_session"]

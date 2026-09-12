@@ -26,6 +26,10 @@ class Settings(BaseSettings):
         default="",
         validation_alias="AEGIS_AGENT_GATE_API_KEYS",
     )
+    agent_gate_reviewer_keys: str = Field(
+        default="",
+        validation_alias="AEGIS_AGENT_GATE_REVIEWER_KEYS",
+    )
     audit_service_url: str = Field(
         default="http://localhost:8084",
         validation_alias="AUDIT_SERVICE_URL",

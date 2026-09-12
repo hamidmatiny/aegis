@@ -66,6 +66,27 @@ tool_rules:
     action: escalate_to_judge
     enabled: true
 
+  # Phase 12: HIGH corp tools must not fall through to default_action allow.
+  # Catalog risk alone does not escalate — only IRREVERSIBLE auto-escalates
+  # via require-approval-irreversible; these named rules close the gap.
+  - id: escalate-corp-propose-cve-write
+    name: Escalate HIGH corp_propose_cve_write
+    cel: "tool_call.tool_name == 'corp_propose_cve_write'"
+    action: escalate_to_judge
+    enabled: true
+
+  - id: escalate-corp-draft-outreach
+    name: Escalate HIGH corp_draft_outreach
+    cel: "tool_call.tool_name == 'corp_draft_outreach'"
+    action: escalate_to_judge
+    enabled: true
+
+  - id: escalate-corp-redteam-run
+    name: Escalate HIGH corp_redteam_run
+    cel: "tool_call.tool_name == 'corp_redteam_run'"
+    action: escalate_to_judge
+    enabled: true
+
   # Stage E.1: triggers on contains_credentials alone. It used to also
   # require taint_level == 'TAINTED', which meant a caller that never
   # explicitly declared TAINTED (the normal case -- nothing in this
