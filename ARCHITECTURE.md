@@ -161,6 +161,15 @@ ops dashboard.
 See [smb-copilot/README.md](./smb-copilot/README.md) and
 [smb-portal/README.md](./smb-portal/README.md).
 
+### 8c. Corp Orchestrator (Phase 12)
+
+`corp-orchestrator` (Python, port **8094**) registers department agents, runs
+governed tasks via `harness.run_agent()` with scoped tool registries, and
+exposes Bird's Eye View APIs at `/v1/bev/*` (proxied as `/api/corp/` on the
+demo nginx). Admin UI: smb-portal `/admin/company`.
+
+See [corp-orchestrator/README.md](./corp-orchestrator/README.md).
+
 ### 9. SDK (Python + TypeScript) — Stage 10
 
 Drop-in OpenAI-compatible clients and reverse-proxy entry point (`gateway` service).

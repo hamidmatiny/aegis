@@ -120,6 +120,7 @@ Manual browser checks:
 
 - `/` → smb-portal (public front door)
 - `/api/smb/` → smb-copilot
+- `/api/corp/` → corp-orchestrator (Phase 12 BEV / agents; admin session)
 - `/api/smb/auth/register|login|admin-login` → stricter rate limit (`aegis_smb_auth` zone)
 - `/v1/chat/completions`, `/agent-gate/*` → gateway/agent-gate (engine demo, admin-only UI)
 

@@ -110,6 +110,14 @@ server {
         proxy_pass http://smb-copilot:8093/;
     }
 
+    # Corp orchestrator BEV / agent APIs (admin session cookie).
+    location /api/corp/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://corp-orchestrator:8094/;
+    }
+
     # Static assets still served from demo-web (security.txt, icons for
     # engine-demo admin page, etc.) — exact-match locations above win first.
     location = /security.html {

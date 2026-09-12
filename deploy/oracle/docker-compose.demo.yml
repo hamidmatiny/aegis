@@ -29,6 +29,8 @@ services:
         condition: service_started
       smb-portal:
         condition: service_started
+      corp-orchestrator:
+        condition: service_started
     restart: unless-stopped
 
   gateway:
@@ -55,6 +57,9 @@ services:
     environment:
       SMB_COOKIE_SECURE: ${SMB_COOKIE_SECURE:-true}
       SMB_COOKIE_PATH: ${SMB_COOKIE_PATH:-/}
+
+  corp-orchestrator:
+    restart: unless-stopped
 
   smb-portal:
     restart: unless-stopped

@@ -4,6 +4,7 @@ import { AdminGuard, CustomerGuard, GuestOnly } from "./auth/RouteGuards";
 import { AdminLayout } from "./components/AdminLayout";
 import { Layout } from "./components/Layout";
 import { EngineDemo } from "./pages/EngineDemo";
+import { CompanyBev } from "./pages/CompanyBev";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminLogin } from "./pages/AdminLogin";
 import { BillingUsage } from "./pages/BillingUsage";
@@ -55,6 +56,7 @@ export default function App() {
         <Route element={<AdminGuard />}>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
+            <Route path="company" element={<CompanyBev />} />
             <Route path="engine-demo" element={<EngineDemo />} />
           </Route>
         </Route>

@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/smb/, ""),
       },
+      "/api/corp": {
+        target: "http://127.0.0.1:8094",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/corp/, ""),
+      },
       "/v1/chat/completions": {
         target: "http://127.0.0.1:8080",
         changeOrigin: true,
