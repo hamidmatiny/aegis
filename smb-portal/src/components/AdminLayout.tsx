@@ -4,6 +4,7 @@ import { BrandMark } from "./BrandMark";
 
 const adminLinks = [
   { to: "/admin", label: "Tenants", end: true },
+  { to: "/admin/company", label: "Company", end: false },
   { to: "/admin/engine-demo", label: "Engine demo", end: false },
 ];
 

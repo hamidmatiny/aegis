@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class HarnessError(Exception):
-    """Base class for all harness-raised errors."""
+    """Base class for all harness-raised exceptions."""
 
 
 class UnknownToolError(HarnessError):
@@ -23,7 +25,26 @@ class ApprovalTimeoutError(HarnessError):
     """A tool call was escalated to AWAITING_HUMAN_APPROVAL and no
     reviewer decided it within `approval_timeout_seconds`. The run stops
     here rather than looping forever on a poll -- the approval itself is
-    still live in agent-gate and can be decided later out-of-band."""
+    still live in agent-gate and can be decided later out-of-band.
+
+    Carries enough context for a deferred-approval caller (corp-orchestrator)
+    to park the pending tool call and resume execution after a human decides.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
+        approval_request_id: str | None = None,
+        risk_level: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.arguments = dict(arguments or {})
+        self.approval_request_id = approval_request_id
+        self.risk_level = risk_level
 
 
 class ToolExecutionError(HarnessError):

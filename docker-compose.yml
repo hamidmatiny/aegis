@@ -345,6 +345,55 @@ services:
       policy-engine:
         condition: service_started
 
+  corp-orchestrator:
+    build:
+      context: .
+      dockerfile: corp-orchestrator/Dockerfile
+    image: ghcr.io/hamidmatiny/aegis-corp-orchestrator:${AEGIS_IMAGE_TAG:-latest}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      - "127.0.0.1:${CORP_ORCHESTRATOR_PORT:-8094}:8094"
+    environment:
+      CORP_ORCHESTRATOR_PORT: "8094"
+      DATABASE_URL: ${DATABASE_URL:-postgres://aegis:aegis_dev@postgres:5432/aegis?sslmode=disable}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-aegis_redis_dev}@redis:6379/0
+      MODEL_ROUTER_URL: http://model-router:8082
+      AGENT_GATE_URL: http://agent-gate:8083
+      AEGIS_AGENT_GATE_API_KEYS: ${AEGIS_AGENT_GATE_API_KEYS:-}
+      AEGIS_AGENT_GATE_REVIEWER_KEYS: ${AEGIS_AGENT_GATE_REVIEWER_KEYS:-}
+      AUDIT_SERVICE_URL: http://audit:8084
+      AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
+      SMB_SESSION_SECRET: ${SMB_SESSION_SECRET:?SMB_SESSION_SECRET must be set -- run scripts/generate-credentials.sh}
+      CORP_FORCE_MOCK_LLM: ${CORP_FORCE_MOCK_LLM:-true}
+      CORP_SCHEDULER_ENABLED: ${CORP_SCHEDULER_ENABLED:-true}
+      CORP_REPO_ROOT: /repo
+      CORP_INPUT_DEFENSE_URL: http://input-defense:8090
+      CORP_OUTPUT_DEFENSE_URL: http://output-defense:8091
+      CORP_HEALTHZ_URL: ${CORP_HEALTHZ_URL:-http://smb-copilot:8093/healthz}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PRICE_ID_STANDARD: ${STRIPE_PRICE_ID_STANDARD:-}
+    volumes:
+      - .:/repo:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      model-router:
+        condition: service_started
+      agent-gate:
+        condition: service_started
+      audit:
+        condition: service_started
+      policy-engine:
+        condition: service_started
+
   smb-portal:
     build:
       context: .

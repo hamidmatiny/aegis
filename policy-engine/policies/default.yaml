@@ -66,6 +66,27 @@ tool_rules:
     action: escalate_to_judge
     enabled: true
 
+  # Phase 12: HIGH corp tools must not fall through to default_action allow.
+  # Catalog risk alone does not escalate — only IRREVERSIBLE auto-escalates
+  # via require-approval-irreversible; these named rules close the gap.
+  - id: escalate-corp-propose-cve-write
+    name: Escalate HIGH corp_propose_cve_write
+    cel: "tool_call.tool_name == 'corp_propose_cve_write'"
+    action: escalate_to_judge
+    enabled: true
+
+  - id: escalate-corp-draft-outreach
+    name: Escalate HIGH corp_draft_outreach
+    cel: "tool_call.tool_name == 'corp_draft_outreach'"
+    action: escalate_to_judge
+    enabled: true
+
+  - id: escalate-corp-redteam-run
+    name: Escalate HIGH corp_redteam_run
+    cel: "tool_call.tool_name == 'corp_redteam_run'"
+    action: escalate_to_judge
+    enabled: true
+
   # Stage E.1: triggers on contains_credentials alone. It used to also
   # require taint_level == 'TAINTED', which meant a caller that never
   # explicitly declared TAINTED (the normal case -- nothing in this
@@ -127,6 +148,40 @@ tool_catalog:
     risk_level: MEDIUM
   - tool_name: write_file
     risk_level: HIGH
+  # Phase 12 corp-orchestrator tools — catalog is authoritative for risk.
+  - tool_name: corp_escalate
+    risk_level: LOW
+  - tool_name: corp_http_get
+    risk_level: MEDIUM
+  - tool_name: corp_read_repo_file
+    risk_level: MEDIUM
+  - tool_name: corp_sql_readonly
+    risk_level: LOW
+  - tool_name: corp_propose_cve_write
+    risk_level: HIGH
+  - tool_name: corp_apply_cve_write
+    risk_level: IRREVERSIBLE
+  - tool_name: corp_draft_outreach
+    risk_level: HIGH
+  - tool_name: corp_publish_outreach
+    risk_level: IRREVERSIBLE
+  - tool_name: corp_redteam_run
+    risk_level: HIGH
+  - tool_name: corp_infra_health
+    risk_level: LOW
+  - tool_name: corp_list_agents
+    risk_level: LOW
+  - tool_name: corp_audit_receipts
+    risk_level: LOW
+  # CEO tools — LOW only. corp_read_company_state is the single deliberate
+  # cross-department read exception (real companies give CEOs company-wide
+  # visibility). It must stay read-only: no writes, spend, or publish. All
+  # other agents remain siloed; cross-dept *action* is still only via
+  # corp_escalate. corp_reprioritize may reorder queued tasks only.
+  - tool_name: corp_read_company_state
+    risk_level: LOW
+  - tool_name: corp_reprioritize
+    risk_level: LOW
 
 settings:
   shadow_mode: false

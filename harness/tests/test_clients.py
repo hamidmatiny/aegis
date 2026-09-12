@@ -161,6 +161,25 @@ async def test_model_router_client_raises_on_missing_content(mock_server):
 
 
 @pytest.mark.asyncio
+async def test_model_router_client_accepts_openai_choices_shape(mock_server):
+    """model-router's live HTTP body is OpenAI-shaped, not top-level content."""
+    base_url, handler = mock_server
+    handler.responses["POST /v1/chat/completions"] = (
+        200,
+        {
+            "choices": [
+                {"message": {"role": "assistant", "content": '{"tool_call":{"tool_name":"x"}}'}}
+            ]
+        },
+    )
+    client = ModelRouterClient(base_url=base_url, trust_env=False)
+
+    result = await client.complete(model="grok-4-fast", messages=[], provider="grok")
+
+    assert result == '{"tool_call":{"tool_name":"x"}}'
+
+
+@pytest.mark.asyncio
 async def test_agent_gate_client_evaluate_request_shape_and_allowed(mock_server):
     base_url, handler = mock_server
     handler.responses["POST /v1/evaluate"] = (

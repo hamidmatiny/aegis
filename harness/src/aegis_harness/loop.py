@@ -158,7 +158,11 @@ async def run_agent(
             if decision.status == "TIMED_OUT":
                 raise ApprovalTimeoutError(
                     f"tool '{tool.name}' (approval {call.tool_name!r}) was not decided "
-                    f"within {approval_timeout_seconds}s"
+                    f"within {approval_timeout_seconds}s",
+                    tool_name=tool.name,
+                    arguments=call.arguments,
+                    approval_request_id=decision.approval_request_id,
+                    risk_level=tool.risk_level,
                 )
 
         if not decision.allowed:
