@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -453,6 +454,279 @@ class CorpAuditReceiptsTool(Tool):
             return json.dumps({"error": str(exc)})
 
 
+class CorpReadCompanyStateTool(Tool):
+    """CEO-only cross-department aggregate read.
+
+    Deliberate least-privilege exception: every other agent is siloed to its
+    department; the CEO role in a real company has company-wide visibility.
+    This tool is read-only — no writes, no spend, no publish. Cross-department
+    *action* still goes only through corp_escalate.
+    """
+
+    name = "corp_read_company_state"
+    description = (
+        "CEO-only: read-only company-wide aggregate — all agents' latest task "
+        "results, open escalations, Stripe/signup/usage figures, CI/uptime and "
+        "security posture. Does not write or spend."
+    )
+    risk_level = "LOW"
+
+    def argument_schema(self) -> dict[str, Any]:
+        return {"type": "object", "properties": {}, "required": []}
+
+    def execute(self, arguments: dict[str, Any]) -> str:
+        pool = get_pool()
+        out: dict[str, Any] = {
+            "north_star": {
+                "path": "$0 → $1-2K MRR → $10K MRR",
+                "note": (
+                    "aegis-project-memory.md was not present in the repo at seed "
+                    "time; targets taken from the Phase 12 CEO brief."
+                ),
+            },
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with pool.connection() as conn:
+            # Agents + latest task result (excluding CEO self noise optional)
+            agents = conn.execute(
+                """
+                SELECT a.agent_id, a.department, a.team, a.status, a.schedule,
+                       t.task_id, t.status AS task_status, t.result, t.completed_at
+                FROM agents a
+                LEFT JOIN LATERAL (
+                    SELECT task_id, status, result, completed_at
+                    FROM tasks WHERE agent_id = a.agent_id
+                    ORDER BY created_at DESC LIMIT 1
+                ) t ON true
+                ORDER BY a.department, a.team
+                """
+            ).fetchall()
+            latest = []
+            for row in agents:
+                latest.append(
+                    {
+                        "agent_id": str(row[0]),
+                        "department": row[1],
+                        "team": row[2],
+                        "agent_status": row[3],
+                        "schedule": row[4],
+                        "latest_task_id": str(row[5]) if row[5] else None,
+                        "latest_task_status": row[6],
+                        "latest_result_head": (row[7] or "")[:1500] if row[7] else None,
+                        "latest_completed_at": row[8].isoformat() if row[8] else None,
+                    }
+                )
+            out["agents_latest"] = latest
+
+            esc = conn.execute(
+                """
+                SELECT t.task_id, a.department, a.team, t.status, t.input,
+                       t.pending_approval, t.created_at
+                FROM tasks t JOIN agents a ON a.agent_id = t.agent_id
+                WHERE t.status = 'escalated'
+                ORDER BY t.created_at DESC LIMIT 50
+                """
+            ).fetchall()
+            out["open_escalations"] = [
+                {
+                    "task_id": str(r[0]),
+                    "department": r[1],
+                    "team": r[2],
+                    "status": r[3],
+                    "input_head": (r[4] or "")[:300],
+                    "pending_tool": (r[5] or {}).get("tool_name")
+                    if isinstance(r[5], dict)
+                    else None,
+                    "created_at": r[6].isoformat() if r[6] else None,
+                }
+                for r in esc
+            ]
+            out["open_escalations_count"] = len(out["open_escalations"])
+
+            # Finance / sales / data — real tables only
+            def _q(sql: str) -> list[dict[str, Any]]:
+                cur = conn.execute(sql)
+                cols = [d.name for d in cur.description] if cur.description else []
+                rows = cur.fetchall()
+                data = [dict(zip(cols, row, strict=False)) for row in rows]
+                for item in data:
+                    for k, v in list(item.items()):
+                        if hasattr(v, "isoformat"):
+                            item[k] = v.isoformat()
+                        elif isinstance(v, UUID):
+                            item[k] = str(v)
+                return data
+
+            try:
+                out["tenant_tiers"] = _q(
+                    "SELECT tier, count(*) AS n FROM tenants GROUP BY tier ORDER BY 1"
+                )
+            except Exception as exc:  # noqa: BLE001
+                out["tenant_tiers"] = {"error": str(exc)}
+
+            try:
+                out["signups"] = _q(
+                    """
+                    SELECT count(*) AS tenants_total,
+                           count(*) FILTER (
+                             WHERE created_at >= now() - interval '7 days'
+                           ) AS signups_7d
+                    FROM tenants
+                    """
+                )[0]
+            except Exception as exc:  # noqa: BLE001
+                out["signups"] = {"error": str(exc)}
+
+            try:
+                out["stripe_customers"] = _q(
+                    """
+                    SELECT count(*) FILTER (WHERE stripe_customer_id IS NOT NULL)
+                             AS with_stripe,
+                           count(*) AS customers
+                    FROM customers
+                    """
+                )[0]
+            except Exception as exc:  # noqa: BLE001
+                out["stripe_customers"] = {
+                    "unavailable": True,
+                    "detail": str(exc),
+                    "note": "customers table missing or incomplete in this DB",
+                }
+
+            paying = 0
+            if isinstance(out.get("tenant_tiers"), list):
+                for row in out["tenant_tiers"]:
+                    if str(row.get("tier", "")).lower() in ("premium", "paid"):
+                        paying += int(row.get("n") or 0)
+            out["paying_customers"] = paying
+            # No subscription amount column in DB — do not invent MRR dollars
+            out["mrr"] = {
+                "usd": None,
+                "unavailable": True,
+                "reason": (
+                    "No subscription amount / invoice MRR column in local Postgres; "
+                    "report $0 or unavailable honestly until Stripe amounts are stored."
+                ),
+                "paying_customers": paying,
+            }
+
+            try:
+                out["usage_today"] = _q(
+                    """
+                    SELECT count(*) AS events
+                    FROM usage_events
+                    WHERE created_at >= date_trunc('day', now())
+                    """
+                )[0]
+            except Exception as exc:  # noqa: BLE001
+                out["usage_today"] = {"error": str(exc)}
+
+            try:
+                out["signup_history_14d"] = _q(
+                    """
+                    SELECT date_trunc('day', created_at)::date AS day,
+                           count(*) AS signups
+                    FROM tenants
+                    WHERE created_at >= now() - interval '14 days'
+                    GROUP BY 1 ORDER BY 1
+                    """
+                )
+            except Exception as exc:  # noqa: BLE001
+                out["signup_history_14d"] = {"error": str(exc)}
+
+            try:
+                out["cve_count"] = _q("SELECT count(*) AS cves FROM cve_reference")[0]
+            except Exception as exc:  # noqa: BLE001
+                out["cve_count"] = {"error": str(exc)}
+
+        # Live infra / health (same sources web_engineering / core_infra use)
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                hz = client.get(settings.healthz_url)
+                out["uptime_healthz"] = {
+                    "url": settings.healthz_url,
+                    "status_code": hz.status_code,
+                    "body_head": hz.text[:200],
+                    "ok": hz.status_code == 200,
+                }
+        except Exception as exc:  # noqa: BLE001
+            out["uptime_healthz"] = {"ok": False, "error": str(exc)}
+
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                gh = client.get(settings.github_actions_url)
+                out["ci_main"] = {
+                    "status_code": gh.status_code,
+                    "body_head": gh.text[:800],
+                }
+        except Exception as exc:  # noqa: BLE001
+            out["ci_main"] = {"error": str(exc)}
+
+        # Security posture from latest cyber agent results (already in agents_latest)
+        cyber = [
+            a
+            for a in out["agents_latest"]
+            if a["department"] == "cybersecurity" and a.get("latest_result_head")
+        ]
+        out["security_posture_from_agent_results"] = cyber
+
+        return json.dumps(out, default=str)[:20000]
+
+
+class CorpReprioritizeTool(Tool):
+    name = "corp_reprioritize"
+    description = (
+        "Reorder queued (not yet running) tasks by setting queue_position. "
+        "Cannot change schedules, cancel tasks, or touch running/done/escalated."
+    )
+    risk_level = "LOW"
+
+    def argument_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "ordered_task_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Queued task UUIDs in desired order (first = soonest)",
+                }
+            },
+            "required": ["ordered_task_ids"],
+        }
+
+    def execute(self, arguments: dict[str, Any]) -> str:
+        ids_raw = arguments.get("ordered_task_ids") or []
+        if not isinstance(ids_raw, list) or not ids_raw:
+            return json.dumps({"error": "ordered_task_ids_required"})
+        try:
+            ids = [UUID(str(x)) for x in ids_raw]
+        except Exception as exc:  # noqa: BLE001
+            return json.dumps({"error": f"invalid_uuid: {exc}"})
+        pool = get_pool()
+        updated: list[str] = []
+        skipped: list[dict[str, str]] = []
+        with pool.connection() as conn:
+            for pos, tid in enumerate(ids, start=1):
+                row = conn.execute(
+                    "SELECT status FROM tasks WHERE task_id = %s",
+                    (tid,),
+                ).fetchone()
+                if row is None:
+                    skipped.append({"task_id": str(tid), "reason": "not_found"})
+                    continue
+                if row[0] != "queued":
+                    skipped.append(
+                        {"task_id": str(tid), "reason": f"status_is_{row[0]}_not_queued"}
+                    )
+                    continue
+                conn.execute(
+                    "UPDATE tasks SET queue_position = %s WHERE task_id = %s AND status = 'queued'",
+                    (pos, tid),
+                )
+                updated.append(str(tid))
+        return json.dumps({"updated": updated, "skipped": skipped})
+
+
 _ALL_TOOLS: dict[str, Tool] = {
     t.name: t
     for t in [
@@ -468,6 +742,8 @@ _ALL_TOOLS: dict[str, Tool] = {
         CorpInfraHealthTool(),
         CorpListAgentsTool(),
         CorpAuditReceiptsTool(),
+        CorpReadCompanyStateTool(),
+        CorpReprioritizeTool(),
     ]
 }
 

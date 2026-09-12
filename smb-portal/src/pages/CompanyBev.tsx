@@ -48,6 +48,23 @@ type PendingRow = {
   created_at: string | null;
 };
 
+type Trajectory = {
+  ceo_registered: boolean;
+  allowed_tools?: string[];
+  schedule?: string;
+  model_provider?: string;
+  model_name?: string;
+  report: {
+    task_id: string;
+    status: string;
+    result: string | null;
+    created_at: string | null;
+    completed_at: string | null;
+  } | null;
+  signup_history_14d: { day: string; signups: number }[];
+  chart: { status: string; points: { day: string; signups: number }[]; metric: string };
+};
+
 const CORP_BASE = "/api/corp";
 
 async function corpGet<T>(path: string): Promise<T> {
@@ -73,8 +90,31 @@ async function corpPost<T>(path: string, body: unknown): Promise<T> {
   return resp.json() as Promise<T>;
 }
 
+function SignupSparkline({ points }: { points: { day: string; signups: number }[] }) {
+  if (points.length < 2) {
+    return <p className="muted small">not enough data yet</p>;
+  }
+  const max = Math.max(...points.map((p) => p.signups), 1);
+  const w = 280;
+  const h = 56;
+  const step = w / (points.length - 1);
+  const d = points
+    .map((p, i) => {
+      const x = i * step;
+      const y = h - (p.signups / max) * (h - 4) - 2;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg width={w} height={h} role="img" aria-label="Signups over 14 days">
+      <path d={d} fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export function CompanyBev() {
   const [summary, setSummary] = useState<BevSummary | null>(null);
+  const [trajectory, setTrajectory] = useState<Trajectory | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [agents, setAgents] = useState<DeptAgent[]>([]);
   const [pending, setPending] = useState<PendingRow[]>([]);
@@ -86,12 +126,14 @@ export function CompanyBev() {
     setLoading(true);
     setError(null);
     try {
-      const [data, pend] = await Promise.all([
+      const [data, pend, traj] = await Promise.all([
         corpGet<BevSummary>("/v1/bev/summary"),
         corpGet<{ pending: PendingRow[] }>("/v1/tasks/pending"),
+        corpGet<Trajectory>("/v1/bev/trajectory"),
       ]);
       setSummary(data);
       setPending(pend.pending);
+      setTrajectory(traj);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setSummary(null);
@@ -150,6 +192,29 @@ export function CompanyBev() {
 
       {loading ? <p className="muted">Loading…</p> : null}
       {error ? <p className="error">{error}</p> : null}
+
+      {trajectory?.ceo_registered ? (
+        <div className="panel" style={{ marginBottom: "1.5rem" }}>
+          <h2>Trajectory</h2>
+          <p className="muted small">
+            CEO ({trajectory.model_provider}/{trajectory.model_name}) · cron{" "}
+            {trajectory.schedule}
+          </p>
+          {trajectory.report?.result ? (
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>
+              {trajectory.report.result}
+            </pre>
+          ) : (
+            <p className="muted">No CEO trajectory report yet.</p>
+          )}
+          <h3 style={{ marginTop: "1rem" }}>Signups (14d)</h3>
+          {trajectory.chart.status === "not_enough_data_yet" ? (
+            <p className="muted small">not enough data yet</p>
+          ) : (
+            <SignupSparkline points={trajectory.chart.points} />
+          )}
+        </div>
+      ) : null}
 
       {pending.length > 0 ? (
         <div className="panel" style={{ marginBottom: "1.5rem" }}>

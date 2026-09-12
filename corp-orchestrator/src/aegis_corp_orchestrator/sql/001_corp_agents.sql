@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     result TEXT,
     audit_receipt_id TEXT,
     pending_approval JSONB,
+    queue_position INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at TIMESTAMPTZ
 );
@@ -35,3 +36,4 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS idx_tasks_agent_id ON tasks (agent_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks (status);
 CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks (created_at DESC);
+-- queue_position index is created in 003_queue_position.sql (column added there for existing DBs)

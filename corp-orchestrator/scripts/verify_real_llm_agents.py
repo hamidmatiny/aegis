@@ -73,6 +73,9 @@ def main() -> int:
         if row["provider"] in (None, "mock") or row["model"] in (None, "mock-model"):
             print("FAIL: expected real provider/model, got", row["provider"], row["model"])
             ok = False
+        if row["status"] == "failed":
+            print("FAIL: task failed —", str(row["result_head"])[:200])
+            ok = False
         if row["status"] == "failed" and "401" in str(row["result_head"]):
             print("FAIL: model-router auth/provider key error — fix XAI_API_KEY")
             ok = False

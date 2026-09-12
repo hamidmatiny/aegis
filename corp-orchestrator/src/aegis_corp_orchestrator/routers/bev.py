@@ -112,3 +112,72 @@ def bev_department(department: str, _admin: Any = Depends(require_admin)) -> dic
                 }
             )
     return {"department": department, "agents": out_agents}
+
+
+@router.get("/trajectory")
+def bev_trajectory(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
+    """CEO latest Trajectory Report + sparse signup history for charting."""
+    pool = get_pool()
+    with pool.connection() as conn:
+        ceo = conn.execute(
+            """
+            SELECT agent_id, status, model_provider, model_name, schedule, context_scope
+            FROM agents WHERE department = 'executive' AND team = 'ceo'
+            """
+        ).fetchone()
+        if ceo is None:
+            return {
+                "ceo_registered": False,
+                "report": None,
+                "signup_history_14d": [],
+                "chart": {"status": "not_enough_data_yet", "points": []},
+            }
+        task = conn.execute(
+            """
+            SELECT task_id, status, result, created_at, completed_at
+            FROM tasks WHERE agent_id = %s
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (ceo[0],),
+        ).fetchone()
+        history: list[dict[str, Any]] = []
+        try:
+            rows = conn.execute(
+                """
+                SELECT date_trunc('day', created_at)::date AS day, count(*) AS signups
+                FROM tenants
+                WHERE created_at >= now() - interval '14 days'
+                GROUP BY 1 ORDER BY 1
+                """
+            ).fetchall()
+            history = [
+                {"day": r[0].isoformat() if hasattr(r[0], "isoformat") else str(r[0]), "signups": r[1]}
+                for r in rows
+            ]
+        except Exception:  # noqa: BLE001
+            history = []
+
+    report = None
+    if task:
+        report = {
+            "task_id": str(task[0]),
+            "status": task[1],
+            "result": task[2],
+            "created_at": task[3].isoformat() if task[3] else None,
+            "completed_at": task[4].isoformat() if task[4] else None,
+        }
+
+    chart_status = "ok" if len(history) >= 2 else "not_enough_data_yet"
+    scope = ceo[5] if isinstance(ceo[5], dict) else {}
+    return {
+        "ceo_registered": True,
+        "agent_id": str(ceo[0]),
+        "agent_status": ceo[1],
+        "model_provider": ceo[2],
+        "model_name": ceo[3],
+        "schedule": ceo[4],
+        "allowed_tools": list((scope or {}).get("allowed_tools") or []),
+        "report": report,
+        "signup_history_14d": history,
+        "chart": {"status": chart_status, "points": history, "metric": "signups"},
+    }

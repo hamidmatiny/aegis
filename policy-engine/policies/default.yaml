@@ -173,6 +173,15 @@ tool_catalog:
     risk_level: LOW
   - tool_name: corp_audit_receipts
     risk_level: LOW
+  # CEO tools — LOW only. corp_read_company_state is the single deliberate
+  # cross-department read exception (real companies give CEOs company-wide
+  # visibility). It must stay read-only: no writes, spend, or publish. All
+  # other agents remain siloed; cross-dept *action* is still only via
+  # corp_escalate. corp_reprioritize may reorder queued tasks only.
+  - tool_name: corp_read_company_state
+    risk_level: LOW
+  - tool_name: corp_reprioritize
+    risk_level: LOW
 
 settings:
   shadow_mode: false

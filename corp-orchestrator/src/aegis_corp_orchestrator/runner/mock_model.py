@@ -119,5 +119,8 @@ def script_for_department(department: str, team: str, healthz_url: str, gh_url: 
                 },
             },
         ],
+        ("executive", "ceo"): [
+            {"tool_name": "corp_read_company_state", "arguments": {}},
+        ],
     }
     return scripts.get(key, [{"tool_name": "corp_list_agents", "arguments": {}}])

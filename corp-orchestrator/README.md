@@ -110,11 +110,16 @@ then executes the tool through harness `_execute_after_gate`.
 | cybersecurity / defensive_eng | `0 */12 * * *` |
 | cybersecurity / red_team | `0 0 * * *` |
 | finance / pnl_analyst | `0 6 * * *` |
+| **executive / ceo** | **`0 7 * * *`** (after finance, before sales) |
 | hr / agent_ops | `0 * * * *` |
 | engineering / core_infra | `0 * * * *` |
 | data / quality | `0 */6 * * *` |
 | trust / safety_privacy | `0 */12 * * *` |
 | sales / growth | `0 8 * * *` |
+
+CEO `allowed_tools`: `corp_read_company_state`, `corp_reprioritize`, `corp_escalate`,
+`corp_list_agents` only — **zero** HIGH/IRREVERSIBLE. `corp_read_company_state` is the
+single deliberate cross-department read exception (documented in `default.yaml`).
 
 ## IRREVERSIBLE / HIGH demos
 

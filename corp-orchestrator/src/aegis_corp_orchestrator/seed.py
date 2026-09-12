@@ -63,6 +63,16 @@ DEFAULT_TASKS: dict[tuple[str, str], str] = {
         "Use corp_sql_readonly signup_counts and tenant_tiers, then corp_draft_outreach "
         "with a short draft. Never call corp_publish_outreach."
     ),
+    ("executive", "ceo"): (
+        "Call corp_read_company_state once. Produce a numbers-first Trajectory Report "
+        "for the founder grounded ONLY in that tool output. Required lines: "
+        "MRR (say $0 or unavailable if the tool says so — never invent dollars), "
+        "Paying customers, Signups (7d), Uptime, Open critical escalations, Last CI status, "
+        "Security findings, then one honest Assessment paragraph. "
+        "North Star path: $0 → $1-2K MRR → $10K MRR. "
+        "Optional: corp_reprioritize only if queued tasks clearly need reordering; "
+        "corp_escalate to route work. Do not claim schedule/config changes — you cannot."
+    ),
 }
 
 
@@ -217,6 +227,27 @@ AGENTS: list[dict] = [
             "corp_sql_readonly",
             "corp_draft_outreach",
             # corp_publish_outreach intentionally omitted
+        ),
+    },
+    {
+        "department": "executive",
+        "team": "ceo",
+        "role": (
+            "CEO — runs the company day-to-day and reports real trajectory toward "
+            "revenue North Star ($0 → $1-2K → $10K MRR) to the founder. "
+            "Company-wide read visibility is an explicit least-privilege exception; "
+            "no HIGH/IRREVERSIBLE tools; cannot change agent schedules/config."
+        ),
+        "model_provider": "grok",
+        "model_name": "grok-4",
+        # After finance (0 6) so same-day P&L is available; before sales (0 8).
+        "schedule": "0 7 * * *",
+        "escalation_target": "hr/agent_ops",
+        "context_scope": _scope(
+            "corp_read_company_state",
+            "corp_reprioritize",
+            "corp_escalate",
+            "corp_list_agents",
         ),
     },
 ]

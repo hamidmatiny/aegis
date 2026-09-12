@@ -133,7 +133,17 @@ class ModelRouterClient:
             )
             resp.raise_for_status()
             data = resp.json()
+        # model-router's HTTP response is OpenAI-shaped (choices[0].message.content).
+        # Older harness code expected a proprietary top-level "content" field that
+        # the live router never returns — that silently broke every real-LLM
+        # corp run until Phase 12 gap-1 verification. Accept both shapes.
         content = data.get("content")
+        if not isinstance(content, str):
+            choices = data.get("choices")
+            if isinstance(choices, list) and choices:
+                message = choices[0].get("message") if isinstance(choices[0], dict) else None
+                if isinstance(message, dict):
+                    content = message.get("content")
         if not isinstance(content, str):
             raise ValueError(f"model-router response missing string 'content': {data!r}")
         return content
