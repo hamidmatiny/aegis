@@ -60,6 +60,11 @@ class Settings(BaseSettings):
         default="https://api.github.com/repos/hamidmatiny/aegis/actions/runs?branch=main&per_page=1",
         validation_alias="CORP_GITHUB_ACTIONS_URL",
     )
+    stripe_secret_key: str = Field(default="", validation_alias="STRIPE_SECRET_KEY")
+    stripe_price_id_standard: str = Field(
+        default="",
+        validation_alias="STRIPE_PRICE_ID_STANDARD",
+    )
 
 
 settings = Settings()

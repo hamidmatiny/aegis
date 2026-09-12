@@ -50,8 +50,9 @@ python -m aegis_corp_orchestrator.main
 | `CORP_FORCE_MOCK_LLM` | Default `true` — scripted tool calls + no API spend; set `false` for real models |
 | `CORP_SCHEDULER_ENABLED` | Default `true` — 60s tick, cron from agent `schedule` |
 | `CORP_REPO_ROOT` | Repo root for `corp_read_repo_file` / infra checks |
-| `CORP_HEALTHZ_URL` | Health URL for web_engineering |
-| `CORP_GITHUB_ACTIONS_URL` | Actions API URL |
+| `CORP_HEALTHZ_URL` | Health URL for web_engineering (`target=healthz`) |
+| `CORP_GITHUB_ACTIONS_URL` | Actions API URL (`target=github_actions`) |
+| `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID_STANDARD` | Live price `unit_amount` for shared MRR snapshot |
 | `CORP_INPUT_DEFENSE_URL` / `CORP_OUTPUT_DEFENSE_URL` | Red team probe targets |
 | `CORP_ORCHESTRATOR_PORT` | Default `8094` |
 

@@ -70,8 +70,8 @@ def script_for_department(department: str, team: str, healthz_url: str, gh_url: 
             },
         ],
         ("website", "web_engineering"): [
-            {"tool_name": "corp_http_get", "arguments": {"url": healthz_url}},
-            {"tool_name": "corp_http_get", "arguments": {"url": gh_url}},
+            {"tool_name": "corp_http_get", "arguments": {"target": "healthz"}},
+            {"tool_name": "corp_http_get", "arguments": {"target": "github_actions"}},
         ],
         ("website", "management_board"): [
             {
@@ -91,6 +91,7 @@ def script_for_department(department: str, team: str, healthz_url: str, gh_url: 
             {"tool_name": "corp_redteam_run", "arguments": {}},
         ],
         ("finance", "pnl_analyst"): [
+            {"tool_name": "corp_sql_readonly", "arguments": {"query_key": "mrr"}},
             {"tool_name": "corp_sql_readonly", "arguments": {"query_key": "usage_today"}},
             {"tool_name": "corp_sql_readonly", "arguments": {"query_key": "stripe_customers"}},
             {"tool_name": "corp_sql_readonly", "arguments": {"query_key": "tenant_tiers"}},

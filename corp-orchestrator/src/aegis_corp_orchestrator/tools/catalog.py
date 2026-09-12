@@ -13,6 +13,7 @@ import httpx
 
 from aegis_corp_orchestrator.config import settings
 from aegis_corp_orchestrator.db.connection import get_pool
+from aegis_corp_orchestrator.finance.mrr import get_mrr_snapshot
 from aegis_harness.tool import Tool, ToolRegistry
 
 
@@ -60,20 +61,43 @@ class CorpEscalateTool(Tool):
 
 class CorpHttpGetTool(Tool):
     name = "corp_http_get"
-    description = "GET an allowlisted URL (healthz, GitHub Actions API)."
+    description = (
+        "GET an allowlisted URL, or use target=healthz / target=github_actions "
+        "to hit the configured CORP_HEALTHZ_URL / CORP_GITHUB_ACTIONS_URL without "
+        "supplying a URL (preferred — do not invent URLs)."
+    )
     risk_level = "MEDIUM"
 
     def argument_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
-            "properties": {"url": {"type": "string"}},
-            "required": ["url"],
+            "properties": {
+                "url": {"type": "string"},
+                "target": {
+                    "type": "string",
+                    "description": "healthz | github_actions — uses server config, no URL needed",
+                },
+            },
+            "required": [],
         }
 
     def execute(self, arguments: dict[str, Any]) -> str:
-        url = str(arguments["url"])
+        target = str(arguments.get("target") or "").strip().lower()
+        if target == "healthz":
+            url = settings.healthz_url
+        elif target in ("github_actions", "github", "ci"):
+            url = settings.github_actions_url
+        else:
+            url = str(arguments.get("url") or "")
+        if not url:
+            return json.dumps(
+                {
+                    "error": "url_or_target_required",
+                    "hint": "Pass target=healthz or target=github_actions, or an allowlisted url",
+                }
+            )
         allowed_prefixes = (
-            settings.healthz_url.split("/api/")[0],
+            settings.healthz_url.split("/api/")[0] if "/api/" in settings.healthz_url else settings.healthz_url,
             "https://defenseaegis.org/",
             "http://127.0.0.1:",
             "http://localhost:",
@@ -81,16 +105,23 @@ class CorpHttpGetTool(Tool):
             "http://smb-copilot:",
             "http://corp-orchestrator:",
         )
-        if not any(url.startswith(p) for p in allowed_prefixes):
-            return json.dumps({"error": "url_not_allowlisted", "url": url})
+        # Configured healthz/github URLs are always permitted (target mode).
+        if url not in (settings.healthz_url, settings.github_actions_url):
+            if not any(url.startswith(p) for p in allowed_prefixes if p):
+                return json.dumps({"error": "url_not_allowlisted", "url": url})
         try:
             with httpx.Client(timeout=15.0) as client:
                 resp = client.get(url)
             return json.dumps(
-                {"status_code": resp.status_code, "body": resp.text[:4000]},
+                {
+                    "target": target or None,
+                    "url": url,
+                    "status_code": resp.status_code,
+                    "body": resp.text[:4000],
+                },
             )
         except Exception as exc:  # noqa: BLE001
-            return json.dumps({"error": str(exc)})
+            return json.dumps({"error": str(exc), "url": url, "target": target or None})
 
 
 class CorpReadRepoFileTool(Tool):
@@ -185,9 +216,17 @@ class CorpSqlReadonlyTool(Tool):
 
     def execute(self, arguments: dict[str, Any]) -> str:
         key = str(arguments["query_key"])
+        # Shared MRR path — same function corp_read_company_state uses.
+        if key == "mrr":
+            return json.dumps({"query_key": "mrr", "snapshot": get_mrr_snapshot()}, default=str)
         sql = self._QUERIES.get(key)
         if not sql:
-            return json.dumps({"error": "unknown_query_key", "allowed": list(self._QUERIES)})
+            return json.dumps(
+                {
+                    "error": "unknown_query_key",
+                    "allowed": sorted([*self._QUERIES.keys(), "mrr"]),
+                }
+            )
         pool = get_pool()
         with pool.connection() as conn:
             cur = conn.execute(sql)
@@ -593,22 +632,10 @@ class CorpReadCompanyStateTool(Tool):
                     "note": "customers table missing or incomplete in this DB",
                 }
 
-            paying = 0
-            if isinstance(out.get("tenant_tiers"), list):
-                for row in out["tenant_tiers"]:
-                    if str(row.get("tier", "")).lower() in ("premium", "paid"):
-                        paying += int(row.get("n") or 0)
-            out["paying_customers"] = paying
-            # No subscription amount column in DB — do not invent MRR dollars
-            out["mrr"] = {
-                "usd": None,
-                "unavailable": True,
-                "reason": (
-                    "No subscription amount / invoice MRR column in local Postgres; "
-                    "report $0 or unavailable honestly until Stripe amounts are stored."
-                ),
-                "paying_customers": paying,
-            }
+            # Paying subscribers + MRR — shared snapshot (same as query_key=mrr)
+            snap = get_mrr_snapshot()
+            out["mrr"] = snap
+            out["paying_customers"] = int(snap.get("paying_subscribers") or 0)
 
             try:
                 out["usage_today"] = _q(

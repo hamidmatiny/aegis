@@ -12,15 +12,23 @@ logger = logging.getLogger(__name__)
 # Default first-task prompts used by scheduler / manual run-all.
 DEFAULT_TASKS: dict[tuple[str, str], str] = {
     ("website", "ui_ux_branding"): (
-        "Audit brand color/asset consistency across smb-portal, dashboard, and "
-        "deploy/oracle/demo-web. Use corp_read_repo_file on CSS/theme files. "
-        "If you find mismatches, use corp_list_agents for department=website and "
-        "corp_escalate to management_board with a concise report."
+        "Audit brand consistency. Call corp_read_repo_file exactly three times with "
+        "these paths only (do not invent other paths):\n"
+        "1) smb-portal/src/styles.css\n"
+        "2) dashboard/src/styles.css\n"
+        "3) deploy/oracle/demo-web/index.html\n"
+        "Compare color tokens / brand colors across the three file contents. "
+        "If you find mismatches, corp_list_agents department=website then "
+        "corp_escalate to management_board with a concise report. "
+        "Always finish with a plain-text final answer (not a tool call) that quotes "
+        "the real color values from each file and states match vs mismatch."
     ),
     ("website", "web_engineering"): (
-        "Poll the configured healthz URL and the latest GitHub Actions run on main "
-        "via corp_http_get. If health is not ok or CI conclusion is failure, "
-        "corp_escalate to website management_board."
+        "Check site health and CI. Do NOT invent URLs. Call corp_http_get twice:\n"
+        '1) {"target":"healthz"} — uses the server-configured CORP_HEALTHZ_URL\n'
+        '2) {"target":"github_actions"} — uses the configured GitHub Actions URL\n'
+        "If health is not ok or CI conclusion is failure, corp_escalate to "
+        "website management_board."
     ),
     ("website", "management_board"): (
         "Use corp_sql_readonly query_key=open_escalations_website and prioritize "
@@ -41,8 +49,10 @@ DEFAULT_TASKS: dict[tuple[str, str], str] = {
         "input-defense blocked or allowed it. File findings in your final answer."
     ),
     ("finance", "pnl_analyst"): (
-        "Produce a daily P&L-style summary using corp_sql_readonly keys usage_today, "
-        "stripe_customers, and tenant_tiers. You have no payment-moving tools."
+        "Produce a daily P&L-style summary. Call corp_sql_readonly with query_key=mrr "
+        "(shared Stripe MRR snapshot), then usage_today, stripe_customers, and "
+        "tenant_tiers. Report the mrr_display figure exactly — do not invent dollars. "
+        "You have no payment-moving tools."
     ),
     ("hr", "agent_ops"): (
         "Use corp_sql_readonly query_key=agent_ops and report error rates, stuck tasks, "
@@ -66,7 +76,7 @@ DEFAULT_TASKS: dict[tuple[str, str], str] = {
     ("executive", "ceo"): (
         "Call corp_read_company_state once. Produce a numbers-first Trajectory Report "
         "for the founder grounded ONLY in that tool output. Required lines: "
-        "MRR (say $0 or unavailable if the tool says so — never invent dollars), "
+        "MRR (use mrr_display from the tool — never invent dollars), "
         "Paying customers, Signups (7d), Uptime, Open critical escalations, Last CI status, "
         "Security findings, then one honest Assessment paragraph. "
         "North Star path: $0 → $1-2K MRR → $10K MRR. "

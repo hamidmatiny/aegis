@@ -376,6 +376,8 @@ services:
       CORP_INPUT_DEFENSE_URL: http://input-defense:8090
       CORP_OUTPUT_DEFENSE_URL: http://output-defense:8091
       CORP_HEALTHZ_URL: ${CORP_HEALTHZ_URL:-http://smb-copilot:8093/healthz}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PRICE_ID_STANDARD: ${STRIPE_PRICE_ID_STANDARD:-}
     volumes:
       - .:/repo:ro
     depends_on:

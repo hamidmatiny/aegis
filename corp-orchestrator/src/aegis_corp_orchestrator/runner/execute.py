@@ -140,13 +140,24 @@ async def execute_task(task_id: UUID) -> dict[str, Any]:
             model=model,
             provider=provider,
             agent_id=str(agent_id),
-            max_turns=6,
+            max_turns=8,
             approval_timeout_seconds=5.0,
             approval_poll_interval_seconds=1.0,
         )
-        result_text = outcome.final_answer or json.dumps(
+        result_text = (outcome.final_answer or "").strip() or json.dumps(
             {"transcript_turns": outcome.turns_used, "notes": "empty final_answer"},
         )
+        # If the model forgot a prose final answer after escalating, recover the
+        # escalate payload / last tool results so the task result isn't empty.
+        if result_text.startswith("{") and "empty final_answer" in result_text:
+            recovered: list[str] = []
+            for turn in outcome.transcript:
+                detail = getattr(turn, "detail", None)
+                kind = getattr(turn, "kind", None)
+                if kind == "tool_result" and detail:
+                    recovered.append(str(detail)[:2000])
+            if recovered:
+                result_text = "\n---\n".join(recovered[-4:])
         for turn in outcome.transcript:
             blob = json.dumps(turn, default=str)
             if "AWAITING_HUMAN_APPROVAL" in blob or "escalated_task_id" in blob:
