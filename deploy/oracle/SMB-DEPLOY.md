@@ -125,3 +125,72 @@ Manual browser checks:
 - `/v1/chat/completions`, `/agent-gate/*` → gateway/agent-gate (engine demo, admin-only UI)
 
 Gateway/agent-gate routes remain for the relocated engine showcase (`/admin/engine-demo`).
+
+## 8. Phase 12 — corp-orchestrator (BEV / agent corporation)
+
+Additive service. Does **not** change SMB chat/billing/auth product paths.
+
+### What gets deployed
+
+| Piece | Detail |
+|-------|--------|
+| Service | `corp-orchestrator` on compose network port **8094** (`127.0.0.1:8094` published for ops) |
+| SQL | `deploy/postgres/init/009_corp_agents.sql` — `agents` + `tasks` (+ pending_approval / queue_position via service migrations at startup) |
+| Nginx | `/api/corp/` → `http://corp-orchestrator:8094/` (already in `nginx-demo.conf.template`) |
+| Shared auth | `smb-session` (`aegis-smb-session`) — both `smb-copilot` and `corp-orchestrator` Dockerfiles install it; admin cookie `aegis_smb_session` |
+| Portal | `/admin/company` — Bird's Eye View + CEO Trajectory (AdminGuard) |
+
+### Initial production flags (safe first cutover)
+
+**Leave these as-is on first deploy** so the owner can inspect the dashboard and manually trigger runs before any unattended API spend:
+
+```bash
+# In VM .env — Phase 12 first deploy defaults
+CORP_FORCE_MOCK_LLM=true
+CORP_SCHEDULER_ENABLED=false
+CORP_HEALTHZ_URL=http://smb-copilot:8093/healthz
+# Optional for MRR when owner enables real finance reads later:
+# STRIPE_SECRET_KEY / STRIPE_PRICE_ID_STANDARD already used by smb-copilot
+```
+
+Do **not** set `CORP_FORCE_MOCK_LLM=false` or `CORP_SCHEDULER_ENABLED=true` until the owner explicitly decides to.
+
+### Bring up corp + dependencies
+
+```bash
+cd ~/aegis
+git pull origin main
+./deploy/oracle/setup.sh   # re-render nginx so /api/corp/ is present
+
+# Ensure .env has CORP_FORCE_MOCK_LLM=true and CORP_SCHEDULER_ENABLED=false
+docker compose -f docker-compose.yml -f deploy/oracle/docker-compose.demo.yml \
+  up -d --build --force-recreate \
+  postgres redis policy-engine model-router agent-gate audit \
+  smb-copilot smb-portal corp-orchestrator demo-proxy
+```
+
+Fresh Postgres volumes pick up `009_corp_agents.sql` automatically. Existing volumes: `corp-orchestrator` applies packaged SQL migrations on startup (`001`–`003`) and seeds **13** agents.
+
+### Verify corp on the public host
+
+```bash
+# Agents seeded
+docker compose exec -T postgres psql -U aegis -d aegis -t -c 'SELECT count(*) FROM agents;'
+# Expect: 13
+
+# Corp health (loopback on VM)
+curl -s http://127.0.0.1:8094/healthz
+
+# Public API (admin session cookie or internal token)
+curl -s https://defenseaegis.org/api/corp/healthz
+curl -s https://defenseaegis.org/api/corp/v1/bev/summary \
+  -H "Authorization: Bearer $AEGIS_INTERNAL_TOKEN"
+
+# Manual one-department mock run (scheduler still off)
+curl -s -X POST https://defenseaegis.org/api/corp/v1/tasks/run \
+  -H "Authorization: Bearer $AEGIS_INTERNAL_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"department":"engineering","team":"core_infra"}'
+```
+
+Browser: admin login → `https://defenseaegis.org/admin/company` (customer session must get 403 on `/api/corp/v1/*`).
