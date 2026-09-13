@@ -131,6 +131,14 @@ CEO `allowed_tools`: `corp_read_company_state`, `corp_reprioritize`, `corp_escal
 `corp_list_agents` only — **zero** HIGH/IRREVERSIBLE. `corp_read_company_state` is the
 single deliberate cross-department read exception (documented in `default.yaml`).
 
+## Tests
+
+```bash
+# From repo root
+pip install -e ./smb-session -e ./harness -e "./corp-orchestrator[dev]"
+cd corp-orchestrator && pytest
+```
+
 ## IRREVERSIBLE / HIGH demos
 
 ```bash
