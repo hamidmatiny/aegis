@@ -195,6 +195,11 @@ fill "AEGIS_AGENT_GATE_REVIEWER_KEYS" "echo aegis_\$(random_hex 32)"
 # .env like POSTGRES_PASSWORD is.
 fill "AEGIS_INTERNAL_TOKEN" "echo aegis_internal_\$(random_hex 32)"
 
+# Corp-orchestrator read-only Bearer for external briefing agents (GET /bev/*,
+# /agents, /tasks only). Never grants POST /tasks/run or decide — do not
+# hand AEGIS_INTERNAL_TOKEN to those agents.
+fill "CORP_READONLY_TOKEN" "echo corp_readonly_\$(random_hex 32)"
+
 # SMB Copilot operator admin (env-only identity, not a DB row) and session signing.
 fill "ADMIN_USERNAME" "echo smbadmin"
 if [ "$ROTATE" = true ] || [ -z "$(current_value ADMIN_PASSWORD_HASH)" ]; then
@@ -296,6 +301,7 @@ API_KEY="$(current_value AEGIS_API_KEYS)"
 AGENT_GATE_SERVICE_KEY="$(current_value AEGIS_AGENT_GATE_API_KEYS)"
 AGENT_GATE_REVIEWER_KEY="$(current_value AEGIS_AGENT_GATE_REVIEWER_KEYS)"
 INTERNAL_TOKEN="$(current_value AEGIS_INTERNAL_TOKEN)"
+CORP_READONLY="$(current_value CORP_READONLY_TOKEN)"
 REDIS_PW="$(current_value REDIS_PASSWORD)"
 PG_PW_DISPLAY="$(current_value POSTGRES_PASSWORD)"
 SMB_ADMIN_USER="$(current_value ADMIN_USERNAME)"
@@ -317,6 +323,8 @@ generated — pass --rotate to force fresh values for everything):
                                               output-defense and everything that calls them —
                                               same value everywhere, do not regenerate on
                                               just one service)
+  Corp read-only token:    $CORP_READONLY   (GET /api/corp/v1/* briefing only —
+                                              never for POST run/decide)
   Postgres password:       $PG_PW_DISPLAY
   Redis password:          $REDIS_PW   (not wired into any service yet, reserved)
   SMB Copilot admin login: $SMB_ADMIN_USER / $SMB_ADMIN_PASS   (POST /auth/admin-login)

@@ -46,7 +46,8 @@ python -m aegis_corp_orchestrator.main
 | `AEGIS_AGENT_GATE_API_KEYS` | Service key (first entry) for evaluate |
 | `AEGIS_AGENT_GATE_REVIEWER_KEYS` | Reviewer key for deferred `POST /v1/tasks/{id}/decide` |
 | `AUDIT_SERVICE_URL` | audit base |
-| `AEGIS_INTERNAL_TOKEN` | Internal Bearer (also accepted on `/v1/*` for ops) |
+| `AEGIS_INTERNAL_TOKEN` | Full-admin Bearer (ops — accepted on all `/v1/*` including POSTs) |
+| `CORP_READONLY_TOKEN` | Read-only Bearer for briefing agents — **GET only** (`/agents`, `/tasks`, `/bev/*`); rejected on every POST |
 | `CORP_FORCE_MOCK_LLM` | Default `true` — scripted tool calls + no API spend; set `false` for real models |
 | `CORP_SCHEDULER_ENABLED` | Default `true` — 60s tick, cron from agent `schedule` |
 | `CORP_REPO_ROOT` | Repo root for `corp_read_repo_file` / infra checks |
@@ -60,7 +61,11 @@ python -m aegis_corp_orchestrator.main
 
 `/v1/*` requires an **admin** SMB session cookie (`aegis_smb_session`), verified by the
 shared `aegis_smb_session.require_admin_session` package (same check as smb-copilot).
-Ops may also send `Authorization: Bearer $AEGIS_INTERNAL_TOKEN`. Customer sessions are rejected.
+Ops may also send `Authorization: Bearer $AEGIS_INTERNAL_TOKEN` (full admin, including
+POST run/decide). External briefing agents should use `Authorization: Bearer
+$CORP_READONLY_TOKEN` — that credential is accepted only on GET routes and is
+rejected on every mutating POST (run, decide, park-pending, run-all-*). Customer
+sessions are always rejected.
 
 ## HTTP
 
@@ -72,6 +77,10 @@ curl -s http://127.0.0.1:8094/healthz
 TOKEN=$AEGIS_INTERNAL_TOKEN
 curl -s http://127.0.0.1:8094/v1/agents -H "Authorization: Bearer $TOKEN"
 curl -s http://127.0.0.1:8094/v1/bev/summary -H "Authorization: Bearer $TOKEN"
+
+# Read-only briefing token (GET only — POSTs return 401)
+curl -s http://127.0.0.1:8094/v1/bev/trajectory \
+  -H "Authorization: Bearer $CORP_READONLY_TOKEN"
 
 # Run one department's default task
 curl -s -X POST http://127.0.0.1:8094/v1/tasks/run \
@@ -121,6 +130,14 @@ then executes the tool through harness `_execute_after_gate`.
 CEO `allowed_tools`: `corp_read_company_state`, `corp_reprioritize`, `corp_escalate`,
 `corp_list_agents` only — **zero** HIGH/IRREVERSIBLE. `corp_read_company_state` is the
 single deliberate cross-department read exception (documented in `default.yaml`).
+
+## Tests
+
+```bash
+# From repo root
+pip install -e ./smb-session -e ./harness -e "./corp-orchestrator[dev]"
+cd corp-orchestrator && pytest
+```
 
 ## IRREVERSIBLE / HIGH demos
 

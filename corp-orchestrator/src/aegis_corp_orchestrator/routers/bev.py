@@ -6,14 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from aegis_corp_orchestrator.auth.session import require_admin
+from aegis_corp_orchestrator.auth.session import require_read_or_admin
 from aegis_corp_orchestrator.db.connection import get_pool
 
 router = APIRouter(prefix="/v1/bev", tags=["bev"])
 
 
 @router.get("/summary")
-def bev_summary(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
+def bev_summary(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
     pool = get_pool()
     with pool.connection() as conn:
         total = conn.execute("SELECT count(*) FROM agents").fetchone()[0]
@@ -65,7 +65,9 @@ def bev_summary(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
 
 
 @router.get("/departments/{department}")
-def bev_department(department: str, _admin: Any = Depends(require_admin)) -> dict[str, Any]:
+def bev_department(
+    department: str, _admin: Any = Depends(require_read_or_admin)
+) -> dict[str, Any]:
     pool = get_pool()
     with pool.connection() as conn:
         agents = conn.execute(
@@ -115,7 +117,7 @@ def bev_department(department: str, _admin: Any = Depends(require_admin)) -> dic
 
 
 @router.get("/trajectory")
-def bev_trajectory(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
+def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
     """CEO latest Trajectory Report + sparse signup history for charting."""
     pool = get_pool()
     with pool.connection() as conn:

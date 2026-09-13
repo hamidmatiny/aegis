@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from aegis_corp_orchestrator.auth.session import require_admin
+from aegis_corp_orchestrator.auth.session import require_admin, require_read_or_admin
 from aegis_corp_orchestrator.db.connection import get_pool
 from aegis_corp_orchestrator.runner.approve import decide_pending_task
 from aegis_corp_orchestrator.runner.execute import enqueue_and_run, execute_task
@@ -43,7 +43,7 @@ class ParkPendingBody(BaseModel):
 
 
 @router.get("/agents")
-def list_agents(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
+def list_agents(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
     pool = get_pool()
     with pool.connection() as conn:
         rows = conn.execute(
@@ -79,7 +79,7 @@ def list_agents(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
 def list_tasks(
     limit: int = 50,
     agent_id: UUID | None = None,
-    _admin: Any = Depends(require_admin),
+    _admin: Any = Depends(require_read_or_admin),
 ) -> dict[str, Any]:
     pool = get_pool()
     with pool.connection() as conn:
@@ -243,7 +243,7 @@ def park_pending(
 
 
 @router.get("/tasks/pending")
-def list_pending(_admin: Any = Depends(require_admin)) -> dict[str, Any]:
+def list_pending(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
     pool = get_pool()
     with pool.connection() as conn:
         rows = conn.execute(

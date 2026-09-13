@@ -35,6 +35,7 @@ class Settings(BaseSettings):
         validation_alias="AUDIT_SERVICE_URL",
     )
     internal_token: str = Field(default="", validation_alias="AEGIS_INTERNAL_TOKEN")
+    readonly_token: str = Field(default="", validation_alias="CORP_READONLY_TOKEN")
     session_secret: str = Field(
         default="dev-insecure-session-secret-change-me",
         validation_alias="SMB_SESSION_SECRET",
