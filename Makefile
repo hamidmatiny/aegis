@@ -58,7 +58,7 @@ test-go:
 	done
 
 test-python:
-	@for dir in input-defense output-defense redteam sdk/python; do \
+	@for dir in input-defense output-defense redteam sdk/python corp-orchestrator; do \
 		if [ -f "$$dir/pyproject.toml" ]; then \
 			echo "==> pytest $$dir"; \
 			(cd "$$dir" && pytest) || exit 1; \

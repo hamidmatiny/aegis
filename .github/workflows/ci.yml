@@ -94,6 +94,7 @@ jobs:
           for dir in input-defense output-defense redteam sdk/python; do
             pip install -e "./$dir[dev]"
           done
+          pip install -e ./smb-session -e ./harness -e "./corp-orchestrator[dev]"
       - name: Lint
         run: make lint-python
       - name: Test
