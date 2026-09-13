@@ -39,7 +39,7 @@ jobs:
         service: [gateway, policy-engine, model-router, agent-gate, audit]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Install govulncheck
