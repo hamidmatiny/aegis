@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from aegis_corp_orchestrator.auth.session import require_read_or_admin
 from aegis_corp_orchestrator.db.connection import get_pool
+from aegis_corp_orchestrator.finance.mrr import get_mrr_snapshot
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/bev", tags=["bev"])
 
@@ -50,7 +54,7 @@ def bev_summary(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
         ).fetchall()
 
     status_map = {s: c for s, c in by_status}
-    return {
+    out: dict[str, Any] = {
         "total_agents": total,
         "by_status": {
             "idle": status_map.get("idle", 0),
@@ -62,6 +66,14 @@ def bev_summary(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
         "escalations_open": esc_tasks + esc_agents,
         "departments": [{"department": d, "agent_count": c} for d, c in depts],
     }
+    # Shared finance snapshot (live Stripe price × paying tenants). Never invent MRR.
+    try:
+        out["mrr_snapshot"] = get_mrr_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("get_mrr_snapshot failed for /bev/summary: %s", exc)
+        out["mrr_snapshot"] = None
+        out["mrr_error"] = str(exc)
+    return out
 
 
 @router.get("/departments/{department}")

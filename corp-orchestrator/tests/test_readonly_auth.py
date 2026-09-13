@@ -113,11 +113,27 @@ class _FakePool:
         yield _FakeConn()
 
 
+_DEFAULT_MRR_SNAPSHOT: dict[str, Any] = {
+    "source": "shared:aegis_corp_orchestrator.finance.mrr.get_mrr_snapshot",
+    "unavailable": False,
+    "paying_subscribers": 1,
+    "unit_amount_cents": 2900,
+    "monthly_unit_cents": 2900,
+    "mrr_cents": 2900,
+    "mrr_usd": 29.0,
+    "currency": "CAD",
+    "mrr_display": "$29.00 CAD",
+    "price": {"ok": True, "unit_amount": 2900, "currency": "CAD", "interval": "month"},
+}
+
+
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     pool = _FakePool()
     monkeypatch.setattr(agents_mod, "get_pool", lambda: pool)
     monkeypatch.setattr(bev_mod, "get_pool", lambda: pool)
+    # Avoid live Stripe / DB from GET /bev/summary's mrr_snapshot field.
+    monkeypatch.setattr(bev_mod, "get_mrr_snapshot", lambda: dict(_DEFAULT_MRR_SNAPSHOT))
 
     def fake_admin_session(request: Request) -> SessionData:
         cookie = request.cookies.get("aegis_smb_session")
@@ -227,3 +243,44 @@ def test_empty_readonly_token_does_not_open_gets(monkeypatch: pytest.MonkeyPatch
     with pytest.raises(HTTPException) as exc:
         session_mod.require_read_or_admin(request)
     assert exc.value.status_code in (401, 403)
+
+
+def test_bev_summary_includes_mrr_snapshot_from_shared_helper(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """/bev/summary exposes get_mrr_snapshot() — numbers match the mocked Stripe path."""
+    snap = {
+        **_DEFAULT_MRR_SNAPSHOT,
+        "paying_subscribers": 1,
+        "mrr_cents": 2900,
+        "mrr_usd": 29.0,
+        "currency": "CAD",
+        "mrr_display": "$29.00 CAD",
+    }
+    monkeypatch.setattr(bev_mod, "get_mrr_snapshot", lambda: snap)
+
+    resp = client.get("/v1/bev/summary", headers=_auth(_READONLY))
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "mrr_snapshot" in body
+    assert body["mrr_snapshot"]["mrr_usd"] == 29.0
+    assert body["mrr_snapshot"]["mrr_cents"] == 2900
+    assert body["mrr_snapshot"]["currency"] == "CAD"
+    assert body["mrr_snapshot"]["paying_subscribers"] == 1
+    assert body["mrr_snapshot"]["unavailable"] is False
+    assert "mrr_error" not in body
+
+
+def test_bev_summary_mrr_exception_returns_null_not_500(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom() -> dict[str, Any]:
+        raise RuntimeError("stripe unreachable")
+
+    monkeypatch.setattr(bev_mod, "get_mrr_snapshot", boom)
+    resp = client.get("/v1/bev/summary", headers=_auth(_READONLY))
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["mrr_snapshot"] is None
+    assert body["mrr_error"] == "stripe unreachable"
+    assert body["total_agents"] == 13
