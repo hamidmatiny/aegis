@@ -45,16 +45,28 @@ services=(
   "http://localhost:3000/|dashboard"
 )
 
+# Retry: compose can report containers "Up" before HTTP /health is ready (redteam flake).
 for entry in "${services[@]}"; do
   url="${entry%%|*}"
   name="${entry##*|}"
   echo "  Checking $name at $url"
-  if [[ "$name" == "dashboard" ]]; then
-    curl -sf -u "${AEGIS_DASHBOARD_USER}:${AEGIS_DASHBOARD_PASSWORD}" "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
-  else
-    # /health and /ready are always exempt from gateway API-key auth.
-    curl -sf "$url" > /dev/null || { echo "FAIL: $name"; exit 1; }
-  fi
+  ok=0
+  for _attempt in $(seq 1 30); do
+    if [[ "$name" == "dashboard" ]]; then
+      if curl -sf -u "${AEGIS_DASHBOARD_USER}:${AEGIS_DASHBOARD_PASSWORD}" "$url" > /dev/null; then
+        ok=1
+        break
+      fi
+    else
+      # /health and /ready are always exempt from gateway API-key auth.
+      if curl -sf "$url" > /dev/null; then
+        ok=1
+        break
+      fi
+    fi
+    sleep 2
+  done
+  [[ "$ok" -eq 1 ]] || { echo "FAIL: $name"; exit 1; }
 done
 
 echo "==> Dashboard rejects wrong credentials..."
