@@ -42,7 +42,8 @@ docker run --rm -v "$(pwd)/model-router:/app" -w /app golang:1.22-alpine go test
 | `AEGIS_MODEL_ROUTER_CONFIG` | `config/providers.yaml` | Provider config path |
 | `OPENAI_API_KEY` | — | OpenAI API key |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key |
-| `GOOGLE_API_KEY` | — | Google Gemini API key |
+| `GOOGLE_API_KEY` | — | Google Gemini API key (generic). Prefer `GOOGLE_API_KEY_CORP_CEO` for corp free-tier CEO traffic — compose maps that dedicated key into model-router's `GOOGLE_API_KEY` when set. |
+| `GOOGLE_API_KEY_CORP_CEO` | — | Dedicated free-tier Gemini key for corp-orchestrator CEO (not shared with personal fleet OmniRoute) |
 | `XAI_API_KEY` | — | **xAI Grok API key** (use this name, not `GROK_API_KEY`) |
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434/v1` | Override Ollama base URL |
 

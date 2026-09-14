@@ -96,7 +96,7 @@ class ModelRouterClient:
         *,
         base_url: str,
         internal_token: str = "",
-        timeout: float = 60.0,
+        timeout: float = 180.0,
         trust_env: bool = True,
     ) -> None:
         self.base_url = base_url.rstrip("/")

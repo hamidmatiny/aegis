@@ -127,6 +127,9 @@ services:
       - /tmp
     ports:
       - "127.0.0.1:${MODEL_ROUTER_PORT:-8082}:8082"
+    volumes:
+      # Live provider config (default model + fallback) without image rebuild.
+      - ./model-router/config/providers.yaml:/etc/aegis/model-router/providers.yaml:ro
     env_file:
       - path: .env
         required: false
@@ -135,6 +138,9 @@ services:
       AEGIS_MODEL_ROUTER_CONFIG: /etc/aegis/model-router/providers.yaml
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
+      # providers.yaml gemini reads GOOGLE_API_KEY. Prefer dedicated corp free-tier
+      # key (CEO path) when set — do not silently share a personal/generic Gemini key.
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY_CORP_CEO:-${GOOGLE_API_KEY:-}}
 
   agent-gate:
     build:
@@ -373,6 +379,7 @@ services:
       SMB_SESSION_SECRET: ${SMB_SESSION_SECRET:?SMB_SESSION_SECRET must be set -- run scripts/generate-credentials.sh}
       CORP_FORCE_MOCK_LLM: ${CORP_FORCE_MOCK_LLM:-true}
       CORP_SCHEDULER_ENABLED: ${CORP_SCHEDULER_ENABLED:-true}
+      CORP_SCHEDULER_ALLOWLIST: ${CORP_SCHEDULER_ALLOWLIST:-}
       CORP_REPO_ROOT: /repo
       CORP_INPUT_DEFENSE_URL: http://input-defense:8090
       CORP_OUTPUT_DEFENSE_URL: http://output-defense:8091

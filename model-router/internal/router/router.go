@@ -141,6 +141,11 @@ func (r *Router) Chat(ctx context.Context, req models.ChatRequest) (*models.Chat
 			return nil, authErr
 		}
 
+		slog.Error("provider chat attempt failed",
+			"provider", target.Provider,
+			"model", target.Model,
+			"err", err.Error(),
+		)
 		attempts = append(attempts, models.RouteAttempt{
 			Provider: target.Provider,
 			Model:    target.Model,

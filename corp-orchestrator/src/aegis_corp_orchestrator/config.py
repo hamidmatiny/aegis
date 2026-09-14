@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     force_mock_llm: bool = Field(default=True, validation_alias="CORP_FORCE_MOCK_LLM")
     repo_root: str = Field(default=".", validation_alias="CORP_REPO_ROOT")
     scheduler_enabled: bool = Field(default=True, validation_alias="CORP_SCHEDULER_ENABLED")
+    # Comma-separated department/team keys (e.g. "executive/ceo"). Empty = all agents.
+    # Schedules in DB are left unchanged; non-listed agents are simply not fired.
+    scheduler_allowlist: str = Field(
+        default="",
+        validation_alias="CORP_SCHEDULER_ALLOWLIST",
+    )
     input_defense_url: str = Field(
         default="http://localhost:8090",
         validation_alias="CORP_INPUT_DEFENSE_URL",

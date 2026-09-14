@@ -153,6 +153,9 @@ func (p *Gemini) ChatStream(ctx context.Context, req models.ChatRequest) (<-chan
 }
 
 func (p *Gemini) buildPayload(req models.ChatRequest) map[string]any {
+	// Gemini requires strict user/model alternation. Harness maps system→user and
+	// may emit consecutive user turns (system+user, or stacked tool results) —
+	// merge same-role parts instead of sending invalid role sequences.
 	var contents []map[string]any
 	for _, m := range req.Messages {
 		role := "user"
@@ -162,9 +165,18 @@ func (p *Gemini) buildPayload(req models.ChatRequest) map[string]any {
 		if m.Role == "system" {
 			role = "user"
 		}
+		part := map[string]string{"text": m.Content}
+		if len(contents) > 0 {
+			prev := contents[len(contents)-1]
+			if prev["role"] == role {
+				parts, _ := prev["parts"].([]map[string]string)
+				prev["parts"] = append(parts, part)
+				continue
+			}
+		}
 		contents = append(contents, map[string]any{
 			"role":  role,
-			"parts": []map[string]string{{"text": m.Content}},
+			"parts": []map[string]string{part},
 		})
 	}
 	payload := map[string]any{"contents": contents}
@@ -172,12 +184,17 @@ func (p *Gemini) buildPayload(req models.ChatRequest) map[string]any {
 	if req.Temperature != nil {
 		genConfig["temperature"] = *req.Temperature
 	}
+	// Default output budget: free Flash models may spend tokens on "thinking"
+	// first; without maxOutputTokens, long corp turns can return empty text.
+	// Harness currently omits max_tokens.
 	if req.MaxTokens != nil {
 		genConfig["maxOutputTokens"] = *req.MaxTokens
+	} else {
+		genConfig["maxOutputTokens"] = 4096
 	}
-	if len(genConfig) > 0 {
-		payload["generationConfig"] = genConfig
-	}
+	// Do not set thinkingConfig here — supported knobs differ by model family
+	// (thinkingBudget vs thinkingLevel) and an unsupported field yields HTTP 400.
+	payload["generationConfig"] = genConfig
 	return payload
 }
 

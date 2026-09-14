@@ -64,6 +64,8 @@ services:
       # First prod cutover: mock LLM + scheduler off until owner enables spend.
       CORP_FORCE_MOCK_LLM: ${CORP_FORCE_MOCK_LLM:-true}
       CORP_SCHEDULER_ENABLED: ${CORP_SCHEDULER_ENABLED:-false}
+      # Empty = all agents. CEO-only free-tier cutover: executive/ceo
+      CORP_SCHEDULER_ALLOWLIST: ${CORP_SCHEDULER_ALLOWLIST:-}
       CORP_HEALTHZ_URL: ${CORP_HEALTHZ_URL:-http://smb-copilot:8093/healthz}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_PRICE_ID_STANDARD: ${STRIPE_PRICE_ID_STANDARD:-}

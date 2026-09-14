@@ -248,8 +248,9 @@ AGENTS: list[dict] = [
             "Company-wide read visibility is an explicit least-privilege exception; "
             "no HIGH/IRREVERSIBLE tools; cannot change agent schedules/config."
         ),
-        "model_provider": "grok",
-        "model_name": "grok-4",
+        # Free-tier Gemini via model-router (GOOGLE_API_KEY_CORP_CEO) — not xAI.
+        "model_provider": "gemini",
+        "model_name": "gemini-3.5-flash-lite",
         # After finance (0 6) so same-day P&L is available; before sales (0 8).
         "schedule": "0 7 * * *",
         "escalation_target": "hr/agent_ops",

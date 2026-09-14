@@ -50,6 +50,7 @@ python -m aegis_corp_orchestrator.main
 | `CORP_READONLY_TOKEN` | Read-only Bearer for briefing agents — **GET only** (`/agents`, `/tasks`, `/bev/*`); rejected on every POST |
 | `CORP_FORCE_MOCK_LLM` | Default `true` — scripted tool calls + no API spend; set `false` for real models |
 | `CORP_SCHEDULER_ENABLED` | Default `true` — 60s tick, cron from agent `schedule` |
+| `CORP_SCHEDULER_ALLOWLIST` | Optional comma-separated `department/team` keys (e.g. `executive/ceo`). Empty = fire all agents with schedules. Non-listed agents keep their DB `schedule` strings but are not fired. |
 | `CORP_REPO_ROOT` | Repo root for `corp_read_repo_file` / infra checks |
 | `CORP_HEALTHZ_URL` | Health URL for web_engineering (`target=healthz`) |
 | `CORP_GITHUB_ACTIONS_URL` | Actions API URL (`target=github_actions`) |
@@ -156,12 +157,30 @@ and shows the tool actually executing.
 
 ## Real LLM one-shot (budget-sensitive)
 
-Requires a **working** `XAI_API_KEY` in model-router. Keep the scheduler off:
+Requires a working free-tier Gemini key as **`GOOGLE_API_KEY_CORP_CEO`** in `.env`
+(compose maps it into model-router's `GOOGLE_API_KEY`). CEO is seeded as
+`gemini` / `gemini-3.5-flash-lite`. Keep the scheduler off:
 
 ```bash
 CORP_FORCE_MOCK_LLM=false CORP_SCHEDULER_ENABLED=false \
-  docker compose up -d --force-recreate --no-deps corp-orchestrator
-python corp-orchestrator/scripts/verify_real_llm_agents.py
+  docker compose up -d --force-recreate --no-deps model-router corp-orchestrator
+curl -sS -X POST http://127.0.0.1:8094/v1/tasks/run \
+  -H "Authorization: Bearer $AEGIS_INTERNAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"department":"executive","team":"ceo"}'
+```
+
+Do **not** set `CORP_SCHEDULER_ENABLED=true` for the full fleet until a manual CEO
+run has produced a non-null, non-mock `report` on `/v1/bev/trajectory`. Other
+department agents remain on `grok` — enabling the scheduler with mock off and an
+empty allowlist would bill xAI for those jobs.
+
+CEO-only free-tier cutover (schedules in DB unchanged for everyone else):
+
+```bash
+CORP_FORCE_MOCK_LLM=false
+CORP_SCHEDULER_ENABLED=true
+CORP_SCHEDULER_ALLOWLIST=executive/ceo
 ```
 
 ## Phase 13 open questions
