@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { loadGuestSession } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useGuestSession } from "../auth/useGuestSession";
 import { ChatPanel } from "../components/ChatPanel";
 
 type PaywallState = {
@@ -10,7 +10,7 @@ type PaywallState = {
 
 export function WalkthroughPaywall() {
   const { me } = useAuth();
-  const guest = loadGuestSession();
+  const guest = useGuestSession();
   const location = useLocation();
   const state = (location.state ?? {}) as PaywallState;
   const denied = Boolean(state.message);

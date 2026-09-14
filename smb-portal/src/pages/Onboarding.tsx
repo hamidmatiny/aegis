@@ -4,16 +4,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { saveGuestSession, smbApi } from "../api/client";
 import type { IntakeAnswer } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { useGuestSession } from "../auth/useGuestSession";
 import { IntakeForm } from "../components/IntakeForm";
 
 export function Onboarding() {
   const navigate = useNavigate();
   const { me } = useAuth();
+  const guest = useGuestSession();
   const isCustomer = me?.role === "customer";
 
   const [slug, setSlug] = useState("");
   const [apiKeyOnce, setApiKeyOnce] = useState<string | null>(null);
-  const [registered, setRegistered] = useState(isCustomer);
+  // Layout remounts Outlet when guest session appears (marketing → sidebar).
+  // Re-hydrate registered from guest session so intake survives that remount.
+  const [registered, setRegistered] = useState(() => isCustomer || Boolean(guest));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);

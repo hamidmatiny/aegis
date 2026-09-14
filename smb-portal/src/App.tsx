@@ -11,8 +11,10 @@ import { BillingUsage } from "./pages/BillingUsage";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
+import { Privacy } from "./pages/Privacy";
 import { QAChat } from "./pages/QAChat";
 import { Register } from "./pages/Register";
+import { Terms } from "./pages/Terms";
 import { WalkthroughPaywall } from "./pages/WalkthroughPaywall";
 
 export default function App() {
@@ -44,6 +46,8 @@ export default function App() {
               </GuestOnly>
             }
           />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="terms" element={<Terms />} />
           <Route path="onboarding" element={<Onboarding />} />
           <Route element={<CustomerGuard />}>
             <Route path="chat" element={<QAChat />} />

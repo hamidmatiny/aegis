@@ -1,10 +1,10 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { loadGuestSession } from "../api/client";
+import { useGuestSession } from "./useGuestSession";
 
 export function CustomerGuard() {
   const { me, loading } = useAuth();
-  const guest = loadGuestSession();
+  const guest = useGuestSession();
 
   if (loading) {
     return <p className="muted page-pad">Loading session…</p>;

@@ -28,7 +28,22 @@ Each test case uses a **fresh browser context** (no shared cookies). See `e2e/ro
 
 ## Brand
 
-Dark posture aligned with `deploy/oracle/demo-web` and `dashboard/`. Accent `#5b8cff` (logo + live demo). Logo assets in `public/` are copies of `deploy/oracle/demo-web/icon.svg` and favicons.
+Refined dark navy landing (`#0a0f1a` paper) with Plus Jakarta Sans, security-blue accents, and verified-green used sparingly for trust checks. Primary CTAs use solid blue `#1d4ed8` for WCAG contrast on white label text. Favicons + `public/og-image.png` for share previews.
+
+## Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Marketing landing (how it works, pricing, trust, footer) |
+| `/privacy` | Privacy Policy |
+| `/terms` | Terms of Use |
+| `/login` / `/register` | Customer auth |
+| `/onboarding` | Register + intake form → guest or account setup |
+| `/chat` | Free Q&A → `POST /qa/ask` with mandatory disclaimer per answer |
+| `/walkthrough` | Paid walkthrough request / upsell paywall |
+| `/billing` | `GET /billing/usage` chart + visible discrepancies |
+
+Pricing shown on `/` matches live Stripe `STRIPE_PRICE_ID_STANDARD` ($29 CAD/month as of 2026-09-14). Guided walkthroughs remain a paid Standard feature.
 
 ## Compose (production demo)
 
@@ -55,15 +70,6 @@ docker compose up -d --build smb-copilot smb-portal
 | `SMB_PORTAL_PORT` | Host publish port (default `3001`) |
 
 Browser calls go to `/api/smb/*`; nginx (compose) or Vite (dev) proxies to smb-copilot. The tenant API key is sent as `Authorization: Bearer <key>` from session storage after onboarding.
-
-## Pages
-
-| Route | Purpose |
-|-------|---------|
-| `/onboarding` | Register + intake form → `/onboarding/*` |
-| `/chat` | Free Q&A → `POST /qa/ask` with mandatory disclaimer per answer |
-| `/walkthrough` | Paid walkthrough request / upsell paywall |
-| `/billing` | `GET /billing/usage` chart + visible discrepancies |
 
 ## Known limitations
 

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { clearGuestSession, loadGuestSession } from "../api/client";
+import { clearGuestSession } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useGuestSession } from "../auth/useGuestSession";
 import { BrandMark } from "./BrandMark";
 
 const customerLinks = [
@@ -12,7 +13,7 @@ const customerLinks = [
 
 export function Layout() {
   const { me, usage, logout } = useAuth();
-  const guest = loadGuestSession();
+  const guest = useGuestSession();
 
   async function handleSignOut() {
     if (me?.role === "customer") {
@@ -31,7 +32,16 @@ export function Layout() {
       <div className="app-shell marketing-shell">
         <header className="marketing-header">
           <BrandMark to="/" />
-          <nav className="marketing-nav">
+          <nav className="marketing-nav" aria-label="Primary">
+            <a href="/#how-it-works">How it works</a>
+            <a href="/#pricing">Pricing</a>
+            <a
+              href="https://github.com/hamidmatiny/aegis"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
             <NavLink to="/login">Sign in</NavLink>
             <NavLink to="/register" className="btn-primary btn-sm">
               Sign up

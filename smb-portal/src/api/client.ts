@@ -31,17 +31,46 @@ export function loadGuestSession(): GuestSession | null {
   }
 }
 
+const GUEST_SESSION_EVENT = "aegis-smb-guest-session";
+
+function notifyGuestSessionChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(GUEST_SESSION_EVENT));
+  }
+}
+
+/** Stable snapshot of guest sessionStorage keys for useSyncExternalStore. */
+export function getGuestSessionSnapshot(): string {
+  if (typeof sessionStorage === "undefined") return "";
+  const apiKey = sessionStorage.getItem(GUEST_SESSION_KEY) ?? "";
+  const tenant = sessionStorage.getItem(GUEST_TENANT_KEY) ?? "";
+  return `${apiKey}\0${tenant}`;
+}
+
+export function subscribeGuestSession(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = () => cb();
+  window.addEventListener(GUEST_SESSION_EVENT, handler);
+  window.addEventListener("storage", handler);
+  return () => {
+    window.removeEventListener(GUEST_SESSION_EVENT, handler);
+    window.removeEventListener("storage", handler);
+  };
+}
+
 export function saveGuestSession(session: GuestSession): void {
   sessionStorage.setItem(GUEST_SESSION_KEY, session.apiKey);
   sessionStorage.setItem(
     GUEST_TENANT_KEY,
     JSON.stringify({ tenantId: session.tenantId, slug: session.slug }),
   );
+  notifyGuestSessionChanged();
 }
 
 export function clearGuestSession(): void {
   sessionStorage.removeItem(GUEST_SESSION_KEY);
   sessionStorage.removeItem(GUEST_TENANT_KEY);
+  notifyGuestSessionChanged();
 }
 
 export type CustomerMe = {
