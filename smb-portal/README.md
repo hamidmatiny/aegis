@@ -30,6 +30,8 @@ Each test case uses a **fresh browser context** (no shared cookies). See `e2e/ro
 
 Refined dark navy landing (`#0a0f1a` paper) with Plus Jakarta Sans, security-blue accents, and verified-green used sparingly for trust checks. Primary CTAs use solid blue `#1d4ed8` for WCAG contrast on white label text. Favicons + `public/og-image.png` for share previews.
 
+`nginx.conf` sends `Cache-Control: no-store` for the SPA shell (`index.html`) and long immutable cache for hashed `/assets/*`. Missing asset hashes return **404** (not the HTML shell) so a stale cached `index.html` cannot load HTML-as-JS after a deploy.
+
 ## Pages
 
 | Route | Purpose |
