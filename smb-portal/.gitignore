@@ -1,6 +1,7 @@
 node_modules/
 dist/
 test-results/
+e2e/artifacts/
 playwright-report/
 blob-report/
 playwright/.cache/

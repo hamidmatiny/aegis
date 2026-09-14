@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { clearGuestSession } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useGuestSession } from "../auth/useGuestSession";
@@ -11,9 +11,13 @@ const customerLinks = [
   { to: "/billing", label: "Billing" },
 ];
 
+/** Avatar-first surfaces own their chrome; don't wrap them in the sidebar shell. */
+const ASSISTANT_PATHS = new Set(["/chat", "/walkthrough"]);
+
 export function Layout() {
   const { me, usage, logout } = useAuth();
   const guest = useGuestSession();
+  const location = useLocation();
 
   async function handleSignOut() {
     if (me?.role === "customer") {
@@ -26,6 +30,7 @@ export function Layout() {
   }
 
   const showSidebar = me?.role === "customer" || guest;
+  const assistantChrome = ASSISTANT_PATHS.has(location.pathname);
 
   if (!showSidebar) {
     return (
@@ -51,6 +56,14 @@ export function Layout() {
         <main className="page-content marketing-content">
           <Outlet />
         </main>
+      </div>
+    );
+  }
+
+  if (assistantChrome) {
+    return (
+      <div className="app-shell assistant-shell">
+        <Outlet />
       </div>
     );
   }

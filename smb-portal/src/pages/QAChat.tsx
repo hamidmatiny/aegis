@@ -1,5 +1,5 @@
-import { ChatPanel } from "../components/ChatPanel";
+import { AssistantChat } from "../components/assistant/AssistantChat";
 
 export function QAChat() {
-  return <ChatPanel />;
+  return <AssistantChat />;
 }

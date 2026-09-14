@@ -103,6 +103,35 @@ export class ApiError extends Error {
   }
 }
 
+/** Map API/network failures to short user-facing copy (never dump raw JSON). */
+export function formatApiError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status >= 500) {
+      return "Something went wrong on our side — try again in a moment.";
+    }
+    try {
+      const parsed = JSON.parse(err.body) as {
+        detail?: string | { type?: string; message?: string };
+      };
+      const detail = parsed.detail;
+      if (typeof detail === "string" && detail.trim()) return detail;
+      if (detail && typeof detail === "object") {
+        if (detail.type === "invalid_credentials") {
+          return "Incorrect email or password — try again.";
+        }
+        if (detail.message && detail.message.trim()) return detail.message;
+      }
+    } catch {
+      /* not JSON */
+    }
+    if (err.status === 401) return fallback;
+  }
+  if (err instanceof Error && err.message && !err.message.startsWith("{")) {
+    return err.message;
+  }
+  return fallback;
+}
+
 async function fetchJSON<T>(
   path: string,
   init: RequestInit = {},

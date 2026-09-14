@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useGuestSession } from "../auth/useGuestSession";
-import { ChatPanel } from "../components/ChatPanel";
+import { AssistantChat } from "../components/assistant/AssistantChat";
 
 type PaywallState = {
   message?: string;
@@ -18,29 +18,28 @@ export function WalkthroughPaywall() {
 
   if (!hasAccess) {
     return (
-      <section className="page">
-        <header className="page-hero">
-          <h1>Guided walkthrough</h1>
-          <p>
-            <Link to="/login">Sign in</Link> or{" "}
-            <Link to="/onboarding">complete guest onboarding</Link> first.
-          </p>
-        </header>
-      </section>
+      <div className="assistant-page assistant-page--narrow">
+        <section className="auth-card card">
+          <header className="auth-card-head">
+            <h1>Guided walkthrough</h1>
+            <p className="muted">
+              <Link to="/login">Sign in</Link> or{" "}
+              <Link to="/onboarding">complete guest onboarding</Link> first.
+            </p>
+          </header>
+        </section>
+      </div>
     );
   }
 
-  return (
-    <section className="page">
-      <header className="page-hero">
-        <h1>Guided walkthrough</h1>
-        <p>Paid-tier feature. Free plans receive an upgrade prompt instead of an error.</p>
-      </header>
-
-      {denied ? (
-        <div className="panel paywall">
-          <h2>Upgrade required</h2>
-          <p>{state.message}</p>
+  if (denied) {
+    return (
+      <div className="assistant-page assistant-page--narrow">
+        <section className="auth-card card paywall">
+          <header className="auth-card-head">
+            <h1>Upgrade required</h1>
+            <p>{state.message}</p>
+          </header>
           {state.question ? (
             <p className="muted">Requested for: “{state.question}”</p>
           ) : null}
@@ -58,16 +57,10 @@ export function WalkthroughPaywall() {
               View usage
             </Link>
           </div>
-        </div>
-      ) : (
-        <div className="panel">
-          <p className="muted">
-            Submit a walkthrough request. If your tenant is on the free tier, you
-            will see the upgrade prompt.
-          </p>
-          <ChatPanel walkthroughMode />
-        </div>
-      )}
-    </section>
-  );
+        </section>
+      </div>
+    );
+  }
+
+  return <AssistantChat walkthroughMode />;
 }

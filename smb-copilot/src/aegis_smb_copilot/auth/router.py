@@ -17,6 +17,7 @@ from aegis_smb_copilot.auth.schema import (
 )
 from aegis_smb_copilot.auth.sessions import (
     SESSION_COOKIE,
+    _verify_signed,
     clear_session_cookie,
     create_session,
     delete_session,
@@ -61,8 +62,6 @@ def admin_login(body: AdminLoginRequest, response: Response) -> dict[str, str]:
 def logout(request: Request, response: Response) -> dict[str, str]:
     cookie = request.cookies.get(SESSION_COOKIE)
     if cookie:
-        from aegis_smb_copilot.auth.sessions import _verify_signed
-
         token = _verify_signed(cookie)
         if token:
             delete_session(token)

@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { smbApi, type AuthMe } from "../api/client";
+import { clearGuestSession, smbApi, type AuthMe } from "../api/client";
 import type { UsageSummary } from "../api/types";
 
 type AuthState = {
@@ -55,9 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const logout = useCallback(async () => {
-    await smbApi.logout();
-    setMe({ role: "guest" });
-    setUsage(null);
+    try {
+      await smbApi.logout();
+    } finally {
+      // Always drop guest workspace keys + local role so chrome updates.
+      // HttpOnly cookie clearing still depends on a successful server logout.
+      clearGuestSession();
+      setMe({ role: "guest" });
+      setUsage(null);
+    }
   }, []);
 
   const value = useMemo(

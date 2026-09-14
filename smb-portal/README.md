@@ -30,6 +30,8 @@ Each test case uses a **fresh browser context** (no shared cookies). See `e2e/ro
 
 Refined dark navy landing (`#0a0f1a` paper) with Plus Jakarta Sans, security-blue accents, and verified-green used sparingly for trust checks. Primary CTAs use solid blue `#1d4ed8` for WCAG contrast on white label text. Favicons + `public/og-image.png` for share previews.
 
+Post-login `/chat` uses an avatar-first shell (`AegisAvatar` + composer): ambient rings/halo animate; the robot image stays still and is swappable via `/assistant/aegis-robot.png`. Attach is disabled until a backend exists; mic uses browser SpeechRecognition into the composer when available. “Sign me out” in the composer (or Account → Sign out) clears the session.
+
 `nginx.conf` sends `Cache-Control: no-store` for the SPA shell (`index.html`) and long immutable cache for hashed `/assets/*`. Missing asset hashes return **404** (not the HTML shell) so a stale cached `index.html` cannot load HTML-as-JS after a deploy.
 
 ## Pages
@@ -41,8 +43,8 @@ Refined dark navy landing (`#0a0f1a` paper) with Plus Jakarta Sans, security-blu
 | `/terms` | Terms of Use |
 | `/login` / `/register` | Customer auth |
 | `/onboarding` | Register + intake form → guest or account setup |
-| `/chat` | Free Q&A → `POST /qa/ask` with mandatory disclaimer per answer |
-| `/walkthrough` | Paid walkthrough request / upsell paywall |
+| `/chat` | Avatar-first Q&A → `POST /qa/ask` (disclaimer + CVE cites per answer) |
+| `/walkthrough` | Paid walkthrough (same avatar UI) / upsell paywall |
 | `/billing` | `GET /billing/usage` chart + visible discrepancies |
 
 Pricing shown on `/` matches live Stripe `STRIPE_PRICE_ID_STANDARD` ($29 CAD/month as of 2026-09-14). Guided walkthroughs remain a paid Standard feature.
@@ -77,3 +79,5 @@ Browser calls go to `/api/smb/*`; nginx (compose) or Vite (dev) proxies to smb-c
 
 - API key is stored in `sessionStorage` for demo convenience — not a production secret vault.
 - Walkthrough upgrade still requires an operator to flip the tenant’s policy-engine override.
+- File attach is not wired (no upload API) — button stays disabled with an honest tooltip.
+- Voice is browser dictation only (fills the question box); there is no server-side speech pipeline.

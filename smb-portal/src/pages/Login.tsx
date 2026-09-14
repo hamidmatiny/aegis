@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { smbApi } from "../api/client";
+import { formatApiError, smbApi } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { FormError } from "../components/FormError";
 
 export function Login() {
   const navigate = useNavigate();
@@ -20,19 +21,22 @@ export function Login() {
       await refresh();
       navigate("/chat");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(
+        formatApiError(err, "Incorrect email or password — try again."),
+      );
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="page">
-      <header className="page-hero">
-        <h1>Customer sign in</h1>
-        <p>Use the email and password from your SMB Copilot account.</p>
-      </header>
-      <div className="panel">
+    <section className="auth-page">
+      <div className="auth-card card">
+        <header className="auth-card-head">
+          <p className="landing-kicker">AEGIS for small business</p>
+          <h1>Sign in</h1>
+          <p className="muted">Use the email and password from your account.</p>
+        </header>
         <form className="stack form" onSubmit={handleSubmit}>
           <label className="field">
             <span>Email</span>
@@ -54,15 +58,18 @@ export function Login() {
               autoComplete="current-password"
             />
           </label>
-          {error ? <p className="error">{error}</p> : null}
-          <button type="submit" disabled={busy}>
+          <FormError
+            message={error}
+            recovery="Double-check your email, or create a new account if you haven’t registered yet."
+          />
+          <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <p className="muted">
-          No account?{" "}
-          <Link to="/register">Create one</Link> or{" "}
-          <Link to="/onboarding">continue as guest</Link>.
+        <p className="muted small auth-footer-links">
+          No account? <Link to="/register">Create one</Link>
+          {" · "}
+          <Link to="/onboarding">Continue as guest</Link>
         </p>
       </div>
     </section>
