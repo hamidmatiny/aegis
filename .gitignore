@@ -65,6 +65,14 @@ logs/
 *.key
 secrets/
 
+# Local MCP client config often embeds a live API key — never commit.
+.mcp.json
+
+# Ephemeral per-tenant policy overrides written at SMB registration / e2e.
+# Keep the checked-in demo tenant (acme) tracked; ignore everything else.
+policy-engine/policies/tenants/*/
+!policy-engine/policies/tenants/acme/
+
 # Dashboard
 dashboard/dist/
 dashboard/.next/
@@ -95,3 +103,6 @@ age-key.txt
 # material and "already covered by an unrelated-looking rule" is exactly
 # the kind of thing worth spelling out rather than leaving implicit.
 .pytest_policy_tenants/
+
+# Local editor multi-root workspaces
+*.code-workspace
