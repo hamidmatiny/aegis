@@ -14,6 +14,7 @@ import httpx
 from aegis_corp_orchestrator.config import settings
 from aegis_corp_orchestrator.db.connection import get_pool
 from aegis_corp_orchestrator.finance.mrr import get_mrr_snapshot
+from aegis_smb_session.test_accounts import SQL_TENANTS_NOT_TEST
 from aegis_harness.tool import Tool, ToolRegistry
 
 
@@ -180,11 +181,14 @@ class CorpSqlReadonlyTool(Tool):
             "SELECT count(*) FILTER (WHERE stripe_customer_id IS NOT NULL) AS with_stripe, "
             "count(*) AS customers FROM customers"
         ),
-        "tenant_tiers": "SELECT tier, count(*) AS n FROM tenants GROUP BY tier",
+        "tenant_tiers": (
+            f"SELECT tier, count(*) AS n FROM tenants "
+            f"WHERE {SQL_TENANTS_NOT_TEST} GROUP BY tier"
+        ),
         "signup_counts": (
-            "SELECT count(*) AS tenants, "
-            "count(*) FILTER (WHERE created_at >= now() - interval '7 days') AS last_7d "
-            "FROM tenants"
+            f"SELECT count(*) AS tenants, "
+            f"count(*) FILTER (WHERE created_at >= now() - interval '7 days') AS last_7d "
+            f"FROM tenants WHERE {SQL_TENANTS_NOT_TEST}"
         ),
         "agent_ops": (
             "SELECT a.department, a.team, a.status, "
@@ -598,19 +602,21 @@ class CorpReadCompanyStateTool(Tool):
 
             try:
                 out["tenant_tiers"] = _q(
-                    "SELECT tier, count(*) AS n FROM tenants GROUP BY tier ORDER BY 1"
+                    f"SELECT tier, count(*) AS n FROM tenants "
+                    f"WHERE {SQL_TENANTS_NOT_TEST} GROUP BY tier ORDER BY 1"
                 )
             except Exception as exc:  # noqa: BLE001
                 out["tenant_tiers"] = {"error": str(exc)}
 
             try:
                 out["signups"] = _q(
-                    """
+                    f"""
                     SELECT count(*) AS tenants_total,
                            count(*) FILTER (
                              WHERE created_at >= now() - interval '7 days'
                            ) AS signups_7d
                     FROM tenants
+                    WHERE {SQL_TENANTS_NOT_TEST}
                     """
                 )[0]
             except Exception as exc:  # noqa: BLE001
@@ -650,11 +656,12 @@ class CorpReadCompanyStateTool(Tool):
 
             try:
                 out["signup_history_14d"] = _q(
-                    """
+                    f"""
                     SELECT date_trunc('day', created_at)::date AS day,
                            count(*) AS signups
                     FROM tenants
                     WHERE created_at >= now() - interval '14 days'
+                      AND {SQL_TENANTS_NOT_TEST}
                     GROUP BY 1 ORDER BY 1
                     """
                 )

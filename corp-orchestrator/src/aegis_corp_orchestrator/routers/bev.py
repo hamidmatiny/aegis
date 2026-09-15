@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from aegis_corp_orchestrator.auth.session import require_read_or_admin
 from aegis_corp_orchestrator.db.connection import get_pool
 from aegis_corp_orchestrator.finance.mrr import get_mrr_snapshot
+from aegis_smb_session.test_accounts import SQL_TENANTS_NOT_TEST
 
 logger = logging.getLogger(__name__)
 
@@ -157,10 +158,11 @@ def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, An
         history: list[dict[str, Any]] = []
         try:
             rows = conn.execute(
-                """
+                f"""
                 SELECT date_trunc('day', created_at)::date AS day, count(*) AS signups
                 FROM tenants
                 WHERE created_at >= now() - interval '14 days'
+                  AND {SQL_TENANTS_NOT_TEST}
                 GROUP BY 1 ORDER BY 1
                 """
             ).fetchall()

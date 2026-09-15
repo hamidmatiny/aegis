@@ -54,7 +54,9 @@ python -m aegis_corp_orchestrator.main
 | `CORP_REPO_ROOT` | Repo root for `corp_read_repo_file` / infra checks |
 | `CORP_HEALTHZ_URL` | Health URL for web_engineering (`target=healthz`) |
 | `CORP_GITHUB_ACTIONS_URL` | Actions API URL (`target=github_actions`) |
-| `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID_STANDARD` | Live price `unit_amount` for shared MRR snapshot |
+| `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID_STANDARD` | **Live-mode** (`sk_live_*`) key + price for shared MRR snapshot — subscriptions are verified against live Stripe before counting |
+| `AEGIS_INTERNAL_ACCOUNT_EMAILS` | Optional comma-separated owner emails excluded from headline MRR/signups (set on the host; not committed) |
+| `AEGIS_FORCE_TEST_ACCOUNTS` | When `1`/`true`, all new registrations are flagged `is_test_account` (CI/e2e hosts) |
 | `CORP_INPUT_DEFENSE_URL` / `CORP_OUTPUT_DEFENSE_URL` | Red team probe targets |
 | `CORP_ORCHESTRATOR_PORT` | Default `8094` |
 

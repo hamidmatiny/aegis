@@ -108,6 +108,8 @@ without a matching signed receipt (never silently reconciled). `integrity` is
 | Variable | Purpose |
 |----------|---------|
 | `SMB_PORTAL_BASE_URL` | Portal base URL for Stripe Checkout success/cancel redirects (default `http://127.0.0.1:3001`) |
-| `STRIPE_SECRET_KEY` | Stripe secret key (server-side only) |
+| `STRIPE_SECRET_KEY` | Stripe **live** secret key (`sk_live_*`) — required for checkout and for corp MRR live-mode verification |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `STRIPE_PRICE_ID_STANDARD` | Stripe Price ID for the standard/premium subscription |
+| `AEGIS_INTERNAL_ACCOUNT_EMAILS` | Optional comma-separated owner emails flagged as non-organic at registration / metrics |
+| `AEGIS_FORCE_TEST_ACCOUNTS` | When set, all new tenants get `is_test_account=TRUE` (e2e hosts) |

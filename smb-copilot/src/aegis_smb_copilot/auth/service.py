@@ -14,6 +14,7 @@ from aegis_smb_copilot.auth.sessions import SessionData
 from aegis_smb_copilot.billing.policy_files import write_free_tier_override
 from aegis_smb_copilot.db.connection import get_pool
 from aegis_smb_copilot.tenancy.auth import generate_api_key, hash_api_key
+from aegis_smb_session.test_accounts import classify_test_account
 
 _SLUG_SANITIZE = re.compile(r"[^a-z0-9]+")
 
@@ -32,6 +33,7 @@ def register_customer(body: RegisterRequest) -> tuple[UUID, str, str, SessionDat
     password_hash = hash_password(body.password)
     api_key = generate_api_key()
     api_digest = hash_api_key(api_key)
+    is_test = classify_test_account(email=body.email, slug=slug)
 
     pool = get_pool()
     try:
@@ -39,11 +41,11 @@ def register_customer(body: RegisterRequest) -> tuple[UUID, str, str, SessionDat
             with conn.transaction():
                 tenant_row = conn.execute(
                     """
-                    INSERT INTO tenants (slug, tier, api_key_hash)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO tenants (slug, tier, api_key_hash, is_test_account)
+                    VALUES (%s, %s, %s, %s)
                     RETURNING id, slug, tier
                     """,
-                    (slug, "standard", api_digest),
+                    (slug, "standard", api_digest, is_test),
                 ).fetchone()
                 if tenant_row is None:
                     raise RuntimeError("tenant insert returned no row")

@@ -15,6 +15,7 @@ from aegis_smb_copilot.onboarding.schema import (
     RegisterResponse,
 )
 from aegis_smb_copilot.tenancy.auth import generate_api_key, hash_api_key
+from aegis_smb_session.test_accounts import classify_test_account
 
 _VERSION_RE = re.compile(
     r"(?P<name>[a-z][a-z0-9_+-]*)[ /\-_]*(?P<major>\d+)(?:\.(?P<minor>\d+))?",
@@ -65,15 +66,16 @@ def embedding_text(category: str, normalized_value: str) -> str:
 def register_tenant(slug: str, tier: str = "standard") -> RegisterResponse:
     api_key = generate_api_key()
     digest = hash_api_key(api_key)
+    is_test = classify_test_account(slug=slug)
     pool = get_pool()
     with pool.connection() as conn:
         row = conn.execute(
             """
-            INSERT INTO tenants (slug, tier, api_key_hash)
-            VALUES (%s, %s, %s)
+            INSERT INTO tenants (slug, tier, api_key_hash, is_test_account)
+            VALUES (%s, %s, %s, %s)
             RETURNING id, slug, tier
             """,
-            (slug, tier, digest),
+            (slug, tier, digest, is_test),
         ).fetchone()
     if row is None:
         raise RuntimeError("tenant insert returned no row")
