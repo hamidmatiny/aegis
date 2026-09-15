@@ -311,13 +311,13 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 
 | Component | Status | Follow-up |
 |-----------|--------|-----------|
-| **Toxicity** | Toxic-BERT + lexicon (M3: illicit synthesis, soft-refusal pivots, policy-disable completions, cookie/MFA/RFID exfil classes) | Llama Guard when ungated local weights are practical |
-| **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
-| **Hallucination** | Structural markers + future-dated / fabricated-citation health misinfo | Broader fact-checking beyond structural classes |
+| **Toxicity** | Toxic-BERT + lexicon (M4: household chlorine mixes, lockpicking/SIM-swap/bank SE coaching, gas-line sabotage, policy-disable completions, session-cookie ship, decode-execute base64) | Llama Guard when ungated local weights are practical |
+| **PII** | spaCy NER + regex (GitHub PAT / Slack bot token shapes; ZW-polluted PEM via normalize) | Expand secret-shape coverage as new token families appear |
+| **Hallucination** | Structural markers + future fabricated citations/medical claims | Broader fact-checking beyond structural classes |
 | **Backtranslation** | Router restatement + recall/identifier-weighted divergence | Grok restatement variance; vague code paraphrases that omit identifiers may still score ambiguous |
 | **Judge** | 3× router SAFE/UNSAFE vote | Structured JSON schema parsing; parallel judge calls |
-| **Detector execution** | Sequential | Parallelize when latency becomes a bottleneck |
-| **Adaptive robustness** | Held-out Adapt BR is the M3 primary metric; frozen-corpus Adapt 0/0 is not evidence of generalization | Continue reducing held-out adaptive survivors without corpus special-casing |
+| **Detector execution** | Concurrent scoring detectors + scan surfaces (judge still after fusion) | Tune concurrency under live Grok load |
+| **Adaptive robustness** | Reserved is the blind grade. Post-M4 reserved hardened R1 0/240 ⇒ Adapt **0/0** is vacuous (no R1 seeds), not proof of adaptive robustness | Need a fresh blind corpus or force-seeded adaptive eval before claiming Adapt wins |
 
 ## Swapping detector backends
 

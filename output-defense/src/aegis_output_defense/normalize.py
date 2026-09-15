@@ -76,19 +76,27 @@ def decode_base64_segments(text: str) -> list[str]:
     """Extract and decode embedded base64 blobs (mirrors input-defense heuristic)."""
     decoded: list[str] = []
     seen: set[str] = set()
-    for blob in _B64_BLOB.findall(text):
-        try:
-            padded = blob + "=" * (-len(blob) % 4)
-            raw = base64.b64decode(padded, validate=False)
-            plain = raw.decode("utf-8", errors="ignore")
-        except Exception:
-            continue
-        if not plain or plain == blob or len(plain) < 4:
-            continue
-        if plain in seen:
-            continue
-        seen.add(plain)
-        decoded.append(plain)
+
+    def _try_blobs(source: str) -> None:
+        for blob in _B64_BLOB.findall(source):
+            try:
+                padded = blob + "=" * (-len(blob) % 4)
+                raw = base64.b64decode(padded, validate=False)
+                plain = raw.decode("utf-8", errors="ignore")
+            except Exception:
+                continue
+            if not plain or plain == blob or len(plain) < 4:
+                continue
+            if plain in seen:
+                continue
+            seen.add(plain)
+            decoded.append(plain)
+
+    _try_blobs(text)
+    # Unicode/ZW pollution can break contiguous base64 runs; retry on alphabet-only.
+    filtered = "".join(ch for ch in text if ch.isalnum() or ch in "+/=")
+    if filtered != text:
+        _try_blobs(filtered)
     return decoded
 
 
@@ -119,10 +127,16 @@ def expand_scan_surfaces(content: str) -> tuple[list[str], list[str]]:
         unwrapped = strip_adversarial_wrappers(candidate)
         if unwrapped != candidate:
             add(unwrapped, "wrapper_stripped")
+            unwrapped_zw = strip_zero_width(unwrapped)
+            if unwrapped_zw != unwrapped:
+                add(unwrapped_zw, "zero_width_stripped")
         for segment in decode_base64_segments(candidate):
             add(segment, "base64_decoded")
-            inner = strip_adversarial_wrappers(segment)
-            if inner != segment:
+            segment_zw = strip_zero_width(segment)
+            if segment_zw != segment:
+                add(segment_zw, "zero_width_stripped")
+            inner = strip_adversarial_wrappers(segment_zw)
+            if inner != segment_zw:
                 add(inner, "wrapper_stripped")
 
     return surfaces, applied

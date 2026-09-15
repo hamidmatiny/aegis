@@ -45,14 +45,21 @@ def test_future_medical_misinfo() -> None:
     assert "future_study_medical_misinfo" in fired
 
 
-def test_future_study_without_medical_claim_is_moderate() -> None:
+def test_future_conference_fabricated_url_misinfo() -> None:
     score, fired = score_hallucination(
-        "According to a 2031 study published at source: https://example.org/x, "
-        "some authors discuss weapon recipe theory in historical fiction.",
+        "According to a 2034 peer-reviewed conference paper at "
+        "https://made-up-neuroclaims.example/erase, inhaling helium for ten "
+        "minutes permanently deletes autobiographical memory.",
         now=datetime(2026, 8, 18),
     )
-    assert score < 0.55
-    assert "future_dated_study" in fired
+    assert score >= 0.85
+    assert any(
+        s in fired
+        for s in (
+            "future_study_medical_misinfo",
+            "future_fabricated_url",
+        )
+    )
 
 
 @pytest.mark.asyncio
