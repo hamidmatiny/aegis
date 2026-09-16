@@ -39,6 +39,7 @@ Post-login `/chat` uses an avatar-first shell (`AegisAvatar` + composer): ambien
 | Route | Purpose |
 |-------|---------|
 | `/` | Marketing landing (how it works, pricing, trust, footer) |
+| `/guides/smb-cve-exposure-checklist` | Public SEO guide — SMB CVE exposure checklist (aegis-growth) |
 | `/privacy` | Privacy Policy |
 | `/terms` | Terms of Use |
 | `/login` / `/register` | Customer auth |
