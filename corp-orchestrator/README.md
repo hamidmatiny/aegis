@@ -82,7 +82,9 @@ curl -s http://127.0.0.1:8094/v1/agents -H "Authorization: Bearer $TOKEN"
 curl -s http://127.0.0.1:8094/v1/bev/summary -H "Authorization: Bearer $TOKEN"
 
 # Read-only briefing token (GET only — POSTs return 401)
-# /bev/summary includes mrr_snapshot from finance.get_mrr_snapshot() (live Stripe × paying tenants)
+# /bev/summary and /bev/trajectory both include mrr_snapshot from
+# finance.get_mrr_snapshot() (live Stripe × paying tenants). Trajectory's
+# report.result is narrative only — never parse MRR from that text.
 curl -s http://127.0.0.1:8094/v1/bev/summary \
   -H "Authorization: Bearer $CORP_READONLY_TOKEN"
 curl -s http://127.0.0.1:8094/v1/bev/trajectory \

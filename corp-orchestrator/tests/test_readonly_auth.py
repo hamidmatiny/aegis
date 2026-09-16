@@ -284,3 +284,37 @@ def test_bev_summary_mrr_exception_returns_null_not_500(
     assert body["mrr_snapshot"] is None
     assert body["mrr_error"] == "stripe unreachable"
     assert body["total_agents"] == 13
+
+
+def test_bev_trajectory_includes_same_mrr_snapshot_as_summary(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both BEV endpoints must expose identical live mrr_snapshot (SSOT).
+
+    Regression: consumers parsed CEO report.result narrative ($29) and treated
+    it as trajectory MRR while /bev/summary correctly returned $0 from
+    get_mrr_snapshot() — a false contradiction.
+    """
+    snap = {
+        **_DEFAULT_MRR_SNAPSHOT,
+        "paying_subscribers": 0,
+        "mrr_cents": 0,
+        "mrr_usd": 0.0,
+        "mrr_display": "$0.00 CAD",
+        "formula": "0 live-verified paying subscribers",
+    }
+    monkeypatch.setattr(bev_mod, "get_mrr_snapshot", lambda: snap)
+
+    summary = client.get("/v1/bev/summary", headers=_auth(_READONLY))
+    trajectory = client.get("/v1/bev/trajectory", headers=_auth(_READONLY))
+    assert summary.status_code == 200, summary.text
+    assert trajectory.status_code == 200, trajectory.text
+    s_body = summary.json()
+    t_body = trajectory.json()
+    assert t_body["mrr_numeric_authority"] == "mrr_snapshot"
+    assert t_body["report_is_narrative_only"] is True
+    assert s_body["mrr_snapshot"] == t_body["mrr_snapshot"]
+    assert t_body["mrr_snapshot"]["paying_subscribers"] == 0
+    assert t_body["mrr_snapshot"]["mrr_display"] == "$0.00 CAD"
+    if t_body.get("report") is not None:
+        assert t_body["report"].get("contains_authoritative_mrr") is False
