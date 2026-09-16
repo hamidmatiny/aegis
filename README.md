@@ -1,21 +1,36 @@
 # AEGIS
 
-**AI-native defense platform** for LLM applications and agentic systems — and the foundation for **AEGIS-for-SMB**, a guided security copilot for small businesses.
+**AI-native defense platform** for LLM applications and agentic systems — and the open-source foundation for **[AEGIS-for-SMB](https://defenseaegis.org)**, a guided security copilot for small businesses.
 
 AEGIS sits between your application and any LLM provider, enforcing defense-in-depth against prompt injection, jailbreaks, data exfiltration, tool/MCP abuse, and supply-chain tampering — with full tamper-evident audit trails.
 
-**Live demo:** [defenseaegis.org](https://defenseaegis.org) — no signup, no API key, runs on a mock model so it's free to poke at. Try a benign request next to a prompt-injection attempt and watch AEGIS catch the difference.
+**Live product:** [defenseaegis.org](https://defenseaegis.org) — plain-language infrastructure Q&A with curated CVE context for SMB owners. Free to start; Standard plan available on the site.  
+**Public guide:** [SMB CVE exposure checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist)
+
+```bash
+# Try the gateway locally (mock model — no paid API key required)
+./scripts/demo.sh
+```
 
 ## AEGIS-for-SMB
 
 Small businesses get the same defense primitives (policy-engine, audit receipts, CEL tenant overrides) through a self-serve product: onboarding intake, infra-memory Q&A, usage-based billing, and a paid walkthrough tier.
 
-| Product | URL | Audience |
+| Surface | URL | Audience |
 |---------|-----|----------|
-| Security gateway demo | [defenseaegis.org](https://defenseaegis.org) | Developers evaluating the platform |
-| SMB Copilot portal | [defenseaegis.org/smb](https://defenseaegis.org/smb) (when deployed) | SMB operators |
+| Live app (portal) | [defenseaegis.org](https://defenseaegis.org) | SMB operators |
+| CVE checklist (SEO) | [/guides/smb-cve-exposure-checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist) | SMB owners researching exposure |
+| Open-source platform | this repo | Developers integrating the gateway |
 
 Implementation: [`smb-copilot/`](./smb-copilot/) (FastAPI backend), [`smb-portal/`](./smb-portal/) (React customer UI). See each service README for ports, env vars, and smoke tests.
+
+## Why AEGIS
+
+- **Defense-in-depth, not a single filter** — input defense, policy-as-code (CEL), output defense, and agent-gate tool authorization in one pipeline
+- **OpenAI-compatible gateway** — drop-in `base_url` for existing SDKs
+- **Human approval for high-risk tools** — agent-gate blocks irreversible actions until a reviewer allows them
+- **Tamper-evident audit** — Ed25519-signed receipts in Postgres
+- **Built for operators** — Docker Compose deploy, dashboard, continuous red-team harness
 
 ## Architecture
 
@@ -300,6 +315,26 @@ for one-time setup, `scripts/generate-credentials.sh` for the (automatic,
 once configured) backup step, and `scripts/decrypt-credentials.sh` for
 recovery. Skipped entirely if you haven't set it up — nothing changes
 about the default flow.
+
+## Container images (GHCR)
+
+Published under [`ghcr.io/hamidmatiny`](https://github.com/hamidmatiny?tab=packages) (compose pulls `ghcr.io/hamidmatiny/aegis-*:${AEGIS_IMAGE_TAG:-latest}`):
+
+| Image | Service |
+|-------|---------|
+| `aegis-gateway` | Gateway |
+| `aegis-policy-engine` | Policy engine |
+| `aegis-model-router` | Model router |
+| `aegis-agent-gate` | Agent gate |
+| `aegis-audit` | Audit |
+| `aegis-input-defense` | Input defense |
+| `aegis-output-defense` | Output defense |
+| `aegis-redteam` | Red team |
+| `aegis-smb-copilot` | SMB Copilot API |
+| `aegis-smb-portal` | SMB portal UI |
+| `aegis-dashboard` | Ops dashboard |
+
+Local builds: `docker compose build` (see [Quick start](#quick-start)). Production Oracle deploy: [deploy/oracle/SMB-DEPLOY.md](./deploy/oracle/SMB-DEPLOY.md).
 
 ## License
 
