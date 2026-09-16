@@ -68,6 +68,8 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:3001",
         validation_alias="SMB_PORTAL_BASE_URL",
     )
+    # Same read-only corp token Growth/Analyst use — gates analytics summary when set.
+    corp_readonly_token: str = Field(default="", validation_alias="CORP_READONLY_TOKEN")
 
     @model_validator(mode="after")
     def default_walkthrough_model(self) -> Settings:

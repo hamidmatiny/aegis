@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
+import { PageMeta } from "../../components/PageMeta";
 
 /** Published by aegis-growth — SMB CVE exposure checklist (SEO guide). */
 export function SmbCveExposureChecklist() {
   return (
     <section className="page legal-page">
+      <PageMeta
+        title="How to check SMB CVE exposure — AEGIS checklist"
+        description="A plain-language checklist for small businesses: inventory what you run, match a CVE to your versions, and decide patch vs mitigate in 24–72 hours."
+        canonicalPath="/guides/smb-cve-exposure-checklist"
+      />
       <header className="page-hero">
         <h1>How to check if your small-business servers are exposed to a new CVE</h1>
         <p className="muted">

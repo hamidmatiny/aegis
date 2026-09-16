@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from aegis_smb_copilot import __version__
 from aegis_smb_copilot.admin.router import router as admin_router
+from aegis_smb_copilot.analytics.router import router as analytics_router
 from aegis_smb_copilot.auth.router import router as auth_router
 from aegis_smb_copilot.billing.router import router as billing_router
 from aegis_smb_copilot.config import settings
@@ -29,6 +30,7 @@ app.include_router(admin_router)
 app.include_router(onboarding_router)
 app.include_router(qa_router)
 app.include_router(billing_router)
+app.include_router(analytics_router)
 
 
 @app.get("/healthz")

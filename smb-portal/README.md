@@ -39,7 +39,7 @@ Post-login `/chat` uses an avatar-first shell (`AegisAvatar` + composer): ambien
 | Route | Purpose |
 |-------|---------|
 | `/` | Marketing landing (how it works, pricing, trust, footer) |
-| `/guides/smb-cve-exposure-checklist` | Public SEO guide — SMB CVE exposure checklist (aegis-growth) |
+| `/guides/smb-cve-exposure-checklist` | Public SEO guide — SMB CVE exposure checklist (aegis-growth). Build emits a route-specific HTML shell so `<title>` / canonical match the guide (not the homepage). |
 | `/privacy` | Privacy Policy |
 | `/terms` | Terms of Use |
 | `/login` / `/register` | Customer auth |
@@ -73,8 +73,10 @@ docker compose up -d --build smb-copilot smb-portal
 | Variable | Purpose |
 |----------|---------|
 | `SMB_PORTAL_PORT` | Host publish port (default `3001`) |
+| `CF_WEB_ANALYTICS_TOKEN` | Optional Cloudflare Web Analytics site token — injected into HTML at container start |
 
-Browser calls go to `/api/smb/*`; nginx (compose) or Vite (dev) proxies to smb-copilot. The tenant API key is sent as `Authorization: Bearer <key>` from session storage after onboarding.
+**Pageview analytics (Growth baseline):** the portal injects a first-party beacon to `POST /api/smb/analytics/collect`. Aggregate reads: `GET /api/smb/analytics/summary?days=7&path_prefix=/guides/` with `Authorization: Bearer $CORP_READONLY_TOKEN` (or `AEGIS_INTERNAL_TOKEN`). Prefer this over “not queryable.” Optional CF Web Analytics can be layered later via `CF_WEB_ANALYTICS_TOKEN` (dashboard token; VM is too small for self-hosted Umami).
+
 
 ## Known limitations
 
