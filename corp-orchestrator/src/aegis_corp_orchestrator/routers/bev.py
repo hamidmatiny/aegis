@@ -131,7 +131,14 @@ def bev_department(
 
 @router.get("/trajectory")
 def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, Any]:
-    """CEO latest Trajectory Report + sparse signup history for charting."""
+    """CEO latest Trajectory Report + sparse signup history for charting.
+
+    MRR / paying_subscribers always come from the same live
+    ``get_mrr_snapshot()`` helper as ``/bev/summary``. The CEO
+    ``report.result`` text is narrative only — never treat it as the
+    numeric source of truth (that class of bug produced false $29 vs $0
+    contradictions when consumers parsed the LLM report).
+    """
     pool = get_pool()
     with pool.connection() as conn:
         ceo = conn.execute(
@@ -141,12 +148,21 @@ def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, An
             """
         ).fetchone()
         if ceo is None:
-            return {
+            out_missing: dict[str, Any] = {
                 "ceo_registered": False,
                 "report": None,
                 "signup_history_14d": [],
                 "chart": {"status": "not_enough_data_yet", "points": []},
+                "mrr_numeric_authority": "mrr_snapshot",
+                "report_is_narrative_only": True,
             }
+            try:
+                out_missing["mrr_snapshot"] = get_mrr_snapshot()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("get_mrr_snapshot failed for /bev/trajectory: %s", exc)
+                out_missing["mrr_snapshot"] = None
+                out_missing["mrr_error"] = str(exc)
+            return out_missing
         task = conn.execute(
             """
             SELECT task_id, status, result, created_at, completed_at
@@ -181,11 +197,13 @@ def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, An
             "result": task[2],
             "created_at": task[3].isoformat() if task[3] else None,
             "completed_at": task[4].isoformat() if task[4] else None,
+            # Explicit so fleet monitors never treat report.result as live MRR.
+            "contains_authoritative_mrr": False,
         }
 
     chart_status = "ok" if len(history) >= 2 else "not_enough_data_yet"
     scope = ceo[5] if isinstance(ceo[5], dict) else {}
-    return {
+    out: dict[str, Any] = {
         "ceo_registered": True,
         "agent_id": str(ceo[0]),
         "agent_status": ceo[1],
@@ -196,4 +214,14 @@ def bev_trajectory(_admin: Any = Depends(require_read_or_admin)) -> dict[str, An
         "report": report,
         "signup_history_14d": history,
         "chart": {"status": chart_status, "points": history, "metric": "signups"},
+        "mrr_numeric_authority": "mrr_snapshot",
+        "report_is_narrative_only": True,
     }
+    # Same SSOT as /bev/summary — never a second counting path.
+    try:
+        out["mrr_snapshot"] = get_mrr_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("get_mrr_snapshot failed for /bev/trajectory: %s", exc)
+        out["mrr_snapshot"] = None
+        out["mrr_error"] = str(exc)
+    return out
