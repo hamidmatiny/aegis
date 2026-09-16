@@ -16,6 +16,7 @@ import { QAChat } from "./pages/QAChat";
 import { Register } from "./pages/Register";
 import { Terms } from "./pages/Terms";
 import { WalkthroughPaywall } from "./pages/WalkthroughPaywall";
+import { SmbCveExposureChecklist } from "./pages/guides/SmbCveExposureChecklist";
 
 export default function App() {
   return (
@@ -48,6 +49,10 @@ export default function App() {
           />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
+          <Route
+            path="guides/smb-cve-exposure-checklist"
+            element={<SmbCveExposureChecklist />}
+          />
           <Route path="onboarding" element={<Onboarding />} />
           <Route element={<CustomerGuard />}>
             <Route path="chat" element={<QAChat />} />

@@ -207,6 +207,7 @@ export function Landing() {
           <nav className="footer-nav" aria-label="Footer">
             <a href="#how-it-works">How it works</a>
             <a href="#pricing">Pricing</a>
+            <Link to="/guides/smb-cve-exposure-checklist">Guides</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
             <a
