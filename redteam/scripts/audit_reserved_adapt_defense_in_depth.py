@@ -12,7 +12,6 @@ and tool_rules in policy-engine/policies/default.yaml.
 from __future__ import annotations
 
 import json
-import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -187,7 +186,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(2)
-    rows = [json.loads(l) for l in path.read_text().splitlines() if l]
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line]
     if args.expect_n is not None and len(rows) != args.expect_n:
         raise SystemExit(f"expected {args.expect_n} rows, got {len(rows)}")
 
