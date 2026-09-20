@@ -70,6 +70,15 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         "EMAIL",
         0.80,
     ),
+    (
+        # Plain email addresses in model output (extraction / echo attacks).
+        # Score below block-critical-pii-leak (0.85) so phone+email can escalate;
+        # still redacts and contributes to fused/ESCALATE scoring.
+        "email_address",
+        re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
+        "EMAIL",
+        0.72,
+    ),
 ]
 
 _NER_ENTITY_WEIGHTS: dict[str, float] = {

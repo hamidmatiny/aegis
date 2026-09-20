@@ -46,6 +46,17 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         "Fake system message injection",
     ),
     (
+        "system_override_banner",
+        re.compile(
+            r"\bsystem\s+override\b|"
+            r"previous\s+system\s+message\s+is\s+revoked|"
+            r"ignore\s+all\s+safety\s+(policies|filters|rules)",
+            re.I,
+        ),
+        0.90,
+        "Explicit system-override / safety-policy bypass banner",
+    ),
+    (
         "prompt_leak",
         re.compile(
             r"(print|show|reveal|dump|output|export)\s+.{0,30}"

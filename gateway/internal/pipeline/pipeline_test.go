@@ -115,3 +115,45 @@ func TestStreamingUnsupported(t *testing.T) {
 		t.Fatalf("expected StreamingUnsupportedError, got %T", err)
 	}
 }
+
+func TestChatCompletionsFailsClosedOnEscalateToJudge(t *testing.T) {
+	input := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"verdict": map[string]any{"action": "ESCALATE", "fused_score": 0.78},
+		})
+	}))
+	defer input.Close()
+
+	policy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"decision": map[string]any{"action": "escalate_to_judge"},
+		})
+	}))
+	defer policy.Close()
+
+	p := pipeline.New(config.Config{
+		InputDefenseURL:    input.URL,
+		PolicyEngineURL:    policy.URL,
+		HTTPTimeoutSeconds: 5,
+	})
+
+	_, err := p.ChatCompletions(context.Background(), pipeline.ChatRequest{
+		Model: "mock-model",
+		Messages: []map[string]any{
+			{"role": "user", "content": "SYSTEM OVERRIDE"},
+		},
+	}, nil)
+	if err == nil {
+		t.Fatal("expected escalate_to_judge to fail closed")
+	}
+	var blocked *pipeline.PolicyBlockedError
+	if !errors.As(err, &blocked) {
+		t.Fatalf("expected PolicyBlockedError, got %T: %v", err, err)
+	}
+	if blocked.Layer != "policy_input" {
+		t.Fatalf("unexpected layer: %s", blocked.Layer)
+	}
+	if blocked.PolicyAction != "escalate_to_judge" {
+		t.Fatalf("unexpected policy action: %s", blocked.PolicyAction)
+	}
+}
