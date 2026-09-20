@@ -3,34 +3,33 @@ import { Link } from "react-router-dom";
 const STEPS = [
   {
     n: "1",
-    title: "Tell us what you run",
-    body: "Describe your stack in plain language — databases, cloud, auth — during setup. We use that inventory to ground later answers.",
+    title: "Point your app at the gateway",
+    body: "Drop-in OpenAI-compatible base URL between your application and any LLM provider — no rewrite of your existing SDK calls.",
   },
   {
     n: "2",
-    title: "Ask in plain English",
-    body: "Questions like “should I expose Postgres to the internet?” get answers tied to what you said you run, not generic IT blog posts.",
+    title: "Enforce policy as code",
+    body: "CEL policies classify every tool call into LOW / MEDIUM / HIGH / IRREVERSIBLE. High-risk actions wait for a human before they run.",
   },
   {
     n: "3",
-    title: "Get answers with CVE context",
-    body: "When a match exists in our curated vulnerability reference for your stack, we surface severity and a short summary next to the answer.",
+    title: "Keep a tamper-evident trail",
+    body: "Every decision is recorded with Ed25519-signed audit receipts in Postgres — so you can prove what was allowed, blocked, or escalated.",
   },
 ];
 
 const FEATURES = [
   {
-    title: "Infrastructure Q&A",
-    body: "Plain-language questions about your setup. Answers are grounded in the inventory you provide — not one-size-fits-all advice.",
+    title: "Policy-as-code (CEL)",
+    body: "Tenant overrides and risk tiers live in CEL — not buried in prompt text. Same engine AEGIS uses for its own governed agent loops.",
   },
   {
-    title: "CVE matching",
-    body: "We match what you run against a curated vulnerability reference for common SMB stack components (not a live full-NVD feed). Relevant hits appear beside answers when they exist.",
+    title: "Human gate for high-risk tools",
+    body: "Agent-gate blocks irreversible or credential-touching tool calls until a reviewer allows them. Defense against tool/MCP abuse, not just prompt injection.",
   },
   {
-    title: "Guided walkthroughs",
-    body: "Paid plan ($29 CAD/mo): longer, step-by-step remediation guidance for a specific issue. Free accounts get Q&A; walkthroughs unlock after upgrade.",
-    badge: "Paid",
+    title: "Tamper-evident audit",
+    body: "Ed25519-signed receipts for allow / deny / escalate decisions. Built for operators who need evidence, not vibes.",
   },
 ];
 
@@ -39,28 +38,38 @@ export function Landing() {
     <div className="landing">
       <section className="landing-hero" aria-labelledby="landing-hero-title">
         <div className="landing-hero-copy">
-          <p className="landing-kicker">AEGIS for small business</p>
+          <p className="landing-kicker">LLM security gateway</p>
           <h1 id="landing-hero-title">
-            Security guidance for owners — not security engineers
+            Enforce policy between your app and any LLM
           </h1>
           <p className="lead">
-            Tell us what you run. Ask in plain English. Get answers tied to your
-            actual infrastructure, with honest vulnerability context when we have
-            a match.
+            AEGIS is an open-source enforcer/gateway: CEL policy-as-code, human
+            approval for high-risk tool calls, and Ed25519 audit trails — sitting
+            between your application and whatever model provider you use.
           </p>
           <div className="landing-cta-row">
-            <Link className="btn-primary btn-lg" to="/register">
-              Sign up — free to start
-            </Link>
+            <a
+              className="btn-primary btn-lg"
+              href="https://github.com/hamidmatiny/aegis"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View on GitHub
+            </a>
             <Link className="btn-secondary btn-lg" to="/login">
               Sign in
             </Link>
           </div>
           <p className="guest-link">
-            Prefer to try first?{" "}
-            <Link to="/onboarding" className="guest-secondary">
-              Continue as guest
-            </Link>
+            Self-host the gateway:{" "}
+            <a
+              href="https://github.com/hamidmatiny/aegis#readme"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="guest-secondary"
+            >
+              clone and run <code>./scripts/demo.sh</code>
+            </a>
           </p>
         </div>
         <div className="landing-hero-visual" aria-hidden="false">
@@ -70,7 +79,9 @@ export function Landing() {
 
       <section id="how-it-works" className="landing-section" aria-labelledby="how-title">
         <h2 id="how-title">How it works</h2>
-        <p className="section-lead">Three steps. No security degree required.</p>
+        <p className="section-lead">
+          Application → gateway → provider. Policy and audit on every hop.
+        </p>
         <ol className="how-steps">
           {STEPS.map((s) => (
             <li key={s.n} className="how-step">
@@ -93,9 +104,6 @@ export function Landing() {
             <article key={f.title} className="card feature-card">
               <div className="feature-card-head">
                 <h3>{f.title}</h3>
-                {"badge" in f && f.badge ? (
-                  <span className="plan-pill feature-badge">{f.badge}</span>
-                ) : null}
               </div>
               <p>{f.body}</p>
             </article>
@@ -103,10 +111,49 @@ export function Landing() {
         </div>
       </section>
 
-      <section id="pricing" className="landing-section" aria-labelledby="pricing-title">
-        <h2 id="pricing-title">Simple pricing</h2>
+      <section
+        id="applied-example"
+        className="landing-section"
+        aria-labelledby="applied-title"
+      >
+        <h2 id="applied-title">Applied example on this stack</h2>
         <p className="section-lead">
-          Stripe billing. Cancel anytime from the billing portal after upgrade.
+          defenseaegis.org also hosts an advisory Q&amp;A surface built on the
+          same policy and audit primitives — not the core product.
+        </p>
+        <div className="feature-grid">
+          <article className="card feature-card">
+            <div className="feature-card-head">
+              <h3>Infrastructure Q&amp;A</h3>
+            </div>
+            <p>
+              Plain-language questions grounded in an inventory you provide.
+              Answers are advisory only — they do not change your systems.
+            </p>
+          </article>
+          <article className="card feature-card">
+            <div className="feature-card-head">
+              <h3>Guided walkthroughs</h3>
+              <span className="plan-pill feature-badge">Optional</span>
+            </div>
+            <p>
+              Longer step-by-step remediation guidance ($29 CAD/mo). Same audit
+              trail; still advisory — not autonomous action-taking.
+            </p>
+          </article>
+        </div>
+        <div className="landing-cta-row" style={{ marginTop: "1.25rem" }}>
+          <Link className="btn-secondary" to="/register">
+            Try the Q&amp;A example — free to start
+          </Link>
+        </div>
+      </section>
+
+      <section id="pricing" className="landing-section" aria-labelledby="pricing-title">
+        <h2 id="pricing-title">Q&amp;A example pricing</h2>
+        <p className="section-lead">
+          Pricing below is for the hosted advisory Q&amp;A surface only. The
+          enforcer/gateway is open source — self-host from GitHub.
         </p>
         <div className="pricing-grid">
           <article className="card pricing-card">
@@ -116,7 +163,7 @@ export function Landing() {
             </p>
             <ul className="price-list">
               <li>Infrastructure inventory setup</li>
-              <li>Plain-language Q&amp;A</li>
+              <li>Plain-language advisory Q&amp;A</li>
               <li>Curated CVE matches when available</li>
             </ul>
             <Link className="btn-secondary" to="/register">
@@ -131,7 +178,7 @@ export function Landing() {
             </p>
             <ul className="price-list">
               <li>Everything in Free</li>
-              <li>Guided walkthroughs (step-by-step remediation)</li>
+              <li>Guided walkthroughs (step-by-step, advisory)</li>
               <li>Stronger walkthrough model when enabled</li>
             </ul>
             <Link className="btn-primary" to="/register">
@@ -150,8 +197,9 @@ export function Landing() {
                 ✓
               </span>
               <span>
-                We store the infrastructure inventory and questions you submit so
-                answers can stay grounded in your setup.
+                Self-hosted gateway traffic stays on your infrastructure. The
+                hosted Q&amp;A example stores the inventory and questions you
+                submit so answers stay grounded.
               </span>
             </li>
             <li>
@@ -168,9 +216,9 @@ export function Landing() {
                 ✓
               </span>
               <span>
-                Answers are advisory only. They do not change your systems.
-                Usage is recorded with an Ed25519-signed audit trail on the AEGIS
-                stack.
+                Q&amp;A answers are advisory only. They do not change your
+                systems. Gateway allow/deny decisions and Q&amp;A usage are
+                recorded with an Ed25519-signed audit trail.
               </span>
             </li>
           </ul>
@@ -184,9 +232,9 @@ export function Landing() {
       <section className="landing-section landing-oss" aria-labelledby="oss-title">
         <h2 id="oss-title">Open foundation</h2>
         <p>
-          Built on the same open AEGIS policy engine (CEL) and audit primitives as
-          our LLM-defense platform — packaged for teams without a dedicated
-          security staff.
+          AEGIS is open source — CEL policy engine, agent-gate, input/output
+          defense, and audit primitives under one monorepo. Comparable category:
+          LLM Guard / Rebuff / Vigil-class defenses, with tool-call governance.
         </p>
         <a
           className="btn-secondary"
@@ -202,10 +250,13 @@ export function Landing() {
         <div className="landing-footer-grid">
           <div>
             <p className="footer-brand">AEGIS</p>
-            <p className="muted small">Security guidance for small-business owners.</p>
+            <p className="muted small">
+              LLM security gateway — policy, audit, human gate.
+            </p>
           </div>
           <nav className="footer-nav" aria-label="Footer">
             <a href="#how-it-works">How it works</a>
+            <a href="#applied-example">Q&amp;A example</a>
             <a href="#pricing">Pricing</a>
             <Link to="/guides/smb-cve-exposure-checklist">Guides</Link>
             <Link to="/privacy">Privacy</Link>
@@ -221,8 +272,9 @@ export function Landing() {
           </nav>
         </div>
         <p className="muted small footer-copy">
-          © {new Date().getFullYear()} AEGIS. Advisory security guidance — not a
-          substitute for a security assessment.
+          © {new Date().getFullYear()} AEGIS. Enforcer/gateway is open source;
+          hosted Q&amp;A is advisory — not a substitute for a security
+          assessment.
         </p>
       </footer>
     </div>
@@ -233,36 +285,39 @@ function ProductPreview() {
   return (
     <figure className="product-preview">
       <figcaption className="product-preview-caption">
-        Product preview — Q&amp;A as it appears after setup
+        Gateway path — app → AEGIS → provider
       </figcaption>
       <div className="product-preview-frame">
         <div className="product-preview-chrome">
           <span />
           <span />
           <span />
-          <strong>Q&amp;A</strong>
+          <strong>agent-gate</strong>
         </div>
         <div className="product-preview-body">
           <div className="bubble user">
-            <p className="bubble-label">You</p>
-            <p>We run Postgres on a VPS. Should it be reachable from the public internet?</p>
+            <p className="bubble-label">Tool call</p>
+            <p>
+              <code className="mono">shell.exec</code> —{" "}
+              <code className="mono">rm -rf /data/prod</code>
+            </p>
           </div>
           <div className="bubble assistant">
             <p className="bubble-label">AEGIS</p>
             <p>
-              Prefer private networking or a firewall allow-list. Exposing Postgres
-              on 0.0.0.0:5432 is a common SMB misconfiguration — lock it down unless
-              you have a specific, monitored need.
+              Risk <strong>IRREVERSIBLE</strong>. Policy requires human approval
+              before execution. Request held — no side effects until a reviewer
+              allows.
             </p>
             <ul className="cve-list">
               <li>
-                <strong className="mono">GENERIC-ADVISORY-POSTGRES-EXPOSE</strong>{" "}
-                [high] on postgres: Prefer not exposing the database port publicly.
+                <strong className="mono">AUDIT</strong> Ed25519 receipt queued ·
+                decision=pending_approval
               </li>
             </ul>
             <p className="disclaimer muted small">
-              Advisory only — verify against your environment before changing
-              production.
+              Defense-in-depth: input defense → CEL → model router → output
+              defense → agent-gate → audit.
             </p>
           </div>
         </div>

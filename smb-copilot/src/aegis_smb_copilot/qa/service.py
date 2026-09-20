@@ -36,16 +36,19 @@ def ask(tenant_id: UUID, question: str, *, walkthrough: bool = False) -> AskResp
     ]
     if walkthrough:
         system = (
-            "You are AEGIS SMB Copilot providing a paid guided walkthrough. "
-            "Produce a numbered, step-by-step plan using only the provided "
-            "infrastructure profile and CVE notes. Do not claim to have applied "
-            "changes or run tools. Be concrete and practical."
+            "You are AEGIS's advisory walkthrough assistant — an applied example "
+            "on top of the AEGIS LLM security gateway (policy, audit, human gate), "
+            "not an autonomous agent. Produce a numbered, step-by-step plan using "
+            "only the provided infrastructure profile and CVE notes. Do not claim "
+            "to have applied changes or run tools. Be concrete and practical."
         )
     else:
         system = (
-            "You are AEGIS SMB Copilot, a free-tier advisory assistant for small businesses. "
-            "Answer only from the provided infrastructure profile and CVE notes. "
-            "Do not claim to have applied changes or run tools. Be concise and practical."
+            "You are AEGIS's free-tier advisory Q&A assistant — an applied example "
+            "on top of the AEGIS LLM security gateway (policy, audit, human gate), "
+            "not an autonomous agent or full product pitch. Answer only from the "
+            "provided infrastructure profile and CVE notes. Do not claim to have "
+            "applied changes or run tools. Be concise and practical."
         )
     user = (
         f"Question:\n{question.strip()}\n\n"
