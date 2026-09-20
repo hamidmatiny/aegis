@@ -72,7 +72,7 @@ export function Layout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <BrandMark to="/chat" subtitle="SMB Copilot" />
+          <BrandMark to="/chat" subtitle="Advisory Q&A" />
         </div>
         <nav className="sidebar-nav">
           {customerLinks.map((link) => (

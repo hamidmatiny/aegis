@@ -62,11 +62,11 @@ export function Onboarding() {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>{isCustomer ? "Tell us about your setup" : "Get started as a guest"}</h1>
+        <h1>{isCustomer ? "Describe your infrastructure" : "Try the Q&A example as a guest"}</h1>
         <p className="page-subtitle">
           {isCustomer
-            ? "A few quick questions about what you run today. No technical jargon required — honest answers (or “I'm not sure”) help us give better guidance."
-            : "Try AEGIS without creating an account. You'll get a temporary workspace in this browser only."}
+            ? "A short inventory so the hosted advisory Q&A (an applied example on the AEGIS gateway stack) can ground answers in what you actually run — not a product pitch for autonomous action."
+            : "Try the hosted advisory Q&A without an account. Temporary workspace stays in this browser only. The open-source enforcer/gateway is separate on GitHub."}
         </p>
       </header>
 
@@ -74,8 +74,8 @@ export function Onboarding() {
         <div className="card">
           <h2 className="card-title">Choose a workspace name</h2>
           <p className="card-desc">
-            This is just a short label for your trial — like a nickname for your business.
-            Use lowercase letters, numbers, and hyphens only.
+            A short label for this trial workspace. Use lowercase letters, numbers,
+            and hyphens only.
           </p>
           <form className="stack form" onSubmit={handleRegister}>
             <label className="field">
@@ -83,14 +83,14 @@ export function Onboarding() {
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="acme-bakery"
+                placeholder="acme-ops"
                 pattern="^[a-z0-9][a-z0-9\-]*$"
                 minLength={2}
                 maxLength={64}
                 required
               />
               <p className="field-example">
-                <strong>Example:</strong> joes-plumbing or main-street-cafe
+                <strong>Example:</strong> staging-lab or prod-inventory
               </p>
             </label>
             {error ? <p className="error">{error}</p> : null}
@@ -116,10 +116,11 @@ export function Onboarding() {
           ) : null}
 
           <div className="card">
-            <h2 className="card-title">What does your business run on?</h2>
+            <h2 className="card-title">What does this environment run on?</h2>
             <p className="card-desc">
-              We ask about databases, hosting, and logins so answers and CVE alerts match
-              your real environment — not a generic checklist.
+              Databases, hosting, and auth so advisory answers and CVE matches
+              ground in your inventory — not a generic checklist. Answers stay
+              advisory; nothing here changes your systems.
             </p>
             <IntakeForm busy={busy} onSubmit={handleIntake} />
             {profileSaved ? (

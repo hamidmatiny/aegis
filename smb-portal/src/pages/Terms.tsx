@@ -5,12 +5,13 @@ export function Terms() {
     <section className="page legal-page">
       <header className="page-hero">
         <h1>Terms of Use</h1>
-        <p className="muted">Last updated: 2026-09-14 · Applies to defenseaegis.org (AEGIS SMB Copilot)</p>
+        <p className="muted">Last updated: 2026-09-20 · Applies to defenseaegis.org (AEGIS)</p>
       </header>
       <div className="panel stack legal-body">
         <p>
-          By using AEGIS SMB Copilot you agree to these terms. If you do not agree,
-          do not use the service.
+          By using the defenseaegis.org hosted services (including the advisory
+          Q&amp;A example) you agree to these terms. If you do not agree, do not
+          use the service. The open-source gateway is separately licensed on GitHub.
         </p>
         <h2>Advisory only</h2>
         <p>

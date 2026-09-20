@@ -33,9 +33,12 @@ export function Login() {
     <section className="auth-page">
       <div className="auth-card card">
         <header className="auth-card-head">
-          <p className="landing-kicker">AEGIS for small business</p>
+          <p className="landing-kicker">LLM security gateway</p>
           <h1>Sign in</h1>
-          <p className="muted">Use the email and password from your account.</p>
+          <p className="muted">
+            Sign in to the hosted advisory Q&amp;A example on this stack — or
+            self-host the gateway from GitHub.
+          </p>
         </header>
         <form className="stack form" onSubmit={handleSubmit}>
           <label className="field">

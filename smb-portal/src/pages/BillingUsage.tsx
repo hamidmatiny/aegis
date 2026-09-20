@@ -74,8 +74,8 @@ export function BillingUsage() {
               <h2 className="plan-name">{isPaid ? "Premium" : "Free"}</h2>
               <p className="plan-desc">
                 {isPaid
-                  ? "Guided walkthroughs and higher token limits are active."
-                  : "Upgrade for guided walkthroughs and higher token limits."}
+                  ? "Guided walkthroughs (advisory Q&A example) and higher token limits are active."
+                  : "Free plan covers advisory Q&A on this stack. Upgrade for guided walkthroughs."}
               </p>
             </div>
             {isPaid ? (

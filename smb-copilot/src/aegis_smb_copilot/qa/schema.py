@@ -10,8 +10,9 @@ from aegis_smb_copilot.qa.cve_match import CVEMatch
 
 # Product-liability control: always present, never empty.
 QA_DISCLAIMER = (
-    "This is automated advisory guidance from AEGIS SMB Copilot, not a guaranteed "
-    "fix or professional security assessment. Production-impacting changes should "
+    "This is automated advisory guidance from AEGIS's hosted Q&A example "
+    "(built on the LLM security gateway stack), not a guaranteed fix or "
+    "professional security assessment. Production-impacting changes should "
     "be reviewed and approved by a qualified professional before implementation."
 )
 

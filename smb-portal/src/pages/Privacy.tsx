@@ -5,12 +5,13 @@ export function Privacy() {
     <section className="page legal-page">
       <header className="page-hero">
         <h1>Privacy Policy</h1>
-        <p className="muted">Last updated: 2026-09-14 · Applies to defenseaegis.org (AEGIS SMB Copilot)</p>
+        <p className="muted">Last updated: 2026-09-20 · Applies to defenseaegis.org (AEGIS)</p>
       </header>
       <div className="panel stack legal-body">
         <p>
-          AEGIS SMB Copilot helps small-business owners ask infrastructure security
-          questions. This policy describes what we collect for that product.
+          AEGIS is an open-source LLM security gateway. defenseaegis.org also hosts
+          an advisory Q&amp;A surface as an applied example on the same stack. This
+          policy describes what we collect for that hosted site.
         </p>
         <h2>What we collect</h2>
         <ul>
