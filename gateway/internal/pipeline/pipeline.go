@@ -407,10 +407,22 @@ func checkOutputVerdict(verdict map[string]any, upstream map[string]any) error {
 
 func checkPolicyDecision(decision map[string]any, layer string, upstream map[string]any) error {
 	action, _ := decision["action"].(string)
-	if action == "block" {
+	// Fail closed on escalate_to_judge for chat completions: there is no
+	// wired human/LLM judge on this path today. Treating escalate as allow
+	// silently bypassed real attacks (live audit 2026-09-20: SYSTEM OVERRIDE
+	// injection scored known_answer 0.95 / fused ~0.78 → escalate → 200 OK).
+	// Tool-call approvals use ApprovalRequiredError separately.
+	if action == "block" || action == "escalate_to_judge" {
 		reason, _ := decision["block_reason"].(string)
 		if reason == "" {
-			reason = fmt.Sprintf("Blocked by policy (%s)", layer)
+			if action == "escalate_to_judge" {
+				reason = fmt.Sprintf(
+					"Policy escalate_to_judge on %s — blocked fail-closed (no chat judge wired)",
+					layer,
+				)
+			} else {
+				reason = fmt.Sprintf("Blocked by policy (%s)", layer)
+			}
 		}
 		details := map[string]any{"policy_decision": decision}
 		for k, v := range upstream {

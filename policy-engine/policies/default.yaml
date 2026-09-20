@@ -1,6 +1,6 @@
 # Default policy pack for AEGIS
 id: default
-version: "0.3.0"
+version: "0.3.1"
 tenant_id: default
 description: Baseline CEL policy pack — input, output, and tool rules
 
@@ -27,6 +27,14 @@ input_rules:
   - id: block-heuristic-critical
     name: Block when heuristic detector is highly confident
     cel: "input_verdict.detector_scores.exists(d, d.detector_id == 'heuristic' && d.score >= 0.85)"
+    action: block
+    enabled: true
+
+  # known_answer can fire hard on override/hijack phrasing while heuristic stays
+  # near-zero (live audit 2026-09-20: SYSTEM OVERRIDE → known_answer 0.95).
+  - id: block-known-answer-critical
+    name: Block when known-answer hijack probe is highly confident
+    cel: "input_verdict.detector_scores.exists(d, d.detector_id == 'known_answer' && d.score >= 0.85)"
     action: block
     enabled: true
 
