@@ -41,10 +41,11 @@ export function Register() {
     <section className="auth-page">
       <div className="auth-card card">
         <header className="auth-card-head">
-          <p className="landing-kicker">AEGIS for small business</p>
+          <p className="landing-kicker">LLM security gateway</p>
           <h1>Create account</h1>
           <p className="muted">
-            Free to start. You can describe your setup next.
+            Free to try the hosted advisory Q&amp;A example. You can describe
+            your infrastructure next — the open-source gateway stays on GitHub.
           </p>
         </header>
         <form className="stack form" onSubmit={handleSubmit}>
@@ -74,7 +75,7 @@ export function Register() {
             <input
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="acme-smb"
+              placeholder="acme-ops"
               pattern="^[a-z0-9][a-z0-9\-]*$"
             />
             <p className="field-example">
