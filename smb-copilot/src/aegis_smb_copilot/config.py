@@ -43,13 +43,13 @@ class Settings(BaseSettings):
         validation_alias="SMB_CHAT_MODEL_WALKTHROUGH",
         description="Paid walkthrough model; falls back to SMB_CHAT_MODEL when unset.",
     )
-    qa_max_tokens_free: int = Field(default=500, validation_alias="SMB_QA_MAX_TOKENS_FREE")
+    qa_max_tokens_free: int = Field(default=800, validation_alias="SMB_QA_MAX_TOKENS_FREE")
     qa_max_tokens_walkthrough: int = Field(
         default=1200,
         validation_alias="SMB_QA_MAX_TOKENS_WALKTHROUGH",
     )
     qa_top_k: int = Field(default=5, validation_alias="SMB_QA_TOP_K")
-    qa_rate_limit: int = Field(default=5, validation_alias="SMB_QA_RATE_LIMIT")
+    qa_rate_limit: int = Field(default=20, validation_alias="SMB_QA_RATE_LIMIT")
     qa_rate_window_sec: int = Field(default=60, validation_alias="SMB_QA_RATE_WINDOW_SEC")
     host: str = Field(default="0.0.0.0", validation_alias="SMB_COPILOT_HOST")
     port: int = Field(default=8093, validation_alias="SMB_COPILOT_PORT")

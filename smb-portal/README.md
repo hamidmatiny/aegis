@@ -75,7 +75,7 @@ docker compose up -d --build smb-copilot smb-portal
 | `SMB_PORTAL_PORT` | Host publish port (default `3001`) |
 | `CF_WEB_ANALYTICS_TOKEN` | Optional Cloudflare Web Analytics site token — injected into HTML at container start |
 
-**Pageview analytics (Growth baseline):** the portal injects a first-party beacon to `POST /api/smb/analytics/collect`. Aggregate reads: `GET /api/smb/analytics/summary?days=7&path_prefix=/guides/` with `Authorization: Bearer $CORP_READONLY_TOKEN` (or `AEGIS_INTERNAL_TOKEN`). Prefer this over “not queryable.” Optional CF Web Analytics can be layered later via `CF_WEB_ANALYTICS_TOKEN` (dashboard token; VM is too small for self-hosted Umami).
+**Pageview + funnel analytics (Growth baseline):** the portal injects a first-party beacon to `POST /api/smb/analytics/collect` on hard HTML loads, and the React app posts SPA `pageview` + funnel-stage events (`signup_started`, `walkthrough_viewed`, `upgrade_viewed`, …). Server also emits `signup_completed`, `inventory_saved`, `qa_asked`, `cve_match_shown`, `upgrade_started`, `upgrade_completed`. Aggregate reads: `GET /api/smb/analytics/summary?days=7` with `Authorization: Bearer $CORP_READONLY_TOKEN` — response includes `by_path` pageviews **and** a `funnel.stages[]` block with counts + `conversion_from_previous`. Optional CF Web Analytics via `CF_WEB_ANALYTICS_TOKEN`.
 
 
 ## Known limitations

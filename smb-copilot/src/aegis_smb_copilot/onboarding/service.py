@@ -31,6 +31,12 @@ _KNOWN_ALIASES: dict[str, str] = {
     "gke": "gke",
     "eks": "eks",
     "aks": "aks",
+    "digitalocean-droplets": "digitalocean",
+    "digitalocean-droplet": "digitalocean",
+    "do": "digitalocean",
+    "m365": "microsoft-365",
+    "office365": "microsoft-365",
+    "office-365": "microsoft-365",
 }
 
 
@@ -47,12 +53,21 @@ def normalize_pair(category: str, value: str) -> tuple[str, str]:
         name = _KNOWN_ALIASES.get(name, name)
         major = match.group("major")
         minor = match.group("minor")
+        # "Microsoft 365" → name=microsoft, major=365 (not a product semver).
+        if name in {"microsoft", "office"} and major == "365":
+            return cat, "microsoft-365"
         if minor is not None:
             return cat, f"{name}-{major}.{minor}.x"
         return cat, f"{name}-{major}.x"
 
     token = re.sub(r"[^a-z0-9.+_-]+", "-", raw).strip("-")
     token = _KNOWN_ALIASES.get(token, token)
+    # Collapse common multi-token cloud phrases without a semver.
+    if token.startswith("digitalocean"):
+        token = "digitalocean"
+    if token in {"microsoft-365.x", "office-365.x"} or token.startswith("microsoft-365"):
+        # Version regex may produce microsoft-365.x from "Microsoft 365".
+        pass
     if not token:
         raise ValueError(f"could not normalize value for category={cat!r}")
     return cat, token

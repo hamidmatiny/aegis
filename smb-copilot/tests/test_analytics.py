@@ -40,3 +40,24 @@ def test_collect_and_summary(monkeypatch):
     body = ok.json()
     assert body["total_views"] >= 1
     assert any(p["path"] == "/guides/smb-cve-exposure-checklist" for p in body["by_path"])
+    assert "funnel" in body
+    assert "stages" in body["funnel"]
+
+    funnel_evt = client.post(
+        "/analytics/collect",
+        json={
+            "path": "/register",
+            "event": "signup_started",
+            "session_id": "test-session-1",
+            "title": "Create account",
+        },
+    )
+    assert funnel_evt.status_code == 200
+
+    summary2 = client.get(
+        "/analytics/summary?days=7",
+        headers={"Authorization": "Bearer test-corp-ro"},
+    )
+    assert summary2.status_code == 200
+    stages = {s["event"]: s["count"] for s in summary2.json()["funnel"]["stages"]}
+    assert stages.get("signup_started", 0) >= 1
