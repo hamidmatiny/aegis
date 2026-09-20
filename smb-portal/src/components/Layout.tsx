@@ -33,8 +33,9 @@ export function Layout() {
   const assistantChrome = ASSISTANT_PATHS.has(location.pathname);
 
   if (!showSidebar) {
+    const onLanding = location.pathname === "/";
     return (
-      <div className="app-shell marketing-shell">
+      <div className={`app-shell marketing-shell${onLanding ? " marketing-shell-lp" : ""}`}>
         <header className="marketing-header">
           <BrandMark to="/" />
           <nav className="marketing-nav" aria-label="Primary">
