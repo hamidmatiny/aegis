@@ -1,10 +1,10 @@
 # AEGIS
 
-**AI-native defense platform** for LLM applications and agentic systems — and the open-source foundation for **[AEGIS-for-SMB](https://defenseaegis.org)**, a guided security copilot for small businesses.
+**AI-native LLM security gateway / enforcer** for applications and agentic systems — policy-as-code (CEL), human approval for high-risk tool calls, and tamper-evident Ed25519 audit trails between your app and any LLM provider.
 
 AEGIS sits between your application and any LLM provider, enforcing defense-in-depth against prompt injection, jailbreaks, data exfiltration, tool/MCP abuse, and supply-chain tampering — with full tamper-evident audit trails.
 
-**Live product:** [defenseaegis.org](https://defenseaegis.org) — plain-language infrastructure Q&A with curated CVE context for SMB owners. Free to start; Standard plan available on the site.  
+**Live site:** [defenseaegis.org](https://defenseaegis.org) — gateway-first landing; hosted advisory Q&A is an applied example on the same stack, not the headline product.  
 **Public guide:** [SMB CVE exposure checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist)
 
 ```bash
@@ -12,14 +12,14 @@ AEGIS sits between your application and any LLM provider, enforcing defense-in-d
 ./scripts/demo.sh
 ```
 
-## AEGIS-for-SMB
+## Applied example: hosted advisory Q&A
 
-Small businesses get the same defense primitives (policy-engine, audit receipts, CEL tenant overrides) through a self-serve product: onboarding intake, infra-memory Q&A, usage-based billing, and a paid walkthrough tier.
+defenseaegis.org also hosts an advisory infrastructure Q&A surface (inventory + plain-language answers + curated CVE context; optional paid walkthroughs). That path is **secondary** — built on the same policy and audit primitives. Autonomous action-taking / “digital employee” marketing stays shelved until a real competence bar passes.
 
 | Surface | URL | Audience |
 |---------|-----|----------|
-| Live app (portal) | [defenseaegis.org](https://defenseaegis.org) | SMB operators |
-| CVE checklist (SEO) | [/guides/smb-cve-exposure-checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist) | SMB owners researching exposure |
+| Live site (gateway landing + Q&A example) | [defenseaegis.org](https://defenseaegis.org) | Operators evaluating the gateway; optional Q&A trial |
+| CVE checklist (SEO) | [/guides/smb-cve-exposure-checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist) | Teams researching exposure |
 | Open-source platform | this repo | Developers integrating the gateway |
 
 Implementation: [`smb-copilot/`](./smb-copilot/) (FastAPI backend), [`smb-portal/`](./smb-portal/) (React customer UI). See each service README for ports, env vars, and smoke tests.
