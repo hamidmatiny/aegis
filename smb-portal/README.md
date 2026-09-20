@@ -28,7 +28,15 @@ Each test case uses a **fresh browser context** (no shared cookies). See `e2e/ro
 
 ## Brand
 
-Refined dark navy landing (`#0a0f1a` paper) with Plus Jakarta Sans, security-blue accents, and verified-green used sparingly for trust checks. Primary CTAs use solid blue `#1d4ed8` for WCAG contrast on white label text. Favicons + `public/og-image.png` for share previews.
+Marketing landing (`/`) uses the persisted AEGIS design system in
+`../design-system/aegis/MASTER.md` (navy `#0F172A`, CTA `#0369A1`, canvas
+`#F8FAFC`, IBM Plex Sans) with a navy hero band and light body. The central
+**How it works** block is the interception demo (App → AEGIS → Provider, four
+scenarios, try-it-yourself against `POST /v1/chat/completions`). Evidence
+screenshots: `../docs/landing-redesign/`.
+
+In-product Q&A chrome stays dark navy with Plus Jakarta Sans; primary CTAs use
+solid blue for contrast. Favicons + `public/og-image.png` for share previews.
 
 Post-login `/chat` uses an avatar-first shell (`AegisAvatar` + composer): ambient rings/halo animate; the robot image stays still and is swappable via `/assistant/aegis-robot.png`. Attach is disabled until a backend exists; mic uses browser SpeechRecognition into the composer when available. “Sign me out” in the composer (or Account → Sign out) clears the session.
 
@@ -38,7 +46,7 @@ Post-login `/chat` uses an avatar-first shell (`AegisAvatar` + composer): ambien
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Marketing landing (how it works, pricing, trust, footer) |
+| `/` | Marketing landing — hero, proof strip, interception how-it-works, features, pricing, trust, footer |
 | `/guides/smb-cve-exposure-checklist` | Public SEO guide — SMB CVE exposure checklist (aegis-growth). Build emits a route-specific HTML shell so `<title>` / canonical match the guide (not the homepage). |
 | `/privacy` | Privacy Policy |
 | `/terms` | Terms of Use |
