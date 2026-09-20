@@ -1,0 +1,59 @@
+name: Arm auto-merge
+
+# Arms GitHub auto-merge (squash) once a PR is ready for the branch-protection
+# gate: required CI checks + CodeRabbit approval. Does not force-merge.
+# If CodeRabbit has requested changes, GitHub will not complete auto-merge.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  arm:
+    if: github.event.pull_request.draft != true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request == null)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm squash auto-merge when eligible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Resolve PR number from event payload
+          PR="${{ github.event.pull_request.number }}"
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            # check_suite / review events — find open PRs for the head SHA
+            SHA="${{ github.event.check_suite.head_sha || github.event.review.commit_id || github.sha }}"
+            PR=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty' || true)
+          fi
+          if [ -z "${PR:-}" ]; then
+            echo "No PR to arm; exiting."
+            exit 0
+          fi
+          BASE=$(gh pr view "$PR" --json baseRefName -q .baseRefName)
+          DRAFT=$(gh pr view "$PR" --json isDraft -q .isDraft)
+          if [ "$BASE" != "main" ] || [ "$DRAFT" = "true" ]; then
+            echo "Skip PR #$PR (base=$BASE draft=$DRAFT)"
+            exit 0
+          fi
+          # Fail closed if CodeRabbit has an unresolved CHANGES_REQUESTED on HEAD
+          STATE=$(gh api "repos/${{ github.repository }}/pulls/$PR/reviews" \
+            --jq '[.[] | select(.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai")] | sort_by(.submitted_at) | last | .state // "NONE"')
+          echo "Latest CodeRabbit review state: $STATE"
+          if [ "$STATE" = "CHANGES_REQUESTED" ]; then
+            echo "CodeRabbit requested changes — not arming auto-merge."
+            exit 0
+          fi
+          # Arm auto-merge (no-op if already armed / not mergeable yet)
+          gh pr merge "$PR" --auto --squash || {
+            echo "Could not arm auto-merge yet (checks/reviews pending is OK)."
+            exit 0
+          }
+          echo "Auto-merge armed for PR #$PR"

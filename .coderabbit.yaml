@@ -1,0 +1,18 @@
+# language: yaml
+# CodeRabbit — Track A (aegis) review gate for auto-merge.
+# Install the GitHub App if missing: https://github.com/apps/coderabbitai
+# With request_changes_workflow enabled, CodeRabbit submits APPROVED /
+# CHANGES_REQUESTED reviews that satisfy branch protection's required review.
+
+reviews:
+  profile: chill
+  request_changes_workflow: true
+  high_level_summary: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+chat:
+  auto_reply: true
