@@ -158,6 +158,13 @@ def handle_checkout_session_completed(session: dict[str, object]) -> None:
     )
     if tier != "premium":
         set_tenant_tier(tenant_id, "paid")
+    from aegis_smb_copilot.analytics.funnel import emit_funnel_event
+
+    emit_funnel_event(
+        "upgrade_completed",
+        path="/billing",
+        meta={"tenant_id": str(tenant_id)},
+    )
     logger.info("tenant %s upgraded to paid via Stripe checkout", tenant_id)
 
 

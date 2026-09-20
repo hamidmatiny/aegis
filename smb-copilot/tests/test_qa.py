@@ -153,6 +153,21 @@ def test_cve_match_flags_seeded_postgres() -> None:
     assert all(h.matched_value in {"postgres-16.2.x"} for h in hits)
 
 
+def test_cve_match_expands_minor_to_major_parent() -> None:
+    """Intake stores postgres-14.5.x; curated seed has postgres-14.x — must still hit."""
+    from aegis_smb_copilot.qa.cve_match import candidate_patterns
+
+    assert "postgres-14.x" in candidate_patterns("postgres-14.5.x")
+    hits = match_cves(["postgres-14.5.x"])
+    assert any(h.cve_id == "CVE-2023-39417" for h in hits)
+    assert all(h.matched_value == "postgres-14.5.x" for h in hits)
+
+
+def test_cve_match_aliases_digitalocean_droplets() -> None:
+    hits = match_cves(["digitalocean-droplets"])
+    assert any(h.cve_id == "GENERIC-ADVISORY-DROPLET" for h in hits)
+
+
 @patch("aegis_smb_copilot.qa.retrieval.embed_texts", side_effect=_fake_embed)
 @patch("aegis_smb_copilot.onboarding.service.embed_texts", side_effect=_fake_embed)
 def test_retrieval_scoped_to_tenant(_e1: object, _e2: object) -> None:

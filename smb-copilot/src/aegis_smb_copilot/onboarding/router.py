@@ -21,21 +21,37 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 def register(body: RegisterRequest) -> RegisterResponse:
     """Create a tenant and issue an API key (returned once)."""
     try:
-        return register_tenant(slug=body.slug, tier=body.tier)
+        resp = register_tenant(slug=body.slug, tier=body.tier)
     except UniqueViolation:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"type": "slug_taken", "message": f"slug {body.slug!r} is already registered"},
         ) from None
+    from aegis_smb_copilot.analytics.funnel import emit_funnel_event
+
+    emit_funnel_event(
+        "signup_completed",
+        path="/onboarding",
+        meta={"slug": resp.slug, "channel": "guest"},
+    )
+    return resp
 
 
 @router.post("/intake", response_model=InfraProfile)
 def intake(body: IntakeRequest, tenant_id: TenantId) -> InfraProfile:
     """Capture normalized infra profile rows for the authenticated tenant."""
     try:
-        return store_intake(tenant_id, body.answers)
+        profile = store_intake(tenant_id, body.answers)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"type": "normalization_error", "message": str(exc)},
         ) from exc
+    from aegis_smb_copilot.analytics.funnel import emit_funnel_event
+
+    emit_funnel_event(
+        "inventory_saved",
+        path="/onboarding",
+        meta={"item_count": len(profile.items)},
+    )
+    return profile

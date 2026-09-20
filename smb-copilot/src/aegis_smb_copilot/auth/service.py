@@ -72,6 +72,13 @@ def register_customer(body: RegisterRequest) -> tuple[UUID, str, str, SessionDat
 
     write_free_tier_override(out_slug)
     session = SessionData(role="customer", tenant_id=str(tenant_id), email=body.email)
+    from aegis_smb_copilot.analytics.funnel import emit_funnel_event
+
+    emit_funnel_event(
+        "signup_completed",
+        path="/register",
+        meta={"slug": out_slug, "channel": "email"},
+    )
     return tenant_id if isinstance(tenant_id, UUID) else UUID(str(tenant_id)), out_slug, api_key, session
 
 

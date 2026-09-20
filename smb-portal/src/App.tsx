@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { trackFunnel } from "./analytics/funnel";
 import { AuthProvider } from "./auth/AuthContext";
 import { AdminGuard, CustomerGuard, GuestOnly } from "./auth/RouteGuards";
 import { AdminLayout } from "./components/AdminLayout";
@@ -18,9 +20,22 @@ import { Terms } from "./pages/Terms";
 import { WalkthroughPaywall } from "./pages/WalkthroughPaywall";
 import { SmbCveExposureChecklist } from "./pages/guides/SmbCveExposureChecklist";
 
+function FunnelTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    const path = location.pathname;
+    trackFunnel("pageview", { path });
+    if (path === "/register") trackFunnel("signup_started", { path });
+    if (path === "/walkthrough") trackFunnel("walkthrough_viewed", { path });
+    if (path === "/billing") trackFunnel("upgrade_viewed", { path });
+  }, [location.pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
+      <FunnelTracker />
       <Routes>
         <Route element={<Layout />}>
           <Route

@@ -95,6 +95,13 @@ def start_checkout(tenant_id: TenantId) -> CheckoutResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"type": "stripe_not_configured", "message": str(exc)},
         ) from exc
+    from aegis_smb_copilot.analytics.funnel import emit_funnel_event
+
+    emit_funnel_event(
+        "upgrade_started",
+        path="/billing",
+        meta={"tenant_id": str(tenant_id)},
+    )
     return CheckoutResponse(checkout_url=url)
 
 
