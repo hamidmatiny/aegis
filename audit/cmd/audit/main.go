@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -71,10 +72,15 @@ func main() {
 
 	svc := service.New(st, sg)
 	mux := http.NewServeMux()
-	api.NewServer(svc).Register(mux)
+	keysURI := strings.TrimSpace(os.Getenv("AEGIS_AUDIT_KEYS_URI"))
+	api.NewServer(svc).WithKeysURI(keysURI).Register(mux)
 
+	publicKeys := auth.ParsePublicKeysFlag(os.Getenv(auth.EnvPublicKeys))
 	var handler http.Handler = mux
-	handler = auth.Middleware(internalToken)(handler)
+	handler = auth.Middleware(internalToken, publicKeys)(handler)
+	if publicKeys {
+		logger.Info("audit public key publication enabled", "env", auth.EnvPublicKeys)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + port,

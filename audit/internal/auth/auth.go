@@ -18,6 +18,11 @@ import (
 // EnvToken is the environment variable holding the shared internal token.
 const EnvToken = "AEGIS_INTERNAL_TOKEN"
 
+// EnvPublicKeys enables unauthenticated GET access to JWKS / key export
+// routes when set to a truthy value ("1", "true", "yes"). Off by default —
+// operators must opt in to external offline verification (#63).
+const EnvPublicKeys = "AEGIS_AUDIT_PUBLIC_KEYS"
+
 // exemptPaths never require the internal token: liveness/readiness probes
 // must stay reachable for container orchestration health checks.
 var exemptPaths = map[string]struct{}{
@@ -26,14 +31,17 @@ var exemptPaths = map[string]struct{}{
 }
 
 // Middleware enforces the shared internal token on every request except
-// exemptPaths. token must be non-empty — callers should refuse to start
-// the server at all if AEGIS_INTERNAL_TOKEN is unset (see main.go) rather
-// than fall back to an ephemeral per-process token, since that would
-// desync every other service's copy of the same shared secret.
-func Middleware(token string) func(http.Handler) http.Handler {
+// exemptPaths (and, when publicKeys is true, JWKS / key publication routes).
+// token must be non-empty — callers should refuse to start the server at
+// all if AEGIS_INTERNAL_TOKEN is unset (see main.go).
+func Middleware(token string, publicKeys bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, exempt := exemptPaths[r.URL.Path]; exempt {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if publicKeys && isPublicKeyPath(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -43,6 +51,24 @@ func Middleware(token string) func(http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// isPublicKeyPath reports JWKS / key-export discovery surfaces.
+func isPublicKeyPath(path string) bool {
+	if path == "/v1/keys" || path == "/.well-known/jwks.json" {
+		return true
+	}
+	return strings.HasPrefix(path, "/v1/keys/")
+}
+
+// ParsePublicKeysFlag interprets AEGIS_AUDIT_PUBLIC_KEYS.
+func ParsePublicKeysFlag(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }
 
