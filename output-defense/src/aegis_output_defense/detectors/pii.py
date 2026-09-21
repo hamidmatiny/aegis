@@ -6,7 +6,11 @@ import time
 from typing import Literal
 
 from aegis_output_defense.detectors.base import Detector, DetectorContext
-from aegis_output_defense.detectors.pii_scan import scan_ner, scan_regex
+from aegis_output_defense.detectors.pii_scan import (
+    apply_prompt_aware_secret_heuristics,
+    scan_ner,
+    scan_regex,
+)
 from aegis_output_defense.fusion import detection_threshold
 from aegis_output_defense.models import DetectorResult
 from aegis_output_defense.provenance import (
@@ -40,7 +44,11 @@ class PIIDetector(Detector):
     async def analyze(self, content: str, context: DetectorContext | None = None) -> DetectorResult:
         start = time.perf_counter()
         thresh = detection_threshold()
+        original_prompt = context.original_prompt if context else None
         regex_result = scan_regex(content)
+        regex_result = apply_prompt_aware_secret_heuristics(
+            content, original_prompt=original_prompt, base=regex_result
+        )
         matches = list(regex_result.matches)
         max_score = regex_result.score
         redacted = regex_result.redacted_text

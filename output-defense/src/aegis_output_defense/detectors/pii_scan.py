@@ -5,6 +5,17 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+# Secret-shaped env keys (novel-04 / config dumps). Keep list focused — generic
+# UPPER=value alone is too noisy for benign code samples.
+_ENV_SECRET_KEY = (
+    r"(?:(?:OPENAI|ANTHROPIC|GROK|XAI|AWS|AZURE|GCP|STRIPE|GITHUB|DATABASE|DB|REDIS|"
+    r"POSTGRES|MYSQL|MONGO|SMTP|MAIL|JWT|SESSION|AUTH|API|SECRET|ACCESS|PRIVATE|"
+    r"ENCRYPTION|SIGNING|WEBHOOK|SLACK|DISCORD|TWILIO|SENDGRID|CLOUDFLARE)"
+    r"[_-]?[\w-]{0,40}|"
+    r"(?:API|SECRET|ACCESS|PRIVATE|AUTH|SESSION|ENCRYPTION|SIGNING)[_-]?(?:KEY|TOKEN|PASSWORD|PASS|SECRET|CREDENTIAL)s?|"
+    r"DATABASE_URL|REDIS_URL|CONNECTION_STRING|DSN|PASSWORD|PASSWD|PWD|TOKEN|CREDENTIALS?)"
+)
+
 # (name, pattern, replacement label, score weight)
 PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "SSN", 0.90),
@@ -22,6 +33,25 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         re.compile(r"(?i)(api[_-]?key|secret[_-]?key|access[_-]?token)\s*[:=]\s*['\"]?\S+"),
         "SECRET",
         0.90,
+    ),
+    (
+        # Single env-style assignment with a secret-shaped key (KEY=VALUE / export KEY=...).
+        # Closes novel-04 when the model emits a .env template or live config dump.
+        "env_assignment",
+        re.compile(
+            rf"(?im)^(?:export\s+)?{_ENV_SECRET_KEY}\s*=\s*\S+",
+        ),
+        "ENV_SECRET",
+        0.90,
+    ),
+    (
+        # Multi-line .env / dotenv dump (≥2 UPPER_SNAKE assignments), including placeholders.
+        "env_file_dump",
+        re.compile(
+            r"(?m)(?:^[A-Z][A-Z0-9_]{2,}\s*=\s*\S+[^\n]*\n){1,}[A-Z][A-Z0-9_]{2,}\s*=\s*\S+",
+        ),
+        "ENV_FILE",
+        0.92,
     ),
     ("private_key", re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "PRIVATE_KEY", 0.98),
     (
@@ -81,6 +111,38 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
     ),
 ]
 
+# Input asked to enumerate live secrets / credentials (pii-03 social-eng probe).
+_SECRET_REQUEST_PROMPT = re.compile(
+    r"(?i)(?:\b(?:list|show|reveal|dump|print|give|provide|share|tell)\b.{"
+    r"0,80}\b(?:secrets?|api\s*keys?|passwords?|credentials?|tokens?)\b|"
+    r"\b(?:secrets?|api\s*keys?|passwords?|credentials?)\b.{0,60}\b(?:"
+    r"stored|configuration|system\s+context|env(?:ironment)?|\.env)\b)",
+)
+
+# Input asked for a .env / live-environment config dump (novel-04 framing).
+_ENV_EXFIL_PROMPT = re.compile(
+    r"(?i)(?:\.env|dotenv|env(?:ironment)?\s+configuration).{0,80}"
+    r"(?:this\s+(?:assistant|environment|system)|running\s+in|matches?\s+the\s+"
+    r"environment|your\s+(?:current\s+)?(?:environment|config|configuration)|"
+    r"system\s+context)",
+)
+
+_OUTPUT_SECRET_KEYWORDS = re.compile(
+    r"(?i)\b(?:secrets?|api\s*keys?|passwords?|credentials?|access\s*tokens?)\b",
+)
+
+_OUTPUT_ENV_KEYWORDS = re.compile(
+    r"(?i)(?:\.env|dotenv|\benv(?:ironment)?\s+configuration\b|"
+    r"\bconfiguration\s+file\b|\benvironment\s+this\s+assistant\b)",
+)
+
+_CLEAR_REFUSAL = re.compile(
+    r"(?i)\b(?:i\s+(?:can'?t|cannot|won'?t|am\s+not\s+able|will\s+not)|"
+    r"i'?m\s+(?:not\s+able|unable)|unable\s+to|not\s+able\s+to|"
+    r"against\s+(?:my|the)\s+(?:guidelines|policies)|"
+    r"cannot\s+(?:share|reveal|provide|list|dump))\b",
+)
+
 _NER_ENTITY_WEIGHTS: dict[str, float] = {
     "PERSON": 0.72,
     "GPE": 0.58,
@@ -88,6 +150,74 @@ _NER_ENTITY_WEIGHTS: dict[str, float] = {
     "FAC": 0.60,
     "DATE": 0.42,
 }
+
+# Prompt-conditioned boosts — hit block-critical-pii-leak (≥0.85).
+_SECRET_REQUEST_COMPLIANCE_SCORE = 0.88
+_ENV_EXFIL_COMPLIANCE_SCORE = 0.88
+
+
+def prompt_requests_secrets(prompt: str | None) -> bool:
+    """True when the user asked to list/reveal live secrets or credentials."""
+    return bool(prompt and _SECRET_REQUEST_PROMPT.search(prompt))
+
+
+def prompt_requests_env_dump(prompt: str | None) -> bool:
+    """True when the user asked for a .env matching this assistant/environment."""
+    return bool(prompt and _ENV_EXFIL_PROMPT.search(prompt))
+
+
+def apply_prompt_aware_secret_heuristics(
+    content: str,
+    *,
+    original_prompt: str | None,
+    base: PIIScanResult,
+) -> PIIScanResult:
+    """Tighten output checks when the input asked for secrets or a live .env dump.
+
+    pii-03: secret-request prompt + non-refusal output that still talks about
+    secrets/API keys/passwords (including mock echo of the ask).
+    novel-04: env-exfil prompt + non-refusal output that discusses .env / this
+    environment (echo or compliance), in addition to KEY=VALUE regex hits.
+    """
+    if not original_prompt:
+        return base
+
+    matches = list(base.matches)
+    max_score = base.score
+    redacted = base.redacted_text
+    refused = bool(_CLEAR_REFUSAL.search(content))
+
+    if prompt_requests_secrets(original_prompt) and _OUTPUT_SECRET_KEYWORDS.search(content):
+        # Allow a clean refusal with no credential payload; block echo/comply.
+        has_payload = any(
+            name in matches
+            for name in (
+                "env_assignment",
+                "env_file_dump",
+                "api_key_openai",
+                "api_key_aws",
+                "api_key_generic",
+                "email_credential",
+                "private_key",
+                "jwt",
+            )
+        )
+        if has_payload or not refused:
+            if "secret_request_compliance" not in matches:
+                matches.append("secret_request_compliance")
+            max_score = max(max_score, _SECRET_REQUEST_COMPLIANCE_SCORE)
+
+    if prompt_requests_env_dump(original_prompt) and _OUTPUT_ENV_KEYWORDS.search(content):
+        has_env_payload = "env_assignment" in matches or "env_file_dump" in matches
+        if has_env_payload or not refused:
+            if "env_exfil_compliance" not in matches:
+                matches.append("env_exfil_compliance")
+            max_score = max(max_score, _ENV_EXFIL_COMPLIANCE_SCORE)
+
+    if matches == base.matches and max_score == base.score:
+        return base
+    return PIIScanResult(score=min(max_score, 1.0), matches=matches, redacted_text=redacted)
+
 
 _LEAK_CONTEXT = re.compile(
     r"(?i)(contact|address|leaked|patient|record|name is|my name|here is|your name|"
