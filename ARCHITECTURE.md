@@ -83,7 +83,7 @@ Analyzes model responses before they reach the application.
 | Detector | Purpose |
 |----------|---------|
 | Toxicity/safety classifier | Harmful content (Toxic-BERT + **framing-aware instructional harm lexicon**; stub optional) |
-| PII/secret detector + redactor | Regex credentials + identity-dossier boost + context-gated spaCy NER |
+| PII/secret detector + redactor | Regex credentials + `.env`/KEY=VALUE dumps + prompt-aware secret/env-exfil compliance + identity-dossier boost + context-gated spaCy NER |
 | Backtranslation consistency | model-router restatement divergence (stub optional) |
 | **Hallucination** | Structural falsehoods, contradictions, fabricated citations |
 | LLM-judge ensemble | 3× model-router judges on ambiguous band **or suspicious normalization** (stub optional) |

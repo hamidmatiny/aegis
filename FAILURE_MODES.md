@@ -34,8 +34,20 @@ on disk is not live until restart or a successful `/v1/reload`.**
 | Audit service is unavailable or rejects a receipt | Input/output defense await the write and log a warning; policy-engine and agent-gate emit asynchronously and log a warning. The underlying decision and request are not blocked. | The decision may have no durable signed receipt. Restore audit service and investigate warning logs; do not infer that a missing receipt means a request was allowed. |
 | Optional output-defense router judge is unavailable | Each unavailable judge produces an `ESCALATE` vote when the pre-fused score is at least `0.45`, otherwise an `ALLOW` vote. | Below that threshold, the unavailable judge alone does not block output. Other detectors and output policy still run. |
 | Optional output-defense backtranslation router is unavailable or yields a mock echo | The detector uses its local stub fallback and records the execution backend and fallback reason in detector metadata. | Detection quality can differ from the router-backed detector; monitor the returned metadata and restore the router-backed path. |
-| Input/output policy returns `transform` or `escalate_to_judge` | The gateway stops only on `block`; these actions complete the request path. | They are not enforcement actions in the gateway today. Production packs must use `block` for any condition that must stop a response. |
+| Input/output policy returns `transform` | The Go gateway does **not** stop on `transform`; the request continues (possibly with redacted content). | Use `block` (or `escalate_to_judge`, which is fail-closed — see below) for any condition that must stop a response. |
 | Tool policy returns an action other than `block` or `escalate_to_judge` | Agent-gate maps it to `APPROVED`, including `transform` or an unrecognized action value. | Policy packs are trusted configuration. Do not use those actions for tool rules; action validation and a default-deny mapping remain an open hardening item. |
+
+## Chat `escalate_to_judge` — intentional fail-closed (PR #78)
+
+**Decision (authoritative for the Go gateway):** when input or output policy returns `escalate_to_judge` on `POST /v1/chat/completions`, the gateway **blocks** with HTTP 403 `aegis_policy_blocked` (`checkPolicyDecision` in `gateway/internal/pipeline/pipeline.go`). There is no wired human/LLM chat judge on this path today; treating escalate as allow was a live bypass (2026-09-20 audit).
+
+| Surface | Behavior |
+|---|---|
+| Go gateway chat path | **Fail-closed** on `escalate_to_judge` (required) |
+| Agent-gate tool approvals | Separate `ApprovalRequiredError` path — not this rule |
+| Python/TS SDK embedded pipelines | Still stop only on policy `block` today — do not treat SDK behavior as production |
+
+**Do not reverse this silently.** Wiring a real chat judge later requires an explicit PR that (1) documents fail-open vs fail-closed per surface, (2) adds a named config switch if fail-open is ever offered, and (3) re-tests cases that today only stay safe because escalate fails closed (e.g. mid-band novel injection / PII escalate rules). Tracked as a backlog item — not part of the output secret-exfil heuristic patch.
 
 ## Enforcement invariants
 

@@ -108,6 +108,11 @@ docker compose up -d --build gateway input-defense output-defense policy-engine 
 ./scripts/e2e-sdk.sh
 ```
 
+## Policy enforcement notes
+
+- Chat path **fails closed** on policy action `escalate_to_judge` (same as `block`) — see `FAILURE_MODES.md` § Chat `escalate_to_judge`. This is intentional until a real chat judge is wired; do not flip to fail-open without an explicit config + review.
+- `transform` does not stop the request.
+
 ## Known limitations
 
 | Gap | Status |
@@ -116,3 +121,4 @@ docker compose up -d --build gateway input-defense output-defense policy-engine 
 | OpenTelemetry on hot path | Planned |
 | Audit receipt emission from gateway | Downstream services emit; gateway does not yet aggregate |
 | Connection pooling / HTTP/2 | Single shared `http.Client` per process |
+| Named config for escalate fail-closed vs fail-open | Behavior is hard-coded fail-closed today; explicit setting tracked as backlog |
