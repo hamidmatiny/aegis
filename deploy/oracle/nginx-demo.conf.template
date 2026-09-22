@@ -59,12 +59,10 @@ server {
         proxy_pass http://audit:8084/.well-known/jwks.json;
     }
 
-    location = /v1/keys {
-        proxy_pass http://audit:8084/v1/keys;
-    }
-
-    location ~ ^/v1/keys/([^/]+)$ {
-        proxy_pass http://audit:8084/v1/keys/$1;
+    # Prefix match so /v1/keys and /v1/keys/{id} both pass through.
+    # No URI and no variables: nginx resolves audit at startup.
+    location /v1/keys {
+        proxy_pass http://audit:8084;
     }
 
     # Canary token redirects are generated from deploy/oracle/canary-config.yml.
