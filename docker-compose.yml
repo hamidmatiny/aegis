@@ -201,6 +201,9 @@ services:
       # rotation stay verifiable -- empty until the first rotation. See
       # scripts/generate-credentials.sh, which maintains this on rotation.
       AEGIS_AUDIT_SIGNING_KEYS_HISTORY: ${AEGIS_AUDIT_SIGNING_KEYS_HISTORY:-}
+      # Off unless the operator opts in. The Oracle demo overlay defaults this on.
+      AEGIS_AUDIT_PUBLIC_KEYS: ${AEGIS_AUDIT_PUBLIC_KEYS:-false}
+      AEGIS_AUDIT_KEYS_URI: ${AEGIS_AUDIT_KEYS_URI:-}
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
     depends_on:
       postgres:

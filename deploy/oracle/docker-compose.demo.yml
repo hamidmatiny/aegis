@@ -47,6 +47,10 @@ services:
     restart: unless-stopped
   audit:
     restart: unless-stopped
+    environment:
+      # Public key discovery for the live demo. Public keys only; receipts stay authenticated.
+      AEGIS_AUDIT_PUBLIC_KEYS: ${AEGIS_AUDIT_PUBLIC_KEYS:-true}
+      AEGIS_AUDIT_KEYS_URI: ${AEGIS_AUDIT_KEYS_URI:-https://defenseaegis.org/.well-known/jwks.json}
   postgres:
     restart: unless-stopped
   redis:
