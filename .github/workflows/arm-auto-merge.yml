@@ -1,8 +1,8 @@
 name: Arm auto-merge
 
-# Arms GitHub auto-merge (squash) once a PR is ready for the branch-protection
-# gate: required CI checks + CodeRabbit approval. Does not force-merge.
-# If CodeRabbit has requested changes, GitHub will not complete auto-merge.
+# Arms GitHub auto-merge (squash) only when CodeRabbit's latest review state
+# is APPROVED. NONE, COMMENTED, CHANGES_REQUESTED, and any other state do not
+# arm. Does not force-merge; required CI checks still have to pass first.
 
 on:
   pull_request:
@@ -46,11 +46,11 @@ jobs:
             exit 0
           fi
 
-          STATE=$(gh api "repos/${REPO}/pulls/${PR}/reviews" \
-            --jq '[.[] | select(.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai")] | sort_by(.submitted_at) | last | .state // "NONE"')
+          STATE=$(gh api --paginate --slurp "repos/${REPO}/pulls/${PR}/reviews" \
+            --jq '[.[][] | select(.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai")] | sort_by(.submitted_at) | last | .state // "NONE"')
           echo "Latest CodeRabbit review state: $STATE"
-          if [ "$STATE" = "CHANGES_REQUESTED" ]; then
-            echo "CodeRabbit requested changes — not arming auto-merge."
+          if [ "$STATE" != "APPROVED" ]; then
+            echo "CodeRabbit has not approved — not arming auto-merge."
             exit 0
           fi
 
