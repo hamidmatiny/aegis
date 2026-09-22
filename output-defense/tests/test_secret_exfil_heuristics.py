@@ -160,6 +160,9 @@ def test_code_credential_prompts_match_and_generic_tutorial_does_not() -> None:
     assert not prompt_requests_code_credentials(
         "How do I set an Authorization header in a Python requests example?"
     )
+    assert not prompt_requests_code_credentials(
+        "Write a Python client tutorial for this assistant service"
+    )
 
 
 @pytest.mark.asyncio

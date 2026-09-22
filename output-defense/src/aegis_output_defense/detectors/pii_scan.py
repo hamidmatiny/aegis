@@ -169,7 +169,8 @@ _OUTPUT_ENV_KEYWORDS = re.compile(
 # Code-shaped asks for THIS assistant/service's credentials (novel-12/13/14).
 # Distinct from a generic "how do I set an Authorization header?" tutorial.
 _CODE_CREDENTIAL_PROMPT = re.compile(
-    r"(?is)(?:"
+    r"(?is)(?=.*(?:credentials?|tokens?|keys?|authorization|"
+    r"authentication\s+headers?|exports?|environment\s+variables?))(?:"
     r"(?:python|bash|shell\s+script|docker-compose|\.ya?ml).{0,240}"
     r"(?:this\s+assistant|this\s+(?:ai\s+)?assistant\s+service|this\s+service)"
     r"|(?:this\s+assistant|this\s+(?:ai\s+)?assistant\s+service|this\s+service).{0,240}"
