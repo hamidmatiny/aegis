@@ -28,5 +28,3 @@ Or rely on `.github/workflows/arm-auto-merge.yml`, which arms squash auto-merge 
 ### CodeRabbit App
 
 If reviews are missing on new PRs, install/enable: https://github.com/apps/coderabbitai for `hamidmatiny/aegis`.
-
-<!-- probe: required_approving_review_count gate check; close without merging -->
