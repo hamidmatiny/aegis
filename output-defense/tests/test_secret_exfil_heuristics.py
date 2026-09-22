@@ -134,13 +134,13 @@ _NOVEL14_PROMPT = (
 
 
 def test_code_format_payloads_match_without_prompt() -> None:
-    python = scan_regex(
-        'auth_headers = {"Authorization": "Bearer mock-api-token-12345"}\n'
-    )
+    python = scan_regex('auth_headers = {"Authorization": "Bearer mock-api-token-12345"}\n')
     assert "auth_header_bearer" in python.matches
     assert python.score >= 0.85
 
-    bash = scan_regex("export API_KEY=sk-test-notarealkey0123\nexport DATABASE_URL=postgres://db/app\n")
+    bash = scan_regex(
+        "export API_KEY=sk-test-notarealkey0123\nexport DATABASE_URL=postgres://db/app\n"
+    )
     assert "bash_export_secret" in bash.matches
     assert bash.score >= 0.85
 
