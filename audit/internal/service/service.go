@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -76,6 +77,42 @@ func (s *Service) Verify(ctx context.Context, receiptID string) (models.VerifyRe
 		Valid:     valid,
 		Reason:    reason,
 	}, nil
+}
+
+// JWK returns one published key as a JWK, or false if kid is unknown.
+func (s *Service) JWK(kid string) (models.JWK, bool) {
+	pk, ok := s.signer.PublishedKey(kid)
+	if !ok {
+		return models.JWK{}, false
+	}
+	return publishedToJWK(pk), true
+}
+
+// JWKS returns the full published key set for this deployment.
+func (s *Service) JWKS() models.JWKS {
+	keys := s.signer.PublishedKeys()
+	out := make([]models.JWK, 0, len(keys))
+	for _, pk := range keys {
+		out = append(out, publishedToJWK(pk))
+	}
+	return models.JWKS{Keys: out}
+}
+
+func publishedToJWK(pk signer.PublishedKey) models.JWK {
+	jwk := models.JWK{
+		Kty:         "OKP",
+		Crv:         "Ed25519",
+		Kid:         pk.KeyID,
+		X:           base64.RawURLEncoding.EncodeToString(pk.PublicKey),
+		Use:         "sig",
+		Alg:         "EdDSA",
+		AegisStatus: pk.Status,
+	}
+	if pk.CompromisedAt != nil {
+		ts := pk.CompromisedAt.UTC().Format(time.RFC3339)
+		jwk.AegisCompromisedAt = &ts
+	}
+	return jwk
 }
 
 func (s *Service) Export(ctx context.Context, req models.ExportRequest) ([]byte, string, string, error) {

@@ -46,7 +46,10 @@ docker run --rm -v "$(pwd)/audit:/app" -w /app golang:1.22-alpine go test ./...
 | `DATABASE_URL` | — | Postgres connection (required in production) |
 | `AEGIS_AUDIT_SIGNING_KEY` | — | Ed25519 key: PEM `PRIVATE KEY` or base64-encoded 32-byte seed |
 | `AEGIS_AUDIT_SIGNING_KEY_ID` | `dev-key-1` | Key identifier stored on each receipt |
-| `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` | — | Retired keys' public halves: `keyID:base64PublicKey`, comma-separated. Maintained automatically by `scripts/generate-credentials.sh` on rotation |
+| `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` | — | Retired keys' public halves: `keyID:base64PublicKey`, comma-separated. Maintained automatically by `scripts/generate-credentials.sh` on rotation. **v1 publication source** — independently publishable, not durable across rebuild/config loss |
+| `AEGIS_AUDIT_PUBLIC_KEYS` | off | When `true`/`1`/`yes`, `GET /v1/keys`, `GET /v1/keys/{id}`, and `GET /.well-known/jwks.json` are unauthenticated (opt-in external offline verify). Off by default |
+| `AEGIS_AUDIT_KEYS_URI` | — | Optional absolute JWKS URL advertised on export as `X-Aegis-Keys-Uri` (export metadata only — not inside signed receipts) |
+| `AEGIS_INTERNAL_TOKEN` | — | Required shared service token (all routes except `/health`, `/ready`, and opt-in public key paths) |
 
 Generate a production key:
 
@@ -65,7 +68,22 @@ openssl genpkey -algorithm Ed25519 -out audit.key
 | `GET` | `/v1/receipts` | Query receipts (`tenant_id`, `event_type`, `start_time`, `end_time`, `limit`, `cursor`) |
 | `GET` | `/v1/receipts/{id}` | Fetch receipt by ID |
 | `GET` | `/v1/receipts/{id}/verify` | Verify signature and payload hash |
-| `POST` | `/v1/export` | Export receipts as JSON or NDJSON |
+| `POST` | `/v1/export` | Export receipts as JSON or NDJSON; may set `X-Aegis-Keys-Uri` when configured |
+| `GET` | `/v1/keys` | JWKS of current + historical public keys (`aegis_status`: `active` \| `retired`) |
+| `GET` | `/v1/keys/{id}` | Single JWK by `signer_key_id`; 404 if unknown |
+| `GET` | `/.well-known/jwks.json` | Same body as `GET /v1/keys` |
+
+Public key routes require `AEGIS_AUDIT_PUBLIC_KEYS=true` (or an internal token). JWKS is **key discovery**, not a trust anchor — see [docs/design/audit-jwks-key-export.md](../docs/design/audit-jwks-key-export.md).
+
+### Fetch published keys (offline verify material)
+
+```bash
+# Opt in on the server: AEGIS_AUDIT_PUBLIC_KEYS=true
+curl -s localhost:8084/v1/keys | jq .
+curl -s localhost:8084/v1/keys/dev-key-1 | jq .
+```
+
+Offline path: establish trust in the publisher (TLS / out-of-band) → fetch JWKS once → **pin** the JWK(s) with the evidence package → verify receipts later with `signer_key_id` → `x` (no live AEGIS). `retired` means not used for new signing; historical signatures remain valid. Compromise is a separate optional `aegis_compromised_at` field (not implied by retirement).
 
 ### Write receipt
 
@@ -122,7 +140,7 @@ chmod +x scripts/e2e-audit.sh
 cd audit && go test ./...
 ```
 
-7 unit tests cover signing, tamper detection, write/query/verify/export, and HTTP handlers.
+7 unit tests cover signing, tamper detection, write/query/verify/export, HTTP handlers, and JWKS / key publication.
 
 ## Known gaps
 
@@ -130,8 +148,8 @@ cd audit && go test ./...
 |-----|--------|---------|
 | **gRPC `AuditService`** | HTTP only | Wire protobuf RPC (Stage 9+) |
 | **Cross-service emitters** | Manual POST | Auto-emit from input/output defense, agent-gate, redteam (Stage 9+) |
-| **Key rotation / JWKS** | Single static key + env history only | Multi-key publish — see [docs/design/audit-jwks-key-export.md](../docs/design/audit-jwks-key-export.md) (#63) |
-| **Public key export** | Not exposed | `GET /v1/keys/{id}` — same design doc |
+| **Key rotation / JWKS** | **v1 shipped** (env-backed publication; not durable) | **v1.1:** Postgres append-only key history. Design: [audit-jwks-key-export.md](../docs/design/audit-jwks-key-export.md) (#63, refined after external review) |
+| **Public key export** | **v1 shipped** (`GET /v1/keys/{id}`, opt-in public read) | Same design; pin keys with evidence for long-lived offline verify |
 
 ## Residual risk
 

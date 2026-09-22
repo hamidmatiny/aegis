@@ -1,8 +1,10 @@
 # Design: Offline trust for exported audit receipts (JWKS & key export)
 
-**Status:** draft design (not implemented)  
+**Status:** design refined after external review on [#63](https://github.com/hamidmatiny/aegis/issues/63) (2026-09-20); **v1** key publication implemented (env-backed; Postgres durability remains v1.1)  
 **Issue:** [#63](https://github.com/hamidmatiny/aegis/issues/63) — interop / offline trust for exported receipts  
-**Owner proposal:** `aegis-audit` (Phase 1 component owner), 2026-09-20  
+**Merged design PR:** [#70](https://github.com/hamidmatiny/aegis/pull/70)  
+**Design refinement PR:** [#81](https://github.com/hamidmatiny/aegis/pull/81)
+**Owner proposal:** `aegis-audit` (Phase 1 component owner), refined with BoundaryAttest / Cullen Meyers review  
 **Related gaps:** `audit/README.md` → Known gaps → “Key rotation / JWKS”, “Public key export”
 
 ---
@@ -15,7 +17,7 @@ AEGIS audit already has a strong *receipt integrity* primitive:
 - SHA-256 payload binding
 - Ed25519 signatures with `signer_key_id`
 - in-process historical verify via `AEGIS_AUDIT_SIGNING_KEYS_HISTORY`
-- `POST /v1/verify` and `POST /v1/export` (JSON / NDJSON)
+- `GET …/verify` and `POST /v1/export` (JSON / NDJSON)
 
 What it does **not** have (explicitly listed as planned, not built):
 
@@ -27,31 +29,67 @@ What it does **not** have (explicitly listed as planned, not built):
 So for a third party who receives an export months later:
 
 - **Receipt integrity** is offline-checkable *if* they already have the matching public key(s).
-- **Trust in the signer** still terminates at (or requires out-of-band coordination with) the originating deployment — closest to option **4** in #63, even though the format was designed for historical-key verify (which only pays off toward options **1** or **3**).
-
-Hamid’s reply on #63 agrees: durable trust anchors are not designed yet; lean toward **independent publication** of key history rather than bundling only at export time; single receipts are the unit today (no collection binding); decision→execution correlation is a separate named gap.
+- **Trust in the signer** still terminates at (or requires out-of-band coordination with) the originating deployment.
 
 ---
 
-## 2. Goals
+## 2. Three distinct concepts (do not conflate)
 
-1. Publish a **durable, independently fetchable** trust anchor for every historical `signer_key_id` that may appear on exported receipts — not only live env vars on the verifier host.
-2. Ship the two README-planned surfaces: `GET /v1/keys/{id}` and a JWKS (multi-key) publication endpoint.
-3. Document a clear offline verify path: fetch keys once → verify receipts forever without calling AEGIS again (assuming keys were published while still available).
-4. Name (but not necessarily implement in v1) collection-level binding and decision→execution binding so BoundaryAttest-class consumers don’t assume coverage that doesn’t exist.
+External review on #63 made this separation mandatory before implementation:
 
-## 3. Non-goals (v1)
+| Concept | What it is | What it is **not** |
+|---------|------------|-------------------|
+| **Key discovery / publication** | JWKS / `GET /v1/keys/{id}` — how a verifier **retrieves** historical public key material | Establishing that the publisher is the real AEGIS signer |
+| **Trust anchor** | The verifier’s **independently established** trust in the publisher (TLS / deployment identity / out-of-band ceremony — §8) | Merely the presence of a key in a JWKS document |
+| **Verification material** | The concrete public key bytes (JWK `x`) used for Ed25519 verify — often **pinned** with the evidence package for long-lived evidence | A live URL that must be re-fetched forever |
+
+**JWKS alone never establishes signer trust.** Putting a key in JWKS only solves retrieval. Trust that “this JWKS belongs to the deployment that signed these receipts” comes from the out-of-band / TLS / deployment-identity path in §8.
+
+**Recommendation for long-lived evidence:** fetch once through the verifier’s trusted channel, then **pin/store the exact key material with the evidence package**. Later offline verify uses the pin, not a live call.
+
+---
+
+## 3. Goals
+
+1. Publish **independently fetchable** historical verification material for every `signer_key_id` that may appear on exported receipts (v1: env-backed; v1.1: durable Postgres — see §5).
+2. Ship `GET /v1/keys/{id}` and JWKS (`GET /v1/keys`, optional `/.well-known/jwks.json`).
+3. Document offline verify: discover → pin → verify forever without calling AEGIS again.
+4. Keep native `AuditReceipt` authoritative — no second receipt format.
+5. Name (but defer) collection-level binding and decision→execution binding so consumers do not assume coverage that does not exist.
+
+## 4. Non-goals (v1)
 
 - Re-signing, wrapping, or replacing the native `AuditReceipt` format.
-- A transparency log / blockchain for keys (optional later; not required to close the README gaps).
-- Binding downstream tool *execution results* into the receipt (separate workstream).
-- Changing `/v1/export` default to always embed full key material (see §5 — prefer independent publication).
+- A transparency log / blockchain for keys.
+- Binding downstream tool *execution* into the decision receipt (separate workstream — §10).
+- Designing Merkle leaf/root construction for manifests in this phase (record requirements only — §9).
+- Changing `/v1/export` to embed full key material by default.
+- Receipt schema bump for `keys_uri` / `jwks_uri` (stays in export metadata / verifier config — §7).
 
 ---
 
-## 4. Proposed API
+## 5. Durability claims (be precise)
 
-### 4.1 `GET /v1/keys/{id}`
+| Phase | Source of published keys | Honest claim |
+|-------|--------------------------|--------------|
+| **v1** | Current key + `AEGIS_AUDIT_SIGNING_KEYS_HISTORY` (env) | **Independently publishable / retrievable** historical verification material. Can **disappear** on rebuild / config loss. **Not** “durable historical key custody.” |
+| **v1.1** | Append-only Postgres `audit_signing_keys` (env remains bootstrap/import) | **Durable** historical key custody / publication that survives rebuilds. |
+
+Do **not** call env-backed v1 “durable.” Reserve that word for v1.1.
+
+Postgres history does **not** block the first JWKS ship, provided v1 docs stay honest about non-durability across loss/rebuild.
+
+---
+
+## 6. Proposed API
+
+### 6.1 Opt-in public read
+
+Key endpoints are **public-read only when an operator explicitly enables external verification** (e.g. `AEGIS_AUDIT_PUBLIC_KEYS=true`). **Off by default** — same network/auth posture as today for everything except `/health` / `/ready`.
+
+Public keys are not secrets; authenticity of the **publication channel** (trust anchor, §2 / §8) is the important part.
+
+### 6.2 `GET /v1/keys/{id}`
 
 Return one public key by `signer_key_id` (`kid`).
 
@@ -64,27 +102,17 @@ Return one public key by `signer_key_id` (`kid`).
   "kid": "aegis-audit-2026-09",
   "x": "<base64url 32-byte public key>",
   "use": "sig",
-  "alg": "EdDSA"
+  "alg": "EdDSA",
+  "aegis_status": "active",
+  "aegis_not_before": "2026-01-01T00:00:00Z"
 }
 ```
 
-**Optional AEGIS extensions** (queryable metadata; not required for Ed25519 verify):
+**404** if `id` is unknown (fail closed).
 
-```json
-{
-  "aegis_status": "active" | "retired",
-  "aegis_not_before": "2026-01-01T00:00:00Z",
-  "aegis_retired_at": "2026-09-01T00:00:00Z"
-}
-```
+### 6.3 `GET /v1/keys` (JWKS)
 
-**404** if `id` is unknown (fail closed — same spirit as `unknown signing key id` on verify).
-
-**Auth:** public read for self-hosted / operator deployments that intend third-party offline verify. Operators who do *not* want public key discovery keep audit behind their existing network boundary (same as today for `/v1/export`). Document that publishing keys is an explicit ops choice.
-
-### 4.2 `GET /v1/keys` (JWKS document)
-
-RFC 7517 JWKS listing **current + all historical** public keys known to this deployment.
+RFC 7517 JWKS listing current + all historical public keys known to this deployment.
 
 ```json
 {
@@ -92,102 +120,141 @@ RFC 7517 JWKS listing **current + all historical** public keys known to this dep
 }
 ```
 
-Also expose discovery alias (optional, same body):
+Optional discovery alias (same body): `GET /.well-known/jwks.json`.
 
-- `GET /.well-known/jwks.json` → same JWKS (common verifier expectation)
-
-**Caching:** `Cache-Control: public, max-age=300` (or similar) + `ETag`. Keys only grow / change on rotation; short TTL is fine.
+**Caching:** `Cache-Control: public, max-age=300` + `ETag`.
 
 **`kid` mapping:** exactly `AuditReceipt.signer_key_id`. No silent remapping.
 
-### 4.3 Implementation source of truth (v1)
+### 6.4 Rotation vs compromise (explicit semantics)
 
-v1 **serves** what the process already trusts for verify:
+Define these **before** exposing `aegis_status`. They are different claims:
 
-- current key from `AEGIS_AUDIT_SIGNING_KEY` (+ its id)
-- retired public halves from `AEGIS_AUDIT_SIGNING_KEYS_HISTORY`
+| Field / state | Meaning |
+|---------------|---------|
+| `aegis_status`: **`active`** | Permitted for **new** signing. |
+| `aegis_status`: **`retired`** | **No longer** used for new signing; **historical signatures remain valid** to verify. |
+| `aegis_compromised_at` (optional RFC3339) | Distinct compromise / revocation metadata. When set, verifiers may treat the key as untrusted for some or all historical windows per **their** policy. |
 
-That closes the “not exposed” gap without inventing a new store on day one.
+**Do not** let `retired` imply “all historical receipts signed by this key are now invalid.” That is a correctness bug waiting to happen.
 
-**v1.1 (recommended follow-on):** persist key history in Postgres (append-only `audit_signing_keys` table) so publication survives env loss / rebuilds. Env history remains a bootstrap / import path. This is the real answer to “durable” vs “whatever was in the container env when someone last rotated.”
+Ordinary rotation → `retired` (+ optional `aegis_retired_at`). Compromise → separate `aegis_compromised_at` (v1 may omit until operators have a way to record it; v1.1 Postgres should support it).
 
 ---
 
-## 5. Rotation / validity: export inline vs publish separately
-
-**Decision (aligned with Hamid’s lean on #63): independent publication is authoritative.**
+## 7. `keys_uri`: export metadata only (no receipt schema bump)
 
 | Channel | Role |
 |---------|------|
-| `GET /v1/keys` / `GET /v1/keys/{id}` | **Source of truth** for third-party trust anchors and rotation/validity metadata |
-| Optional hint on export | Convenience only — e.g. `keys_uri` pointing at the JWKS URL of the exporting deployment; **not** a substitute for fetching/publishing keys |
-| Bundling full JWKS inside every export | **Not** default — freezes a snapshot that can go stale relative to later retirements; encourages “trust the bag” over “trust the published history” |
+| `GET /v1/keys` / `GET /v1/keys/{id}` | Publication / discovery of verification material |
+| Export response **metadata** `keys_uri` | Convenience hint: “signer’s JWKS is advertised here” |
+| Inside signed `AuditReceipt` | **Out of scope for v1** — no schema bump |
 
-Rotation state (`active` / `retired`, timestamps) should live on the **published** key objects (extensions above), not only inside a one-shot export package.
-
-Operators who air-gap verifiers may still **mirror** JWKS out-of-band (copy the JSON once). That is still “independently published,” just not live-fetched.
-
----
-
-## 6. Portable unit: single receipt vs manifest / checkpoint
-
-**Today:** one signed receipt is the portable unit. `/v1/export` is a bag of receipts with no collection-level signature.
-
-**Proposal — phased:**
-
-| Phase | What |
-|-------|------|
-| **v1** | Keep single-receipt as the cryptographic unit; document that an NDJSON/JSON export is an unordered bag unless the consumer adds their own packaging |
-| **v1.1 (optional)** | `AuditExportManifest`: `{ export_id, created_at, receipt_ids[], receipts_root, signer_key_id, signature }` where `receipts_root` is a Merkle root (or sorted SHA-256 concatenation) over receipt payload hashes. Signed with the **current** audit key. Export may include `manifest` alongside receipts |
-
-Manifest answers #63’s “is one receipt the right unit, or should a set bind?” — **both**: receipt remains atomic; manifest is optional collection binding for auditors who need set integrity.
-
----
-
-## 7. Decision vs execution binding (named gap)
-
-Receipts today bind the **policy / tool-gate decision** (allow / deny / escalate and related decision payload), **not** necessarily the downstream executed action/result.
-
-That is a real interoperability gap for “what happened after the gate.” **Out of scope for JWKS v1**, but should stay named in docs so consumers (BoundaryAttest, compliance packs) do not assume decision→execution correlation. Candidate follow-on: optional `execution_ref` / result hash field on a future receipt schema version — separate design.
+A URI inside a signed receipt can only claim “the signer *says* keys are here,” **not** “trust keys from here.” Trust configuration belongs to the **verifier** (trust anchor in §2 / §8), not the receipt.
 
 ---
 
 ## 8. Trust model for third parties
 
-**Target offline path (options 1 / 3 in #63):**
+**Target offline path:**
 
-1. Obtain JWKS (or specific `kid` via `GET /v1/keys/{id}`) from the publishing deployment or an out-of-band mirror while keys are still published.
-2. Pin / store those public keys with the evidence package if desired.
-3. Later: verify each receipt’s signature offline using `signer_key_id` → JWK `x`; no live AEGIS required.
+1. Establish trust in the publisher (TLS hostname / deployment identity / out-of-band ceremony).
+2. Fetch JWKS (or `GET /v1/keys/{id}`) through that trusted channel while keys are published.
+3. **Pin** the exact public key material with the evidence package.
+4. Later: verify each receipt offline via `signer_key_id` → pinned JWK `x`; no live AEGIS required.
 
-**What still requires operator honesty:** that the JWKS publisher is the same authority that signed the receipts (deployment identity / TLS / out-of-band key ceremony). JWKS does not invent a global PKI; it removes the “you had to be on the box to read the env” barrier.
+JWKS does not invent a global PKI; it removes the “you had to be on the box to read the env” barrier.
 
----
-
-## 9. Migration / rollout
-
-1. Add handlers in `audit/internal/api` for `GET /v1/keys` and `GET /v1/keys/{id}` (and optional `/.well-known/jwks.json`).
-2. Build JWKS from current signer + `ParseHistoricalKeys` (existing code path).
-3. Unit tests: known kid → 200; unknown → 404; JWKS contains current + history; rotation fixture matches `TestVerifySucceedsAfterRotationWithHistory`.
-4. Update `audit/README.md` Known gaps rows to “shipped (v1)” / “Postgres durability (v1.1)”.
-5. Optional: add `keys_uri` field on export response metadata (non-breaking).
-6. Open follow-up issues: Postgres key history table; optional `AuditExportManifest`; decision→execution binding design.
+BoundaryAttest (or similar) does **not** need to sit in the verification path if AEGIS ships this natively: receipt + independently trusted historical key publication is the stronger solution.
 
 ---
 
-## 10. Open questions for Hamid
+## 9. Future: `AuditExportManifest` (requirements only — do not design the root now)
 
-1. Should key endpoints be **unauthenticated by default** on self-hosted audit, or gated behind the same internal auth as write/verify?
-2. Is Postgres-backed key history (**v1.1**) required before calling the README gaps “closed,” or is env-sourced JWKS enough for a first merge?
-3. Priority of **export manifest** vs key export alone for BoundaryAttest-style consumers?
-4. Should receipts grow an optional `jwks_uri` / `keys_uri` hint in a schema bump, or keep discovery solely out-of-band / export metadata?
+Single receipt remains the atomic crypto unit.
+
+When the manifest workstream starts, **fully specify** before shipping:
+
+- **Leaf representation** — e.g. `leaf = SHA-256(<exact defined receipt representation>)`
+- **Ordering rule** — explicit deterministic ordering of leaves
+- **Root construction** — explicit Merkle (or other) construction
+
+so two independent implementations compute the **same** commitment. Do **not** leave “Merkle root (or sorted SHA-256 concatenation)” as an open choice at implementation time.
+
+**Narrower guarantee of a manifest:**
+
+> This signer committed to **this exact set of receipts as this particular export**.
+
+It does **not** prove “these are the only receipts that ever existed.” Completeness vs full audit history needs a **separate, stronger checkpoint / history mechanism** later.
+
+**Phasing:** optional signed export manifest comes **after** v1 key publication and preferably after v1.1 durable keys — manifests cannot be independently verified long-term without trusted historical keys.
 
 ---
 
-## 11. Acceptance criteria (when we implement)
+## 10. Decision receipt ≠ execution evidence
+
+Make this explicit:
+
+An AEGIS **decision receipt** proves a policy / tool-gate **decision was recorded and signed**. It does **not** prove that:
+
+- the permitted action actually executed;
+- the executed action matched the request;
+- the returned result corresponds to that decision; or
+- any external side effect occurred.
+
+If execution evidence is modeled later, it must be a **separate evidence object** that **references** the decision receipt for correlation — **not** merged into the decision receipt.
+
+Residual risk language in `audit/README.md` already points this way; keep JWKS / key publication scoped accordingly.
+
+---
+
+## 11. Locked sequencing & open-question answers
+
+Adopted from the #63 external review (2026-09-20):
+
+| Open question (original §10) | Locked answer |
+|------------------------------|---------------|
+| Key endpoint auth | **Public-read when operator opts in** to external verification; **not** on by default |
+| Postgres before first JWKS? | **No** — does not block v1, if v1 is documented as not-yet-durable |
+| Priority: keys vs manifest? | **Key publication first** |
+| `keys_uri` placement | **Export metadata / verifier config**; no receipt schema change yet |
+
+```text
+v1      historical-key JWKS / public-key export
+        + documented offline verification
+        + active / retired / compromise field semantics
+        + opt-in public read
+
+v1.1    durable append-only key history (Postgres)
+
+later   optional signed export manifest
+        (leaf / order / root fully specified; narrow “this export” guarantee)
+
+separate workstream
+        decision → execution correlation
+        (separate evidence object referencing decision receipt)
+```
+
+---
+
+## 12. Migration / rollout (v1)
+
+1. Handlers: `GET /v1/keys`, `GET /v1/keys/{id}`, optional `/.well-known/jwks.json`.
+2. Build JWKS from current signer + `ParseHistoricalKeys`; `aegis_status` = `active` | `retired`; compromise field present in schema but optional until recorded.
+3. Gate public access behind explicit operator opt-in env flag.
+4. Tests: known kid → 200; unknown → 404; JWKS contains current + history; retired ≠ compromised.
+5. Optional: `keys_uri` on export **metadata** only.
+6. Update `audit/README.md` Known gaps; document offline verify recipe and non-durable v1 claim.
+7. Follow-ups (not this PR): Postgres key history; manifest workstream; decision→execution design.
+
+---
+
+## 13. Acceptance criteria (v1 implementation)
 
 - [ ] `GET /v1/keys/{id}` returns JWK for current and historical ids used in fixtures
 - [ ] `GET /v1/keys` (JWKS) lists the same set; unknown id → 404
-- [ ] Documented offline verify recipe using only exported receipts + fetched JWKS
-- [ ] README Known gaps updated; #63 linked from the design
-- [ ] Explicit doc note: decision≠execution; export bag≠manifest until v1.1
+- [ ] `aegis_status` documents `active` vs `retired`; compromise is a separate field
+- [ ] Public key routes require explicit opt-in; default remains authenticated / closed
+- [ ] Documented offline verify recipe using exported receipts + fetched/pinned JWKS
+- [ ] README Known gaps updated; durability wording honest for env-backed v1
+- [ ] Explicit doc notes: decision≠execution; export bag≠manifest; JWKS≠trust anchor
