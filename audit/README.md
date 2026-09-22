@@ -148,7 +148,7 @@ cd audit && go test ./...
 |-----|--------|---------|
 | **gRPC `AuditService`** | HTTP only | Wire protobuf RPC (Stage 9+) |
 | **Cross-service emitters** | Manual POST | Auto-emit from input/output defense, agent-gate, redteam (Stage 9+) |
-| **Key rotation / JWKS** | **v1 shipped** (env-backed publication; not durable) | **v1.1:** Postgres append-only key history. Design: [audit-jwks-key-export.md](../docs/design/audit-jwks-key-export.md) (#63) |
+| **Key rotation / JWKS** | **v1 shipped** (env-backed publication; not durable) | **v1.1:** Postgres append-only key history. Design: [audit-jwks-key-export.md](../docs/design/audit-jwks-key-export.md) (#63, refined after external review) |
 | **Public key export** | **v1 shipped** (`GET /v1/keys/{id}`, opt-in public read) | Same design; pin keys with evidence for long-lived offline verify |
 
 ## Residual risk
