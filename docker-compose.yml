@@ -205,6 +205,11 @@ services:
       AEGIS_AUDIT_PUBLIC_KEYS: ${AEGIS_AUDIT_PUBLIC_KEYS:-false}
       AEGIS_AUDIT_KEYS_URI: ${AEGIS_AUDIT_KEYS_URI:-}
       AEGIS_INTERNAL_TOKEN: ${AEGIS_INTERNAL_TOKEN:?AEGIS_INTERNAL_TOKEN must be set -- run scripts/generate-credentials.sh}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8084/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     depends_on:
       postgres:
         condition: service_healthy

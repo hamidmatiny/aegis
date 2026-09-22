@@ -23,6 +23,8 @@ services:
     depends_on:
       gateway:
         condition: service_started
+      audit:
+        condition: service_healthy
       agent-gate:
         condition: service_started
       smb-copilot:
