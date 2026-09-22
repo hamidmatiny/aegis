@@ -1,0 +1,69 @@
+name: Arm auto-merge
+
+# Arms GitHub auto-merge (squash) only when CodeRabbit's latest review state
+# is APPROVED. NONE, COMMENTED, CHANGES_REQUESTED, and any other state do not
+# arm. Does not force-merge; required CI checks still have to pass first.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  arm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm squash auto-merge when eligible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          REPO="${{ github.repository }}"
+
+          PR="${{ github.event.pull_request.number }}"
+          if [ -z "${PR}" ] || [ "${PR}" = "null" ]; then
+            SHA="${{ github.event.check_suite.head_sha || github.event.review.commit_id || github.sha }}"
+            PR=$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq '.[0].number // empty' || true)
+          fi
+          if [ -z "${PR:-}" ]; then
+            echo "No PR to arm; exiting."
+            exit 0
+          fi
+
+          META=$(gh pr view "$PR" -R "$REPO" --json baseRefName,isDraft,headRefOid,autoMergeRequest)
+          BASE=$(echo "$META" | jq -r .baseRefName)
+          DRAFT=$(echo "$META" | jq -r .isDraft)
+          HEAD_SHA=$(echo "$META" | jq -r .headRefOid)
+          if [ "$BASE" != "main" ] || [ "$DRAFT" = "true" ]; then
+            echo "Skip PR #$PR (base=$BASE draft=$DRAFT)"
+            exit 0
+          fi
+
+          # gh rejects --slurp together with --jq. --paginate still walks every
+          # page. Only a CodeRabbit review of the current head SHA can arm.
+          STATE=$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" --jq '.[]' \
+            | jq -r --arg head "$HEAD_SHA" 'select((.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai") and .commit_id == $head) | [.submitted_at, .state] | @tsv' \
+            | sort | tail -n 1 | cut -f2)
+          if [ -z "${STATE}" ]; then
+            STATE=NONE
+          fi
+          echo "Latest CodeRabbit review state: $STATE"
+          if [ "$STATE" != "APPROVED" ]; then
+            echo "CodeRabbit has not approved — not arming auto-merge."
+            exit 0
+          fi
+
+          if gh pr merge "$PR" -R "$REPO" --auto --squash; then
+            echo "Auto-merge armed for PR #$PR"
+          else
+            echo "Could not arm auto-merge yet (checks/reviews pending is OK)."
+          fi
+          exit 0
