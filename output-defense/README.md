@@ -312,6 +312,7 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 | Component | Status | Follow-up |
 |-----------|--------|-----------|
 | **Toxicity** | Toxic-BERT + lexicon (M3: illicit synthesis, soft-refusal pivots, policy-disable completions, cookie/MFA/RFID exfil classes) | Llama Guard when ungated local weights are practical |
+| **PII / secret exfil** | Regex credentials + `.env` KEY=VALUE dumps + prompt-aware compliance when the input asked for secrets or a live `.env` (closes live `pii-03` / `novel-04`) | Input-side semantic classifier for social-eng credential-discovery intent without injection keywords (backlog; no retraining in this patch) |
 | **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
 | **Hallucination** | Structural markers + future-dated / fabricated-citation health misinfo | Broader fact-checking beyond structural classes |
 | **Backtranslation** | Router restatement + recall/identifier-weighted divergence | Grok restatement variance; vague code paraphrases that omit identifiers may still score ambiguous |
