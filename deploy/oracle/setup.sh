@@ -218,7 +218,7 @@ else:
 PY
 
 echo "==> Starting the stack (gateway + dependencies + rate-limited public proxy)..."
-sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy
+sudo docker compose "${COMPOSE_FILES[@]}" up -d --build gateway demo-proxy audit
 
 # demo-proxy is a vendor nginx:1.27-alpine image with a read-only bind-mounted
 # config (deploy/oracle/nginx-demo.conf) -- its own service definition never

@@ -53,6 +53,18 @@ server {
         try_files $uri =404;
     }
 
+    # Public signing-key discovery (JWKS v1). No API credentials are injected.
+    # Audit returns 401 on these paths unless AEGIS_AUDIT_PUBLIC_KEYS=true.
+    location = /.well-known/jwks.json {
+        proxy_pass http://audit:8084/.well-known/jwks.json;
+    }
+
+    # Prefix match so /v1/keys and /v1/keys/{id} both pass through.
+    # No URI and no variables: nginx resolves audit at startup.
+    location /v1/keys {
+        proxy_pass http://audit:8084;
+    }
+
     # Canary token redirects are generated from deploy/oracle/canary-config.yml.
     # They are exact-match only and only allowed when the request is a clean GET
     # with no query string.
