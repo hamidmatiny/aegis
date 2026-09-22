@@ -38,18 +38,19 @@ jobs:
             exit 0
           fi
 
-          META=$(gh pr view "$PR" -R "$REPO" --json baseRefName,isDraft,autoMergeRequest)
+          META=$(gh pr view "$PR" -R "$REPO" --json baseRefName,isDraft,headRefOid,autoMergeRequest)
           BASE=$(echo "$META" | jq -r .baseRefName)
           DRAFT=$(echo "$META" | jq -r .isDraft)
+          HEAD_SHA=$(echo "$META" | jq -r .headRefOid)
           if [ "$BASE" != "main" ] || [ "$DRAFT" = "true" ]; then
             echo "Skip PR #$PR (base=$BASE draft=$DRAFT)"
             exit 0
           fi
 
           # gh rejects --slurp together with --jq. --paginate still walks every
-          # page; --jq emits one TSV row per CodeRabbit review across pages.
-          STATE=$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" \
-            --jq '.[] | select(.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai") | [.submitted_at, .state] | @tsv' \
+          # page. Only a CodeRabbit review of the current head SHA can arm.
+          STATE=$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" --jq '.[]' \
+            | jq -r --arg head "$HEAD_SHA" 'select((.user.login=="coderabbitai[bot]" or .user.login=="coderabbitai") and .commit_id == $head) | [.submitted_at, .state] | @tsv' \
             | sort | tail -n 1 | cut -f2)
           if [ -z "${STATE}" ]; then
             STATE=NONE
