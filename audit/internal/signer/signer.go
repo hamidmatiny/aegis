@@ -66,6 +66,50 @@ func (s *Signer) PublicKey() ed25519.PublicKey {
 	return s.publicKey
 }
 
+// PublishedKey is public verification material for one signer_key_id.
+type PublishedKey struct {
+	KeyID         string
+	PublicKey     ed25519.PublicKey
+	Status        string // models.KeyStatusActive | models.KeyStatusRetired
+	CompromisedAt *time.Time
+}
+
+// PublishedKey returns the published public key for kid, if known.
+func (s *Signer) PublishedKey(kid string) (PublishedKey, bool) {
+	if kid == s.keyID {
+		return PublishedKey{
+			KeyID:     s.keyID,
+			PublicKey: s.publicKey,
+			Status:    models.KeyStatusActive,
+		}, true
+	}
+	if pub, ok := s.historicalKeys[kid]; ok {
+		return PublishedKey{
+			KeyID:     kid,
+			PublicKey: pub,
+			Status:    models.KeyStatusRetired,
+		}, true
+	}
+	return PublishedKey{}, false
+}
+
+// PublishedKeys returns current + historical public keys (active first).
+func (s *Signer) PublishedKeys() []PublishedKey {
+	out := []PublishedKey{{
+		KeyID:     s.keyID,
+		PublicKey: s.publicKey,
+		Status:    models.KeyStatusActive,
+	}}
+	for kid, pub := range s.historicalKeys {
+		out = append(out, PublishedKey{
+			KeyID:     kid,
+			PublicKey: pub,
+			Status:    models.KeyStatusRetired,
+		})
+	}
+	return out
+}
+
 func (s *Signer) HashReceipt(receipt *models.Receipt) ([]byte, error) {
 	body, err := canonicalBody(receipt)
 	if err != nil {

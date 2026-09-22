@@ -1,8 +1,9 @@
 # Design: Offline trust for exported audit receipts (JWKS & key export)
 
-**Status:** design refined after external review on [#63](https://github.com/hamidmatiny/aegis/issues/63) (2026-09-20); implementation in progress for **v1**  
+**Status:** design refined after external review on [#63](https://github.com/hamidmatiny/aegis/issues/63) (2026-09-20); **v1** key publication implemented (env-backed; Postgres durability remains v1.1)  
 **Issue:** [#63](https://github.com/hamidmatiny/aegis/issues/63) — interop / offline trust for exported receipts  
 **Merged design PR:** [#70](https://github.com/hamidmatiny/aegis/pull/70)  
+**Design refinement PR:** [#81](https://github.com/hamidmatiny/aegis/pull/81)
 **Owner proposal:** `aegis-audit` (Phase 1 component owner), refined with BoundaryAttest / Cullen Meyers review  
 **Related gaps:** `audit/README.md` → Known gaps → “Key rotation / JWKS”, “Public key export”
 

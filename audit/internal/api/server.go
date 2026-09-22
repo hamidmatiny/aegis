@@ -14,11 +14,19 @@ import (
 )
 
 type Server struct {
-	svc *service.Service
+	svc     *service.Service
+	keysURI string // optional advertisement for export metadata (X-Aegis-Keys-Uri)
 }
 
 func NewServer(svc *service.Service) *Server {
 	return &Server{svc: svc}
+}
+
+// WithKeysURI sets the optional export-metadata hint for JWKS discovery
+// (header X-Aegis-Keys-Uri). Not embedded in signed receipts.
+func (s *Server) WithKeysURI(uri string) *Server {
+	s.keysURI = uri
+	return s
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
@@ -27,6 +35,9 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/receipts", s.handleReceipts)
 	mux.HandleFunc("/v1/receipts/", s.handleReceiptByID)
 	mux.HandleFunc("/v1/export", s.handleExport)
+	mux.HandleFunc("/v1/keys", s.handleKeys)
+	mux.HandleFunc("/v1/keys/", s.handleKeyByID)
+	mux.HandleFunc("/.well-known/jwks.json", s.handleJWKS)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -129,8 +140,51 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+	if s.keysURI != "" {
+		w.Header().Set("X-Aegis-Keys-Uri", s.keysURI)
+	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+func (s *Server) handleKeys(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	s.writeJWKS(w)
+}
+
+func (s *Server) handleJWKS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	s.writeJWKS(w)
+}
+
+func (s *Server) handleKeyByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	kid := strings.Trim(strings.TrimPrefix(r.URL.Path, "/v1/keys/"), "/")
+	if kid == "" || strings.Contains(kid, "/") {
+		writeError(w, http.StatusNotFound, errors.New("key id required"))
+		return
+	}
+	jwk, ok := s.svc.JWK(kid)
+	if !ok {
+		writeError(w, http.StatusNotFound, errors.New("unknown signing key id"))
+		return
+	}
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	writeJSON(w, http.StatusOK, jwk)
+}
+
+func (s *Server) writeJWKS(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	writeJSON(w, http.StatusOK, s.svc.JWKS())
 }
 
 func parseQuery(r *http.Request) (models.QueryRequest, error) {
