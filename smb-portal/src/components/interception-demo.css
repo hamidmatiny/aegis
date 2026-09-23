@@ -70,7 +70,9 @@
 .ix-scenario-sum {
   display: block;
   font-size: 0.82rem;
-  color: var(--lp-muted-fg, #475569);
+  /* These cards render as accent-solid buttons (#1d4ed8). Slate-600 on that
+     blue is ~1.1:1. Slate-50 is ~6.6:1, above WCAG AA 4.5:1 for this size. */
+  color: #f8fafc;
   line-height: 1.4;
 }
 
