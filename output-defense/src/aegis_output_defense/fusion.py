@@ -23,7 +23,12 @@ _ESCALATE_THRESHOLD = 0.55
 # abstaining siblings (documented fusion gap: PII 0.70 + others ~0.05).
 _HIGH_CONFIDENCE_ESCALATE = 0.80
 _DETECTION_THRESHOLD = 0.50
-_AMBIGUOUS_LOW = 0.45
+# Floor is below the old 0.45 cliff. A live novel-12 restatement drifted to
+# fused 0.445, skipped the judge, and was allowed. A benign "sort a list"
+# control measured 0.336 and must still skip the judge, so the floor is 0.40
+# rather than a much lower cut that would send ordinary help text to the judge.
+# The upper bound stays 0.70: scores at or above that already escalate.
+_AMBIGUOUS_LOW = 0.40
 _AMBIGUOUS_HIGH = 0.70
 
 
