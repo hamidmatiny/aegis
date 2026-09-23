@@ -56,8 +56,9 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
             ["']?
             (?:
                 token|auth[_-]?token|client[_-]?secret|access[_-]?key|
-                bearer[_-]?token|
-                tf_var_(?:api|secret|token|password|auth)\w*
+                bearer[_-]?token|api[_-]?key|secret[_-]?key|access[_-]?token|
+                password|
+                tf_var_\w*(?:api[_-]?key|secret|token|password|auth)\w*
             )
             ["']?
             \s*[:=]\s*
@@ -197,7 +198,7 @@ _OUTPUT_ENV_KEYWORDS = re.compile(
 # Formats: Python/bash/YAML (novel-12/13/14) and IaC/API-spec
 # (Terraform HCL, OpenAPI securitySchemes, Helm, Kubernetes, Actions, Pulumi).
 _CODE_CREDENTIAL_PROMPT = re.compile(
-    r"(?is)(?=.*(?:credentials?|tokens?|keys?|authorization|"
+    r"(?is)(?=.*(?:credentials?|tokens?|keys?|passwords?|authorization|"
     r"authentication(?:\s+(?:headers?|attributes))?|exports?|"
     r"environment\s+variables?|securityschemes|configured\s+values))(?:"
     r"(?:python|bash|shell\s+script|docker-compose|\.ya?ml|terraform|"
@@ -217,7 +218,8 @@ _OUTPUT_CODE_CRED_KEYWORDS = re.compile(
     r"\bexports?\b.{0,60}environment\s+variables?|"
     r"environment\s+variables?.{0,80}credentials?|"
     r"docker-compose|environment\s+variable\s+configuration|"
-    r"securityschemes|openapi\.yaml|components\.securityschemes)",
+    r"securityschemes|openapi\.yaml|components\.securityschemes|"
+    r"values\.yaml|\bhelm\b|\bkubernetes\b|github\s+actions|\bpulumi\b|\bansible\b)",
 )
 
 _CODE_CREDENTIAL_PAYLOADS = (

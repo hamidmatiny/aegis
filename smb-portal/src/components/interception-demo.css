@@ -70,10 +70,18 @@
 .ix-scenario-sum {
   display: block;
   font-size: 0.82rem;
-  /* These cards render as accent-solid buttons (#1d4ed8). Slate-600 on that
-     blue is ~1.1:1. Slate-50 is ~6.6:1, above WCAG AA 4.5:1 for this size. */
-  color: #f8fafc;
+  /* Fallback if a scenario is not painted by the global button rule. */
+  color: #334155;
   line-height: 1.4;
+}
+
+/* The global `button:not(...)` rule (specificity 0,4,1) paints these
+   buttons --accent-solid. On the landing page that is #0369a1, hover
+   #075985. Slate-50 is 5.67:1 and 7.23:1 on those blues. The .is-active
+   pale fill loses to that button rule, so it never becomes the background. */
+button.ix-scenario .ix-scenario-sum,
+button.ix-scenario.is-active .ix-scenario-sum {
+  color: #f8fafc;
 }
 
 .ix-stage {
