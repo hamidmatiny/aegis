@@ -161,39 +161,47 @@ export function Landing() {
         </section>
 
         <section id="pricing" className="lp-section" aria-labelledby="pricing-title">
-          <h2 id="pricing-title">Q&amp;A example pricing</h2>
+          <h2 id="pricing-title">Run it yourself</h2>
           <p className="lp-lead">
-            Pricing below is for the hosted advisory Q&amp;A surface only. The
-            enforcer/gateway is open source — self-host from GitHub.
+            The enforcer is free to self-host. There is no subscription for the
+            gateway. The $29 CAD plan is only the hosted advisory Q&amp;A example
+            on this site — a side surface, not the product price.
           </p>
           <div className="lp-pricing-grid">
-            <article className="lp-card lp-price-card">
-              <h3>Free</h3>
+            <article className="lp-card lp-price-card lp-price-featured">
+              <h3>Self-host the gateway</h3>
               <p className="lp-price-line">
                 <span className="lp-price-amount">$0</span>
               </p>
               <ul className="lp-price-list">
-                <li>Infrastructure inventory setup</li>
-                <li>Plain-language advisory Q&amp;A</li>
-                <li>Curated CVE matches when available</li>
+                <li>CEL policy, risk tiers, human gate, Ed25519 audit</li>
+                <li>OpenAI-compatible base URL in front of your provider</li>
+                <li>
+                  You run it — clone and <code>./scripts/demo.sh</code>
+                </li>
               </ul>
-              <Link className="btn-secondary" to="/register">
-                Create free account
-              </Link>
+              <a
+                className="btn-primary"
+                href="https://github.com/hamidmatiny/aegis"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View on GitHub
+              </a>
             </article>
-            <article className="lp-card lp-price-card lp-price-featured">
-              <h3>Standard</h3>
+            <article className="lp-card lp-price-card">
+              <h3>Hosted Q&amp;A example</h3>
               <p className="lp-price-line">
                 <span className="lp-price-amount">$29</span>
                 <span className="lp-price-unit">CAD / month</span>
               </p>
               <ul className="lp-price-list">
-                <li>Everything in Free</li>
-                <li>Guided walkthroughs (step-by-step, advisory)</li>
-                <li>Stronger walkthrough model when enabled</li>
+                <li>Not the gateway price</li>
+                <li>Free tier: advisory Q&amp;A on an inventory you provide</li>
+                <li>Paid tier: guided walkthroughs, still advisory</li>
               </ul>
-              <Link className="btn-primary" to="/register">
-                Sign up, then upgrade
+              <Link className="btn-secondary" to="/register">
+                Try the Q&amp;A example
               </Link>
             </article>
           </div>

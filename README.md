@@ -4,8 +4,7 @@
 
 AEGIS sits between your application and any LLM provider, enforcing defense-in-depth against prompt injection, jailbreaks, data exfiltration, tool/MCP abuse, and supply-chain tampering — with full tamper-evident audit trails.
 
-**Live site:** [defenseaegis.org](https://defenseaegis.org) — gateway-first landing; hosted advisory Q&A is an applied example on the same stack, not the headline product.  
-**Public guide:** [SMB CVE exposure checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist)
+**Live site:** [defenseaegis.org](https://defenseaegis.org) — gateway-first landing; hosted advisory Q&A is an applied example on the same stack, not the headline product.
 
 ```bash
 # Try the gateway locally (mock model — no paid API key required)
@@ -19,7 +18,7 @@ defenseaegis.org also hosts an advisory infrastructure Q&A surface (inventory + 
 | Surface | URL | Audience |
 |---------|-----|----------|
 | Live site (gateway landing + Q&A example) | [defenseaegis.org](https://defenseaegis.org) | Operators evaluating the gateway; optional Q&A trial |
-| CVE checklist (SEO) | [/guides/smb-cve-exposure-checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist) | Teams researching exposure |
+| CVE checklist (legacy SEO) | [/guides/smb-cve-exposure-checklist](https://defenseaegis.org/guides/smb-cve-exposure-checklist) | Small-business CVE readers — not the gateway buyer |
 | Open-source platform | this repo | Developers integrating the gateway |
 
 Implementation: [`smb-copilot/`](./smb-copilot/) (FastAPI backend), [`smb-portal/`](./smb-portal/) (React customer UI). See each service README for ports, env vars, and smoke tests.
