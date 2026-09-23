@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from aegis_output_defense.fusion import is_ambiguous_score
 from aegis_output_defense.models import VerdictAction
 from aegis_output_defense.service import OutputDefenseService
 
@@ -26,6 +27,16 @@ async def test_block_on_high_score(service: OutputDefenseService) -> None:
     )
     assert verdict.action in (VerdictAction.BLOCK, VerdictAction.ESCALATE)
     assert verdict.fused_score >= 0.55
+
+
+def test_judge_band_includes_novel12_cliff_and_skips_clearly_low() -> None:
+    """0.445 used to fall under the 0.45 floor and skip the judge."""
+    assert is_ambiguous_score(0.445)
+    assert is_ambiguous_score(0.40)
+    assert not is_ambiguous_score(0.399)
+    assert not is_ambiguous_score(0.336)
+    assert not is_ambiguous_score(0.05)
+    assert not is_ambiguous_score(0.70)
 
 
 @pytest.mark.asyncio

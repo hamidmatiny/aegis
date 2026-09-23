@@ -106,7 +106,7 @@ Pytest uses stub backends by default (`tests/conftest.py`).
 | `pii` | Scoring + redactor | Regex + spaCy NER | Credentials via regex; **identity-dossier boost** when multiple identity fields co-occur; names/locations via context-gated NER |
 | `backtranslation` | Scoring | model-router restatement | LLM restates intent; divergence score flags semantic smoothing |
 | `hallucination` | Scoring | Pattern detector | Structural falsehoods (capital/boiling-point inversions), contradictions, fabricated citations, flat-earth / future-dated medical misinformation |
-| `judge` | Conditional ensemble | 3× model-router judges | Ambiguous fused band (0.45–0.70) **or** suspicious normalization (zero-width/base64/wrapper strip) with fused ≥ 0.25; majority vote |
+| `judge` | Conditional ensemble | 3× model-router judges | Ambiguous fused band (0.40–0.70) **or** suspicious normalization (zero-width/base64/wrapper strip) with fused ≥ 0.25; majority vote |
 
 ### Model choices (H2)
 
@@ -216,7 +216,7 @@ Fixtures live in `tests/fixtures/outputs.yaml` (30 attacks + 15 benign).
 
 ## H2 before/after fixture metrics
 
-Threshold **0.50**. Live `POST /analyze` **auto-invokes the judge ensemble** when fused score is in the ambiguous band (0.45–0.70). Fixture metrics and ablation scripts pass `invoke_judge=False` to isolate scoring detectors.
+Threshold **0.50**. Live `POST /analyze` **auto-invokes the judge ensemble** when fused score is in the ambiguous band (0.40–0.70). Scores under 0.40 skip the judge. Fixture metrics and ablation scripts pass `invoke_judge=False` to isolate scoring detectors.
 
 **Important:** The original H2 report used `run_fixture_metrics.py` with `--backtranslation-backend stub` (the script default) and **model-router was not running**. Backtranslation/judge router paths were never exercised in that comparison.
 
@@ -301,7 +301,7 @@ These detectors make **real model-router HTTP calls** when `*_BACKEND=router`:
 | Call | When | Typical cost |
 |------|------|--------------|
 | Backtranslation restatement | Every fused analyze (always-on detector) | 1× chat completion per analyze |
-| Judge ensemble | Ambiguous fused band (0.45–0.70) **or** suspicious normalization with fused ≥ 0.25 | Up to 3× chat completions |
+| Judge ensemble | Ambiguous fused band (0.40–0.70) **or** suspicious normalization with fused ≥ 0.25 | Up to 3× chat completions |
 
 With `mock-model` (default in compose), router returns deterministic echoes and backends fall back to pattern logic. Point `AEGIS_OUTPUT_DEFENSE_*_MODEL` at a real provider model (e.g. Grok via model-router config) for production semantic checks.
 
@@ -312,7 +312,7 @@ With `mock-model` (default in compose), router returns deterministic echoes and 
 | Component | Status | Follow-up |
 |-----------|--------|-----------|
 | **Toxicity** | Toxic-BERT + lexicon (M3: illicit synthesis, soft-refusal pivots, policy-disable completions, cookie/MFA/RFID exfil classes) | Llama Guard when ungated local weights are practical |
-| **PII / secret exfil** | Regex credentials + `.env` KEY=VALUE dumps + bash `export`, Python `Authorization: Bearer`, YAML `environment:` blocks + prompt-aware compliance when the input asked for secrets, a live `.env`, or this assistant's credentials in code form (closes live `pii-03` / `novel-04` / `novel-12` / `novel-13` / `novel-14`) | Input-side semantic classifier for social-eng credential-discovery intent without injection keywords (backlog; no retraining in this patch). Adjacent untested config formats (Terraform variables, Helm values, JSON credential keys) are tracked separately and not covered by this regex. |
+| **PII / secret exfil** | Regex credentials + `.env` KEY=VALUE dumps + bash `export`, Python `Authorization: Bearer`, YAML `environment:` blocks, token-shaped `token` / `client_secret` / `TF_VAR_*` assignments, and prompt-aware compliance when the input asked for this assistant's credentials in code or IaC/API-spec form (closes live `pii-03` / `novel-04` / `novel-12`–`14` / `novel-15` / `novel-22`) | Input-side semantic classifier for social-eng credential-discovery intent without injection keywords (backlog; no retraining in this patch). |
 | **PII NER** | spaCy sm + context gate | Presidio or larger NER for addresses/IBAN |
 | **Hallucination** | Structural markers + future-dated / fabricated-citation health misinfo | Broader fact-checking beyond structural classes |
 | **Backtranslation** | Router restatement + recall/identifier-weighted divergence | Grok restatement variance; vague code paraphrases that omit identifiers may still score ambiguous |

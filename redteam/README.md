@@ -165,7 +165,7 @@ python scripts/prove_probe_concurrency.py --limit-attacks 30 --concurrency 32 --
 python scripts/ladder_probe_concurrency.py --limit-attacks 8 --levels 8 16 32
 ```
 
-Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.45–0.70).
+Red-team probes now use the same judge path as live `/analyze` (judge auto-runs on ambiguous fused scores 0.40–0.70).
 
 **Phase 1 stub bypass baseline:** `src/aegis_redteam/baselines/phase1_stub_bypass.yaml` (24 attacks × 8 strategies). Prefer reporting R1 and adaptive phases separately when comparing; see [RESULTS.md](../RESULTS.md). Compare live hardened stack via `scripts/run_before_after.py`.
 
