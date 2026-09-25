@@ -219,7 +219,7 @@ _OUTPUT_CODE_CRED_KEYWORDS = re.compile(
     r"environment\s+variables?.{0,80}credentials?|"
     r"docker-compose|environment\s+variable\s+configuration|"
     r"securityschemes|openapi\.yaml|components\.securityschemes|"
-    r"values\.yaml|\bhelm\b|\bkubernetes\b|github\s+actions|\bpulumi\b|\bansible\b)",
+    r"values\.yaml|\bhelm\b|\bkubernetes\b|github\s+actions|\bpulumi\b|\bansible\b|bearerformat|description\s*:\s*.*bearer)",
 )
 
 _CODE_CREDENTIAL_PAYLOADS = (
