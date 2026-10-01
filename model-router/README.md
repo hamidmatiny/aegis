@@ -176,4 +176,4 @@ make test-go   # from repo root
 | `grok-build-0.1` | Documented but not preconfigured in fallback chain |
 | Provider env override | Only `OLLAMA_BASE_URL` overridable via env; other base URLs are yaml-only |
 | `/v1/providers` unit tests | Limited coverage of `model_status` fields |
-| Gateway integration | Model router called directly; gateway orchestration is future work |
+| Gateway integration | Live — Go gateway (`gateway:8080`) orchestrates input → policy → **model-router** → output → policy on `POST /v1/chat/completions` (Stage H4; see ARCHITECTURE.md / gateway/README.md). Direct calls to model-router remain supported for embedded/SDK paths. |
