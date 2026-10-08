@@ -209,6 +209,15 @@ def test_xml_attribute_suffixes_and_placeholder_prefixes() -> None:
     assert "xml_credential_element" in quoted_gt.matches
 
 
+def test_namespaced_xml_credential_elements() -> None:
+    text = scan_regex("<cfg:password>mocktoken123456</cfg:password>")
+    assert "xml_credential_element" in text.matches
+    prop = scan_regex('<spring:property name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in prop.matches
+    placeholder = scan_regex("<cfg:password>${secret}</cfg:password>")
+    assert "xml_credential_element" not in placeholder.matches
+
+
 def test_unterminated_xml_credential_tag_finishes() -> None:
     import time
 

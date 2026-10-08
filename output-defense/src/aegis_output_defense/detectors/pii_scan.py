@@ -80,7 +80,7 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         re.compile(
             r"""(?ix)
             (?:
-                <\s*(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)\b
+                <\s*(?:[\w.-]+:)?(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)\b
                 (?:[^<>"']|"[^"<]*"|'[^'<]*')* >
                 \s*
                 (?!\$\{)
@@ -89,7 +89,7 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
                 \s*
                 </
             |
-                <\s*(?:property|param|attribute)\b
+                <\s*(?:[\w.-]+:)?(?:property|param|attribute)\b
                 (?=
                     (?:[^<>"']|"[^"<]*"|'[^'<]*')*(?<![\w-])(?:name|key)\s*=\s*["']
                     (?:password|passwd|secret|api[_-]?key|token|access[_-]?key|
