@@ -219,6 +219,27 @@ def test_unterminated_xml_credential_tag_finishes() -> None:
     assert "xml_credential_element" not in result.matches
 
 
+def test_repeated_unclosed_xml_openers_finish() -> None:
+    import time
+
+    blobs = (
+        "<property " * 8000,
+        "<password " * 8000,
+        '<property name="password" ' * 3000,
+        "<password '\"" * 8000,
+    )
+    for blob in blobs:
+        started = time.perf_counter()
+        result = scan_regex(blob)
+        assert time.perf_counter() - started < 0.5
+        assert "xml_credential_element" not in result.matches
+
+
+def test_xml_credential_after_unclosed_openers_still_matches() -> None:
+    blob = "<property " * 2000 + '<property name="password" value="mocktoken123456"/>'
+    assert "xml_credential_element" in scan_regex(blob).matches
+
+
 def test_xml_placeholders_stay_allowed() -> None:
     interp = scan_regex('<property name="password" value="${db.password}"/>')
     assert "xml_credential_element" not in interp.matches
