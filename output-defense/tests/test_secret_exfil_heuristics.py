@@ -209,6 +209,16 @@ def test_xml_attribute_suffixes_and_placeholder_prefixes() -> None:
     assert "xml_credential_element" in quoted_gt.matches
 
 
+def test_unterminated_xml_credential_tag_finishes() -> None:
+    import time
+
+    blob = "<password " + ("a" * 8000)
+    started = time.perf_counter()
+    result = scan_regex(blob)
+    assert time.perf_counter() - started < 0.5
+    assert "xml_credential_element" not in result.matches
+
+
 def test_xml_placeholders_stay_allowed() -> None:
     interp = scan_regex('<property name="password" value="${db.password}"/>')
     assert "xml_credential_element" not in interp.matches
