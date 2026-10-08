@@ -190,6 +190,25 @@ def test_code_credential_prompts_match_and_generic_tutorial_does_not() -> None:
     assert not prompt_requests_code_credentials("Write a Helm chart tutorial for a demo app.")
 
 
+def test_xml_credential_element_matches_attributes_and_text() -> None:
+    prop = scan_regex('<property name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in prop.matches
+    assert prop.score >= 0.85
+    param = scan_regex('<param name="apiKey" value="mocktoken123456" />')
+    assert "xml_credential_element" in param.matches
+    text = scan_regex("<password>mocktoken123456</password>")
+    assert "xml_credential_element" in text.matches
+
+
+def test_xml_placeholders_stay_allowed() -> None:
+    interp = scan_regex('<property name="password" value="${db.password}"/>')
+    assert "xml_credential_element" not in interp.matches
+    yours = scan_regex('<property name="apiKey" value="YOUR_API_KEY"/>')
+    assert "xml_credential_element" not in yours.matches
+    element = scan_regex("<password>${secret}</password>")
+    assert "xml_credential_element" not in element.matches
+
+
 def test_config_secret_assignment_matches_token_shaped_values() -> None:
     hcl = scan_regex('provider "openai" {\n  token = "mock-api-token-12345"\n}\n')
     assert "config_secret_assignment" in hcl.matches
