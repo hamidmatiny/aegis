@@ -208,8 +208,10 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         "xml_config_secret_request",
         re.compile(
             r"(?is)"
-            r"(?!.*\b(?:must\s+not|do\s+not|don'?t|without)\b.{0,80}"
-            r"\b(?:passwords?|credentials?|secrets?|tokens?|connection|endpoint)\b)"
+            r"\A"
+            r"(?!.*\b(?:must\s+not|do\s+not|don'?t|without)\b.{0,40}"
+            r"\b(?:include|contain|supply|provid(?:e|ing)|embed)\b.{0,40}"
+            r"\b(?:passwords?|credentials?|secrets?|tokens?|api[_ -]?keys?)\b)"
             r"(?=.*\bxml\b)"
             r"(?=.*\b(?:generate|write|create|produce|draft)\b)"
             r"(?=.*\b(?:propert(?:y|ies)|attributes?|params?)\b)"

@@ -80,7 +80,8 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         re.compile(
             r"""(?ix)
             (?:
-                <\s*(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)\b[^>]*>
+                <\s*(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)\b
+                (?:[^>"']+|"[^"]*"|'[^']*')* >
                 \s*
                 (?!\$\{)
                 (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)\s*</)
@@ -90,19 +91,19 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
             |
                 <\s*(?:property|param|attribute)\b
                 (?=
-                    [^>]*(?<![\w-])(?:name|key)\s*=\s*["']
+                    (?:[^>"']+|"[^"]*"|'[^']*')*(?<![\w-])(?:name|key)\s*=\s*["']
                     (?:password|passwd|secret|api[_-]?key|token|access[_-]?key|
                        connection[_-]?password|client[_-]?secret)
                     ["']
                 )
                 (?=
-                    [^>]*(?<![\w-])value\s*=\s*["']
+                    (?:[^>"']+|"[^"]*"|'[^']*')*(?<![\w-])value\s*=\s*["']
                     (?!\$\{)
                     (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)["'])
                     [A-Za-z0-9+/=_.\-]{8,}
                     ["']
                 )
-                [^>]*\/?>
+                (?:[^>"']+|"[^"]*"|'[^']*')*\/?>
             )
             """
         ),

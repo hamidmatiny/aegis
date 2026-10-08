@@ -205,6 +205,8 @@ def test_xml_attribute_suffixes_and_placeholder_prefixes() -> None:
     assert "xml_credential_element" not in prefixed.matches
     token = scan_regex('<property name="password" value="exampleSecret123456"/>')
     assert "xml_credential_element" in token.matches
+    quoted_gt = scan_regex('<property note="x > y" name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in quoted_gt.matches
 
 
 def test_xml_placeholders_stay_allowed() -> None:
