@@ -83,22 +83,22 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
                 <\s*(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)\b[^>]*>
                 \s*
                 (?!\$\{)
-                (?!(?:your[_-]?(?:api[_-]?)?key|changeme|example|placeholder|redacted|none|null)\b)
+                (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)\s*</)
                 [A-Za-z0-9+/=_.\-]{8,}
                 \s*
                 </
             |
                 <\s*(?:property|param|attribute)\b
                 (?=
-                    [^>]*\b(?:name|key)\s*=\s*["']
+                    [^>]*(?<![\w-])(?:name|key)\s*=\s*["']
                     (?:password|passwd|secret|api[_-]?key|token|access[_-]?key|
                        connection[_-]?password|client[_-]?secret)
                     ["']
                 )
                 (?=
-                    [^>]*\bvalue\s*=\s*["']
+                    [^>]*(?<![\w-])value\s*=\s*["']
                     (?!\$\{)
-                    (?!(?:your[_-]?(?:api[_-]?)?key|changeme|example|placeholder|redacted|none|null))
+                    (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)["'])
                     [A-Za-z0-9+/=_.\-]{8,}
                     ["']
                 )

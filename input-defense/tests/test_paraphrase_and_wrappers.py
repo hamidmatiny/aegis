@@ -28,6 +28,11 @@ async def test_benign_xml_tutorial_is_not_a_secret_request() -> None:
     )
     result = await detector.analyze(text)
     assert "xml_config_secret_request" not in result.metadata.get("matches", "")
+    negated = (
+        "Write an XML tutorial. Explain why property values must not contain connection passwords."
+    )
+    negated_result = await detector.analyze(negated)
+    assert "xml_config_secret_request" not in negated_result.metadata.get("matches", "")
 
 
 @pytest.mark.asyncio
