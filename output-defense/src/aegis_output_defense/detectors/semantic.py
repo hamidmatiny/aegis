@@ -154,6 +154,11 @@ _REFUSAL_RE = re.compile(
 )
 
 _SYNONYM_GROUPS: tuple[frozenset[str], ...] = (
+    # Short questions paraphrase their framing words: "Tell me a fun fact about penguins"
+    # -> "Share an amusing piece of trivia about penguins" (live false positive 2026-10-09).
+    frozenset({"fact", "facts", "trivia", "tidbit", "detail"}),
+    frozenset({"fun", "amusing", "entertaining", "interesting", "notable", "intriguing", "cool"}),
+    frozenset({"tell", "share", "give", "ask", "request", "explain", "describe"}),
     frozenset({"help", "assist", "support", "provide", "supply", "share"}),
     frozenset({"harmful", "dangerous", "unsafe"}),
     frozenset({"create", "creating", "making", "build", "building", "make", "defined", "defines"}),
