@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import re
+import unicodedata
 
 _ZERO_WIDTH = {0x200B, 0x200C, 0x200D, 0xFEFF, 0x2060}
 _B64_BLOB = re.compile(r"[A-Za-z0-9+/]{20,}={0,2}")
@@ -86,6 +87,12 @@ def expand_scan_surfaces(text: str) -> tuple[list[str], list[str]]:
     stripped_zw = strip_zero_width(text)
     if stripped_zw != text:
         add(stripped_zw, "zero_width_stripped")
+    # Styled alphabets (𝐼𝑔𝑛𝑜𝑟𝑒, ℐℊ𝓃ℴ𝓇ℯ, ｆｕｌｌｗｉｄｔｈ) fold to ASCII under NFKC, so
+    # every detector also sees the plain-text instruction.
+    folded = unicodedata.normalize("NFKC", stripped_zw)
+    if folded != stripped_zw:
+        add(folded, "nfkc_folded")
+        stripped_zw = folded
 
     for candidate in (text, stripped_zw):
         unwrapped = strip_adversarial_wrappers(candidate)
