@@ -73,6 +73,44 @@ PII_PATTERNS: list[tuple[str, re.Pattern[str], str, float]] = [
         0.90,
     ),
     (
+        # XML element text or attributes: <password>…</password>,
+        # <property name="password" value="…"/>, <param name="apiKey" value="…"/>.
+        # Placeholders (${…}, YOUR_API_KEY, example, changeme) stay allowed.
+        "xml_credential_element",
+        re.compile(
+            r"""(?ix)
+            (?:
+                <\s*(?:[\w.-]+:)?(?:password|passwd|secret|api[_-]?key|token|access[_-]?key)(?=[\s/>])
+                (?:[^<>"']|"[^"<]*"|'[^'<]*')* >
+                \s*
+                (?!\$\{)
+                (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)\s*</)
+                [A-Za-z0-9+/=_.\-]{8,}
+                \s*
+                </
+            |
+                <\s*(?:[\w.-]+:)?(?:property|param|attribute)(?=[\s/>])
+                (?=
+                    (?:[^<>"']|"[^"<]*"|'[^'<]*')*(?<![\w-])(?:name|key)\s*=\s*["']
+                    (?:password|passwd|secret|api[_-]?key|token|access[_-]?key|
+                       connection[_-]?password|client[_-]?secret)
+                    ["']
+                )
+                (?=
+                    (?:[^<>"']|"[^"<]*"|'[^'<]*')*(?<![\w-])value\s*=\s*["']
+                    (?!\$\{)
+                    (?!(?:your[_-]?api[_-]?key|changeme|placeholder|redacted|example|none|null)["'])
+                    [A-Za-z0-9+/=_.\-]{8,}
+                    ["']
+                )
+                (?:[^<>"']|"[^"<]*"|'[^'<]*')*\/?>
+            )
+            """
+        ),
+        "SECRET",
+        0.90,
+    ),
+    (
         # Python/HTTP auth header with a token-shaped bearer value (novel-12).
         # Runs before env_assignment so `auth_headers = {"Authorization": "Bearer …"}`
         # records the header hit before the AUTH-prefixed assignment consumes the line.
@@ -232,6 +270,7 @@ _CODE_CREDENTIAL_PAYLOADS = (
     "api_key_aws",
     "api_key_generic",
     "config_secret_assignment",
+    "xml_credential_element",
 )
 
 _CLEAR_REFUSAL = re.compile(

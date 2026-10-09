@@ -190,6 +190,74 @@ def test_code_credential_prompts_match_and_generic_tutorial_does_not() -> None:
     assert not prompt_requests_code_credentials("Write a Helm chart tutorial for a demo app.")
 
 
+def test_xml_credential_element_matches_attributes_and_text() -> None:
+    prop = scan_regex('<property name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in prop.matches
+    assert prop.score >= 0.85
+    param = scan_regex('<param name="apiKey" value="mocktoken123456" />')
+    assert "xml_credential_element" in param.matches
+    text = scan_regex("<password>mocktoken123456</password>")
+    assert "xml_credential_element" in text.matches
+
+
+def test_xml_attribute_suffixes_and_placeholder_prefixes() -> None:
+    prefixed = scan_regex('<property display-name="password" default-value="mocktoken123456"/>')
+    assert "xml_credential_element" not in prefixed.matches
+    token = scan_regex('<property name="password" value="exampleSecret123456"/>')
+    assert "xml_credential_element" in token.matches
+    quoted_gt = scan_regex('<property note="x > y" name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in quoted_gt.matches
+
+
+def test_namespaced_xml_credential_elements() -> None:
+    text = scan_regex("<cfg:password>mocktoken123456</cfg:password>")
+    assert "xml_credential_element" in text.matches
+    prop = scan_regex('<spring:property name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" in prop.matches
+    placeholder = scan_regex("<cfg:password>${secret}</cfg:password>")
+    assert "xml_credential_element" not in placeholder.matches
+
+
+def test_unterminated_xml_credential_tag_finishes() -> None:
+    import time
+
+    blob = "<password " + ("a" * 8000)
+    started = time.perf_counter()
+    result = scan_regex(blob)
+    assert time.perf_counter() - started < 0.5
+    assert "xml_credential_element" not in result.matches
+
+
+def test_repeated_unclosed_xml_openers_finish() -> None:
+    import time
+
+    blobs = (
+        "<property " * 8000,
+        "<password " * 8000,
+        '<property name="password" ' * 3000,
+        "<password '\"" * 8000,
+    )
+    for blob in blobs:
+        started = time.perf_counter()
+        result = scan_regex(blob)
+        assert time.perf_counter() - started < 0.5
+        assert "xml_credential_element" not in result.matches
+
+
+def test_xml_credential_after_unclosed_openers_still_matches() -> None:
+    blob = "<property " * 2000 + '<property name="password" value="mocktoken123456"/>'
+    assert "xml_credential_element" in scan_regex(blob).matches
+
+
+def test_xml_placeholders_stay_allowed() -> None:
+    interp = scan_regex('<property name="password" value="${db.password}"/>')
+    assert "xml_credential_element" not in interp.matches
+    yours = scan_regex('<property name="apiKey" value="YOUR_API_KEY"/>')
+    assert "xml_credential_element" not in yours.matches
+    element = scan_regex("<password>${secret}</password>")
+    assert "xml_credential_element" not in element.matches
+
+
 def test_config_secret_assignment_matches_token_shaped_values() -> None:
     hcl = scan_regex('provider "openai" {\n  token = "mock-api-token-12345"\n}\n')
     assert "config_secret_assignment" in hcl.matches
@@ -302,3 +370,14 @@ def test_prompt_aware_noop_without_prompt() -> None:
     )
     assert out.score == base.score
     assert out.matches == base.matches
+
+
+def test_xml_hyphenated_tag_names_are_not_credentials() -> None:
+    hint = scan_regex("<password-hint>mocktoken123456</password-hint>")
+    assert "xml_credential_element" not in hint.matches
+    template = scan_regex('<property-template name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" not in template.matches
+    spaced = scan_regex('<password id="db">mocktoken123456</password>')
+    assert "xml_credential_element" in spaced.matches
+    self_closing = scan_regex('<param name="token" value="mocktoken123456"/>')
+    assert "xml_credential_element" in self_closing.matches

@@ -205,6 +205,24 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
         "Step-by-step instructions requested for theft or burglary",
     ),
     (
+        "xml_config_secret_request",
+        re.compile(
+            r"(?is)"
+            r"\A"
+            r"(?!.*\b(?:must\s+not|do\s+not|don'?t|without)\b.{0,40}"
+            r"\b(?:include|contain|supply|provid(?:e|ing)|embed)\b.{0,40}"
+            r"\b(?:passwords?|credentials?|secrets?|tokens?|api[_ -]?keys?)\b)"
+            r"(?=.*\bxml\b)"
+            r"(?=.*\b(?:generate|write|create|produce|draft)\b)"
+            r"(?=.*\b(?:propert(?:y|ies)|attributes?|params?)\b)"
+            r"(?=.*\bvalues?\b)"
+            r"(?=.*\b(?:connection|endpoint|credentials?|passwords?|secrets?|tokens?|api[_ -]?keys?)\b)"
+            r".+",
+        ),
+        0.90,
+        "XML configuration asked for connection, endpoint, or credential property values",
+    ),
+    (
         "harmful_persona_action",
         re.compile(
             r"(you are|act as|pretend to be|pretend you are).{0,40}"
