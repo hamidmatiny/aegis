@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import codecs
 import re
 import unicodedata
 
@@ -28,6 +29,110 @@ _WRAPPER_PREFIX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(r"^decode and execute this base64 instruction:\s*", re.I),
     re.compile(r"^apply rot13 then hex-decode the following:\s*", re.I),
 )
+
+
+# Cyrillic and Greek letters that render like Latin ones. Mixed into Latin words
+# ("Іgnоrе аll рrеvіоus") they hide an instruction from every plain-text rule.
+_CONFUSABLES = str.maketrans(
+    {
+        "а": "a",
+        "в": "b",
+        "е": "e",
+        "к": "k",
+        "м": "m",
+        "н": "h",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "т": "t",
+        "у": "y",
+        "х": "x",
+        "і": "i",
+        "ј": "j",
+        "ѕ": "s",
+        "ԁ": "d",
+        "ԛ": "q",
+        "ԝ": "w",
+        "А": "A",
+        "В": "B",
+        "Е": "E",
+        "К": "K",
+        "М": "M",
+        "Н": "H",
+        "О": "O",
+        "Р": "P",
+        "С": "C",
+        "Т": "T",
+        "Х": "X",
+        "І": "I",
+        "У": "Y",
+        "Ј": "J",
+        "Ѕ": "S",
+        "α": "a",
+        "β": "b",
+        "ε": "e",
+        "ι": "i",
+        "κ": "k",
+        "ν": "v",
+        "ο": "o",
+        "ρ": "p",
+        "τ": "t",
+        "υ": "u",
+        "χ": "x",
+        "Α": "A",
+        "Β": "B",
+        "Ε": "E",
+        "Ζ": "Z",
+        "Η": "H",
+        "Ι": "I",
+        "Κ": "K",
+        "Μ": "M",
+        "Ν": "N",
+        "Ο": "O",
+        "Ρ": "P",
+        "Τ": "T",
+        "Υ": "Y",
+        "Χ": "X",
+    }
+)
+_LATIN = re.compile(r"[A-Za-z]")
+
+# Leetspeak: digits standing in for letters inside words ("1gn0r3", "5y573m").
+_LEET_WORD = re.compile(r"\b(?=\w*[A-Za-z])(?=\w*[013457])[A-Za-z013457]{3,}\b")
+_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t"})
+_LEET_MIN_WORDS = 3
+
+_COMMON_WORDS = frozenset(
+    "the a an and or of to in is are you your all any this that it be now with for "
+    "on what please ignore reveal system prompt instructions previous mode".split()
+)
+_WORD = re.compile(r"[A-Za-z]+")
+
+
+def fold_confusables(text: str) -> str:
+    """Map Cyrillic/Greek look-alikes to Latin when they sit in Latin text."""
+    if not _LATIN.search(text):
+        return text
+    return text.translate(_CONFUSABLES)
+
+
+def fold_leet(text: str) -> str:
+    words = _LEET_WORD.findall(text)
+    if len(words) < _LEET_MIN_WORDS:
+        return text
+    return _LEET_WORD.sub(lambda m: m.group(0).translate(_LEET), text)
+
+
+def _common_count(text: str) -> int:
+    return sum(1 for w in _WORD.findall(text.lower()) if w in _COMMON_WORDS)
+
+
+def decode_rot13(text: str) -> str:
+    """ROT13 of the text when that reads as clearly more English than the original."""
+    rotated = codecs.decode(text, "rot13")
+    if _common_count(rotated) >= _common_count(text) + 4:
+        return rotated
+    return text
 
 
 def strip_zero_width(text: str) -> str:
@@ -93,6 +198,15 @@ def expand_scan_surfaces(text: str) -> tuple[list[str], list[str]]:
     if folded != stripped_zw:
         add(folded, "nfkc_folded")
         stripped_zw = folded
+
+    for step, fold in (
+        ("confusables_folded", fold_confusables),
+        ("leet_folded", fold_leet),
+        ("rot13_decoded", decode_rot13),
+    ):
+        candidate = fold(stripped_zw)
+        if candidate != stripped_zw:
+            add(candidate, step)
 
     for candidate in (text, stripped_zw):
         unwrapped = strip_adversarial_wrappers(candidate)
