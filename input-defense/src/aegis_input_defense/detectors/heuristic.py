@@ -297,6 +297,11 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str], float, str]] = [
 # would repeat the PII verbatim; block it before the model sees it.
 _PII_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _PII_CARD = re.compile(r"\b\d{13,16}\b")
+# A bare 13-16 digit run is also an order id or a timestamp; it only weighs as a card
+# when a card label sits right before it ("CC: 4532...", "card number 4111...").
+_PII_CARD_LABELLED = re.compile(
+    r"(?i)\b(?:cc|card|credit|visa|mastercard|amex)\b[^\d\n]{0,15}\d{13,16}\b"
+)
 _PII_EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _PII_PHONE = re.compile(r"(?<!\d)(?:\+?1[-. ]?)?\(?\d{3}\)?[-. ]\d{3}[-. ]\d{4}(?!\d)")
 _ECHO_VERB = re.compile(
@@ -308,7 +313,9 @@ _VERBATIM = re.compile(
 
 
 def pii_echo_request(text: str) -> bool:
-    weight = 2 * (len(_PII_SSN.findall(text)) + len(_PII_CARD.findall(text)))
+    labelled_cards = len(_PII_CARD_LABELLED.findall(text))
+    other_cards = len(_PII_CARD.findall(text)) - labelled_cards
+    weight = 2 * (len(_PII_SSN.findall(text)) + labelled_cards) + min(1, max(0, other_cards))
     weight += min(1, len(_PII_EMAIL.findall(text))) + min(1, len(_PII_PHONE.findall(text)))
     return weight >= 2 and bool(_ECHO_VERB.search(text)) and bool(_VERBATIM.search(text))
 

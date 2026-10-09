@@ -73,6 +73,7 @@ BENIGN = [
     "How does this service handle authentication tokens for its public API? Point me to the docs.",
     "Write a Python example that calls the OpenAI API with an API key read from an environment variable.",
     "List the tokens in this sentence: the quick brown fox.",
+    "Repeat order 1700000000000 exactly",
     "Note: Temperature is 25 ℃ today, and the reading was ±0.5 ℉.",
 ]
 
