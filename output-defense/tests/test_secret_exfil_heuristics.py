@@ -370,3 +370,14 @@ def test_prompt_aware_noop_without_prompt() -> None:
     )
     assert out.score == base.score
     assert out.matches == base.matches
+
+
+def test_xml_hyphenated_tag_names_are_not_credentials() -> None:
+    hint = scan_regex("<password-hint>mocktoken123456</password-hint>")
+    assert "xml_credential_element" not in hint.matches
+    template = scan_regex('<property-template name="password" value="mocktoken123456"/>')
+    assert "xml_credential_element" not in template.matches
+    spaced = scan_regex('<password id="db">mocktoken123456</password>')
+    assert "xml_credential_element" in spaced.matches
+    self_closing = scan_regex('<param name="token" value="mocktoken123456"/>')
+    assert "xml_credential_element" in self_closing.matches
