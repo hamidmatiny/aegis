@@ -154,6 +154,11 @@ _REFUSAL_RE = re.compile(
 )
 
 _SYNONYM_GROUPS: tuple[frozenset[str], ...] = (
+    # Short questions paraphrase their framing words: "Tell me a fun fact about penguins"
+    # -> "Share an amusing piece of trivia about penguins" (live false positive 2026-10-09).
+    frozenset({"fact", "facts", "trivia", "tidbit", "detail"}),
+    frozenset({"fun", "amusing", "entertaining", "interesting", "notable", "intriguing", "cool"}),
+    frozenset({"tell", "share", "give", "ask", "request", "explain", "describe"}),
     frozenset({"help", "assist", "support", "provide", "supply", "share"}),
     frozenset({"harmful", "dangerous", "unsafe"}),
     frozenset({"create", "creating", "making", "build", "building", "make", "defined", "defines"}),
@@ -374,9 +379,6 @@ def is_meta_restatement(restatement: str) -> bool:
     )
 
 
-_SHORT_CONTENT_TOKENS = 8
-
-
 def divergence_score(original: str, restatement: str) -> float:
     """Higher score means more semantic drift between original and restatement."""
     normalized_restatement = strip_meta_framing(restatement)
@@ -407,21 +409,12 @@ def divergence_score(original: str, restatement: str) -> float:
         # Meta-analytic restatements inflate raw Jaccard drift even when meaning is preserved.
         meta_penalty = -0.25
 
-    # A short text has few content words, so one synonym swap ("fun fact" ->
-    # "amusing trivia") drops recall below the bar even though the subject is
-    # kept. Keeping any salient term is the evidence available at that length.
-    # ASCII only: styled-alphabet and homoglyph text also tokenizes short, and
-    # its divergence is the signal.
-    short_kept_subject = (
-        original.isascii() and 0 < len(orig_tokens) <= _SHORT_CONTENT_TOKENS and recall > 0.0
-    )
-
     if is_policy_refusal(original):
         drift = min(drift, 0.44)
     elif (
         not has_actionable_harm(original)
         and not has_actionable_harm(restatement)
-        and (recall >= 0.25 or jaccard >= 0.20 or identifier_recall >= 0.50 or short_kept_subject)
+        and (recall >= 0.25 or jaccard >= 0.20 or identifier_recall >= 0.50)
     ):
         drift = min(drift, 0.44)
 
