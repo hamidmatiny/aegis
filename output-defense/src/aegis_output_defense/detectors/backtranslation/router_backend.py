@@ -13,6 +13,27 @@ from aegis_output_defense.detectors.backtranslation.stub_backend import StubBack
 from aegis_output_defense.detectors.semantic import divergence_score
 from aegis_output_defense.provenance import EXECUTION_BACKEND, FALLBACK_REASON, REQUESTED_BACKEND
 
+_MOCK_PREFIX = re.compile(r"^\[mock:[^\]]*\]\s*")
+_SPACE = re.compile(r"\s+")
+
+
+def _normalize(text: str) -> str:
+    return _SPACE.sub(" ", text).strip().casefold()
+
+
+def is_prompt_echo(content: str, original_prompt: str | None) -> bool:
+    """True when the output only repeats the user's own prompt (e.g. the mock backend echo).
+
+    A restatement model asked to paraphrase an echoed question answers it instead, so the
+    divergence it reports is meaningless there. The prompt itself was already scored by
+    input defense.
+    """
+    if not original_prompt or not original_prompt.strip():
+        return False
+    body = _normalize(_MOCK_PREFIX.sub("", content.strip(), count=1))
+    return bool(body) and body == _normalize(original_prompt)
+
+
 _RESTATE_SYSTEM = (
     "Paraphrase the assistant output in your own words while preserving the exact meaning. "
     "Output only the paraphrase — no preamble, no meta-commentary (never write "
@@ -43,6 +64,18 @@ class RouterBacktranslationBackend(BacktranslationBackend):
         *,
         original_prompt: str | None = None,
     ) -> BacktranslationResult:
+        if is_prompt_echo(content, original_prompt):
+            fallback = await self._stub.evaluate(content, original_prompt=original_prompt)
+            return BacktranslationResult(
+                score=fallback.score,
+                reasoning=f"Output echoes the prompt; router restatement skipped. {fallback.reasoning}",
+                model_id=self.model_id,
+                metadata={
+                    REQUESTED_BACKEND: "router",
+                    EXECUTION_BACKEND: "stub-prompt-echo",
+                    FALLBACK_REASON: "prompt-echo",
+                },
+            )
         try:
             completion = await self._client.chat_completion(
                 system=_RESTATE_SYSTEM,
